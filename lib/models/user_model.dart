@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'gamification_model.dart';
 
 class UserModel {
   final String uid;
@@ -9,6 +10,7 @@ class UserModel {
   final int reportesCount;
   final DateTime creadoEn;
   final GeoPoint? ultimaUbicacion;
+  final GamificationStats? gamification;
 
   UserModel({
     required this.uid,
@@ -19,6 +21,7 @@ class UserModel {
     this.reportesCount = 0,
     required this.creadoEn,
     this.ultimaUbicacion,
+    this.gamification,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -32,6 +35,10 @@ class UserModel {
       reportesCount: data['reportes_count'] ?? 0,
       creadoEn: (data['creado_en'] as Timestamp).toDate(),
       ultimaUbicacion: data['ultima_ubicacion'] as GeoPoint?,
+      gamification: data['gamification'] != null
+          ? GamificationStats.fromFirestore(
+              data['gamification'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -45,6 +52,7 @@ class UserModel {
       'reportes_count': reportesCount,
       'creado_en': Timestamp.fromDate(creadoEn),
       'ultima_ubicacion': ultimaUbicacion,
+      'gamification': gamification?.toFirestore(),
     };
   }
 
@@ -57,6 +65,7 @@ class UserModel {
     int? reportesCount,
     DateTime? creadoEn,
     GeoPoint? ultimaUbicacion,
+    GamificationStats? gamification,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -67,6 +76,7 @@ class UserModel {
       reportesCount: reportesCount ?? this.reportesCount,
       creadoEn: creadoEn ?? this.creadoEn,
       ultimaUbicacion: ultimaUbicacion ?? this.ultimaUbicacion,
+      gamification: gamification ?? this.gamification,
     );
   }
 
