@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════════
+  COMANDOS RÁPIDOS PARA CONFIGURAR FIREBASE - MetroPTY
+═══════════════════════════════════════════════════════════════
+
+Ya tienes Firebase CLI instalado y estás logueado ✅
+
+═══════════════════════════════════════════════════════════════
+OPCIÓN 1: CREAR NUEVO PROYECTO (Recomendado)
+═══════════════════════════════════════════════════════════════
+
+1. Crear proyecto desde Firebase Console (MÁS FÁCIL):
+   → Abre: https://console.firebase.google.com/
+   → Haz clic en "Agregar proyecto"
+   → Nombre: MetroPTY
+   → Sigue los pasos en FIREBASE_SETUP.md
+
+2. O inicializar Firebase CLI en este proyecto:
+   firebase init
+
+   Durante la inicialización selecciona:
+   ✅ Firestore (para configurar reglas)
+   ❌ Functions (no por ahora)
+   ❌ Hosting (opcional)
+
+═══════════════════════════════════════════════════════════════
+OPCIÓN 2: USAR PROYECTO EXISTENTE
+═══════════════════════════════════════════════════════════════
+
+Si quieres usar tu proyecto "Black Dog App":
+
+1. Seleccionar proyecto:
+   firebase use black-dog-app
+
+2. Inicializar Firestore:
+   firebase init firestore
+
+3. Desplegar reglas:
+   firebase deploy --only firestore:rules
+
+═══════════════════════════════════════════════════════════════
+COMANDOS ÚTILES
+═══════════════════════════════════════════════════════════════
+
+# Ver proyectos disponibles
+firebase projects:list
+
+# Ver proyecto actual
+firebase use
+
+# Cambiar de proyecto
+firebase use [PROJECT_ID]
+
+# Desplegar solo reglas de Firestore
+firebase deploy --only firestore:rules
+
+# Ver estado de Firebase
+firebase projects:list
+
+═══════════════════════════════════════════════════════════════
+IMPORTANTE: ARCHIVOS DE CONFIGURACIÓN
+═══════════════════════════════════════════════════════════════
+
+Los archivos google-services.json y GoogleService-Info.plist
+NO se pueden descargar con comandos. Debes:
+
+1. Ir a Firebase Console: https://console.firebase.google.com/
+2. Seleccionar tu proyecto
+3. Agregar app Android → Descargar google-services.json
+4. Agregar app iOS → Descargar GoogleService-Info.plist
+5. Colocar en:
+   - android/app/google-services.json
+   - ios/Runner/GoogleService-Info.plist
+
+═══════════════════════════════════════════════════════════════
+FLUJO RECOMENDADO (Paso a Paso)
+═══════════════════════════════════════════════════════════════
+
+1. Crear proyecto en Firebase Console (más fácil)
+   https://console.firebase.google.com/
+
+2. Agregar app Android:
+   - Package name: com.example.metropty
+   - Descargar google-services.json
+   - Colocar en android/app/
+
+3. Agregar app iOS:
+   - Bundle ID: com.example.metropty
+   - Descargar GoogleService-Info.plist
+   - Colocar en ios/Runner/
+
+4. Habilitar servicios:
+   - Authentication → Email/Password
+   - Firestore Database → Crear base de datos
+
+5. Configurar reglas:
+   - Copiar contenido de firestore.rules
+   - Pegar en Firebase Console → Firestore → Reglas
+
+6. (Opcional) Desplegar reglas con CLI:
+   firebase deploy --only firestore:rules
+
+═══════════════════════════════════════════════════════════════
+VERIFICACIÓN
+═══════════════════════════════════════════════════════════════
+
+# Verificar archivos en Windows PowerShell:
+Test-Path android/app/google-services.json
+Test-Path ios/Runner/GoogleService-Info.plist
+
+═══════════════════════════════════════════════════════════════
+
+Para más detalles, ver: FIREBASE_SETUP.md
+

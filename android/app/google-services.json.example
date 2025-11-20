@@ -1,0 +1,31 @@
+{
+  "_comment": "Este es un archivo de ejemplo. Reemplázalo con tu google-services.json real de Firebase",
+  "project_info": {
+    "project_number": "TU_PROJECT_NUMBER",
+    "project_id": "tu-proyecto-id",
+    "storage_bucket": "tu-proyecto-id.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:TU_PROJECT_NUMBER:android:TU_APP_ID",
+        "android_client_info": {
+          "package_name": "com.example.metropty"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "TU_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
