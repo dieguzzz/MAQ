@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../services/firebase_service.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
+import '../utils/metro_data.dart';
 
 class MetroDataProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -28,16 +29,31 @@ class MetroDataProvider with ChangeNotifier {
 
   void _init() {
     // Listen to stations stream
-    _firebaseService.getStationsStream().listen((stations) {
-      _stations = stations;
-      notifyListeners();
-    });
+    _firebaseService.getStationsStream().listen(
+      (stations) {
+        _stations = stations.isNotEmpty ? stations : MetroData.getAllStations();
+        notifyListeners();
+      },
+      onError: (error) {
+        print('Error en stream de estaciones: $error');
+        // Usar datos estáticos como fallback
+        _stations = MetroData.getAllStations();
+        notifyListeners();
+      },
+    );
 
     // Listen to trains stream
-    _firebaseService.getTrainsStream().listen((trains) {
-      _trains = trains;
-      notifyListeners();
-    });
+    _firebaseService.getTrainsStream().listen(
+      (trains) {
+        _trains = trains;
+        notifyListeners();
+      },
+      onError: (error) {
+        print('Error en stream de trenes: $error');
+        _trains = [];
+        notifyListeners();
+      },
+    );
 
     // Load initial data
     loadData();
@@ -50,8 +66,18 @@ class MetroDataProvider with ChangeNotifier {
     try {
       _stations = await _firebaseService.getStations();
       _trains = await _firebaseService.getTrains();
+      
+      // Si no hay estaciones en Firestore, usar datos estáticos como fallback
+      if (_stations.isEmpty) {
+        print('No hay estaciones en Firestore, usando datos estáticos...');
+        _stations = MetroData.getAllStations();
+      }
     } catch (e) {
       print('Error loading metro data: $e');
+      // Si hay error, usar datos estáticos como fallback
+      print('Usando datos estáticos como fallback...');
+      _stations = MetroData.getAllStations();
+      _trains = []; // Los trenes pueden quedar vacíos si hay error
     } finally {
       _isLoading = false;
       notifyListeners();

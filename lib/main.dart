@@ -12,6 +12,7 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
 import 'services/firebase_service.dart';
 import 'utils/metro_data.dart';
+import 'models/station_model.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -41,12 +42,25 @@ void main() async {
 
 Future<void> _initializeStations() async {
   try {
+    print('🚀 Iniciando inicialización de estaciones...');
     final firebaseService = FirebaseService();
-    final existingStations = await firebaseService.getStations();
+    
+    // Intentar leer estaciones existentes
+    List<StationModel> existingStations = [];
+    try {
+      existingStations = await firebaseService.getStations();
+      print('✅ Estaciones leídas: ${existingStations.length}');
+    } catch (readError) {
+      print('⚠️ Error leyendo estaciones (esto es normal si no existen): $readError');
+      // Si falla la lectura, continuamos para intentar crear
+    }
     
     // Solo inicializar si no hay estaciones
     if (existingStations.isEmpty) {
+      print('📝 No hay estaciones, creando estaciones...');
       final allStations = MetroData.getAllStations();
+      print('📦 Total de estaciones a crear: ${allStations.length}');
+      
       final batch = firebaseService.firestore.batch();
       
       for (var station in allStations) {
@@ -56,11 +70,15 @@ Future<void> _initializeStations() async {
         batch.set(docRef, station.toFirestore());
       }
       
+      print('💾 Guardando estaciones en Firestore...');
       await batch.commit();
-      print('Estaciones inicializadas en Firestore');
+      print('✅ ¡Estaciones inicializadas en Firestore! Total: ${allStations.length}');
+    } else {
+      print('✅ Ya existen ${existingStations.length} estaciones en Firestore');
     }
-  } catch (e) {
-    print('Error inicializando estaciones: $e');
+  } catch (e, stackTrace) {
+    print('❌ Error inicializando estaciones: $e');
+    print('📍 Stack trace: $stackTrace');
   }
 }
 
