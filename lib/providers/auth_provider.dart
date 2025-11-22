@@ -88,6 +88,45 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> signInWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final credential = await _firebaseService.signInWithGoogle();
+      final user = credential?.user;
+      if (user == null) {
+        return false;
+      }
+
+      var existingUser = await _firebaseService.getUser(user.uid);
+      if (existingUser == null) {
+        existingUser = UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          nombre: user.displayName?.trim().isNotEmpty == true
+              ? user.displayName!
+              : 'Viajero Metro',
+          fotoUrl: user.photoURL,
+          reputacion: 50,
+          reportesCount: 0,
+          creadoEn: DateTime.now(),
+        );
+        await _firebaseService.createUser(existingUser);
+      }
+
+      _currentUser = existingUser;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error signing in with Google: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     await _firebaseService.signOut();
     _currentUser = null;

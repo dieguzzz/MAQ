@@ -7,6 +7,7 @@ import 'providers/location_provider.dart';
 import 'providers/metro_data_provider.dart';
 import 'providers/report_provider.dart';
 import 'services/notification_service.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
@@ -112,9 +113,32 @@ class MetroPTYApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: ThemeMode.dark,
-          home: const MainNavigationScreen(),
+          home: const AuthGate(),
           debugShowCheckedModeBanner: false,
         ),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (auth.isAuthenticated) {
+          return const MainNavigationScreen();
+        }
+
+        return const LoginScreen();
+      },
     );
   }
 }
