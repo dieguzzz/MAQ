@@ -127,6 +127,44 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> signInAsGuest() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final credential = await _firebaseService.signInAnonymously();
+      final user = credential.user;
+      if (user == null) {
+        return false;
+      }
+
+      var existingUser = await _firebaseService.getUser(user.uid);
+      if (existingUser == null) {
+        final guestName =
+            'Invitado ${user.uid.substring(0, 5).toUpperCase()}';
+        existingUser = UserModel(
+          uid: user.uid,
+          email: '',
+          nombre: guestName,
+          reputacion: 30,
+          reportesCount: 0,
+          creadoEn: DateTime.now(),
+        );
+        await _firebaseService.createUser(existingUser);
+      }
+
+      _currentUser = existingUser;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error signing in as guest: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     await _firebaseService.signOut();
     _currentUser = null;

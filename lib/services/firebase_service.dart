@@ -166,6 +166,10 @@ class FirebaseService {
         email: email, password: password);
   }
 
+  Future<UserCredential> signInAnonymously() async {
+    return await _auth.signInAnonymously();
+  }
+
   Future<UserCredential?> signInWithGoogle() async {
     if (kIsWeb) {
       GoogleAuthProvider googleProvider = GoogleAuthProvider();
