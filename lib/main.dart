@@ -94,15 +94,27 @@ class MetroPTYApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MetroDataProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
       ],
-      child: MaterialApp(
-        title: 'MetroPTY',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
+        child: MaterialApp(
+          title: 'MetroPTY',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF0072CE),
+              brightness: Brightness.light,
+            ),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF0072CE),
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: const Color(0xFF0E121A),
+            useMaterial3: true,
+          ),
+          themeMode: ThemeMode.dark,
+          home: const MainNavigationScreen(),
+          debugShowCheckedModeBanner: false,
         ),
-        home: const MainNavigationScreen(),
-        debugShowCheckedModeBanner: false,
-      ),
     );
   }
 }
