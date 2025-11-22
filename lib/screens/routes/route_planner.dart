@@ -113,79 +113,79 @@ class _RoutePlannerState extends State<RoutePlanner> {
               children: [
                 // Selector de origen
                 Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Origen',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Origen',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<StationModel>(
-                          value: _origen,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            hintText: 'Selecciona estación de origen',
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<StationModel>(
+                            initialValue: _origen,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: 'Selecciona estación de origen',
+                            ),
+                            items: stations.map((station) {
+                              return DropdownMenuItem<StationModel>(
+                                value: station,
+                                child: Text(station.nombre),
+                              );
+                            }).toList(),
+                            onChanged: (StationModel? value) {
+                              setState(() {
+                                _origen = value;
+                              });
+                            },
                           ),
-                          items: stations.map((station) {
-                            return DropdownMenuItem<StationModel>(
-                              value: station,
-                              child: Text(station.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (StationModel? value) {
-                            setState(() {
-                              _origen = value;
-                            });
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ),
                 const SizedBox(height: 16),
 
                 // Selector de destino
                 Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Destino',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Destino',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<StationModel>(
-                          value: _destino,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            hintText: 'Selecciona estación de destino',
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<StationModel>(
+                            initialValue: _destino,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: 'Selecciona estación de destino',
+                            ),
+                            items: stations.map((station) {
+                              return DropdownMenuItem<StationModel>(
+                                value: station,
+                                child: Text(station.nombre),
+                              );
+                            }).toList(),
+                            onChanged: (StationModel? value) {
+                              setState(() {
+                                _destino = value;
+                              });
+                            },
                           ),
-                          items: stations.map((station) {
-                            return DropdownMenuItem<StationModel>(
-                              value: station,
-                              child: Text(station.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (StationModel? value) {
-                            setState(() {
-                              _destino = value;
-                            });
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ),
                 const SizedBox(height: 24),
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/user_model.dart';
 
 class RankingsScreen extends StatefulWidget {
   final String? lineaFiltro;

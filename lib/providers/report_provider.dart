@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../services/firebase_service.dart';
 import '../services/gamification_service.dart';
 import '../models/report_model.dart';
-import '../models/user_model.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
