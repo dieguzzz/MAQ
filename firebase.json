@@ -1,0 +1,27 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "metropty-aa303",
+          "appId": "1:443011769374:android:fdd1f064d5429d4c93ba0f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "metropty-aa303",
+          "configurations": {
+            "android": "1:443011769374:android:fdd1f064d5429d4c93ba0f",
+            "ios": "1:443011769374:ios:538250c2c6e88e1693ba0f",
+            "web": "1:443011769374:web:d55dc805031e69c993ba0f"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
