@@ -36,8 +36,10 @@ class Helpers {
     switch (estado) {
       case 'normal':
         return 'Normal';
-      case 'congestionado':
-        return 'Congestionado';
+      case 'moderado':
+        return 'Moderado';
+      case 'lleno':
+        return 'Lleno';
       case 'cerrado':
         return 'Cerrado';
       default:

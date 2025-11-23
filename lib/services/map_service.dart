@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
+import '../theme/metro_theme.dart';
 
 class MapService {
   // Centro de Panamá (aproximado)
@@ -12,37 +13,6 @@ class MapService {
     target: panamaCenter,
     zoom: 12.0,
   );
-
-  // Crear marcador para estación
-  Marker createStationMarker(StationModel station) {
-    Color markerColor;
-    switch (station.estadoActual) {
-      case EstadoEstacion.normal:
-        markerColor = Colors.green;
-        break;
-      case EstadoEstacion.congestionado:
-        markerColor = Colors.orange;
-        break;
-      case EstadoEstacion.cerrado:
-        markerColor = Colors.red;
-        break;
-    }
-
-    return Marker(
-      markerId: MarkerId(station.id),
-      position: LatLng(
-        station.ubicacion.latitude,
-        station.ubicacion.longitude,
-      ),
-      infoWindow: InfoWindow(
-        title: station.nombre,
-        snippet: 'Estado: ${station.getAglomeracionTexto()}',
-      ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-        _getMarkerHue(markerColor),
-      ),
-    );
-  }
 
   // Crear marcador para tren
   Marker createTrainMarker(TrainModel train) {
@@ -69,12 +39,7 @@ class MapService {
     if (color == Colors.red) return BitmapDescriptor.hueRed;
     return BitmapDescriptor.hueBlue;
   }
-
-  // Crear conjunto de marcadores para estaciones
-  Set<Marker> createStationMarkers(List<StationModel> stations) {
-    return stations.map((station) => createStationMarker(station)).toSet();
-  }
-
+  
   // Crear conjunto de marcadores para trenes
   Set<Marker> createTrainMarkers(List<TrainModel> trains) {
     return trains.map((train) => createTrainMarker(train)).toSet();
@@ -114,5 +79,71 @@ class MapService {
     if (maxDiff < 0.1) return 12.0;
     return 11.0;
   }
+
+  Color getStationStateColor(EstadoEstacion estado) {
+    switch (estado) {
+      case EstadoEstacion.normal:
+        return MetroColors.stateNormal;
+      case EstadoEstacion.moderado:
+        return MetroColors.stateModerate;
+      case EstadoEstacion.lleno:
+        return MetroColors.stateCritical;
+      case EstadoEstacion.cerrado:
+        return MetroColors.stateInactive;
+    }
+  }
+
+  double getStationRadius(EstadoEstacion estado) {
+    switch (estado) {
+      case EstadoEstacion.normal:
+        return 120;
+      case EstadoEstacion.moderado:
+        return 160;
+      case EstadoEstacion.lleno:
+        return 200;
+      case EstadoEstacion.cerrado:
+        return 110;
+    }
+  }
+
+  Future<void> applyMapStyle(GoogleMapController controller) async {
+    await controller.setMapStyle(_metroMapStyle);
+  }
+
+  static const String _metroMapStyle = '''
+  [
+    {
+      "featureType": "poi",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "transit",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "road",
+      "elementType": "labels",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "water",
+      "stylers": [
+        { "color": "#b5e3ff" }
+      ]
+    },
+    {
+      "featureType": "landscape",
+      "stylers": [
+        { "color": "#f2f4f7" }
+      ]
+    }
+  ]
+  ''';
 }
 

@@ -22,6 +22,9 @@ class LocationProvider with ChangeNotifier {
   Future<void> _checkPermission() async {
     _hasPermission = await _locationService.checkLocationPermission();
     notifyListeners();
+    if (_hasPermission) {
+      await getCurrentLocation();
+    }
   }
 
   Future<void> getCurrentLocation() async {
