@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -5,7 +6,9 @@ import 'package:geolocator/geolocator.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../services/map_service.dart';
+import '../../services/train_simulation_service.dart';
 import '../../models/station_model.dart';
+import '../../models/train_model.dart';
 import '../../theme/metro_theme.dart';
 import '../../widgets/station_bottom_sheet.dart';
 
@@ -19,8 +22,69 @@ class MapWidget extends StatefulWidget {
 class _MapWidgetState extends State<MapWidget> {
   GoogleMapController? _mapController;
   final MapService _mapService = MapService();
+  final TrainSimulationService _trainSimulation = TrainSimulationService();
   bool _hasAnimatedInitialCamera = false;
   Position? _lastKnownPosition;
+  List<TrainModel> _simulatedTrains = [];
+  Timer? _updateTimer;
+  Set<Marker> _trainMarkers = {};
+  Set<Marker> _stationMarkers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar simulación cuando el widget se monta
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final metroProvider = context.read<MetroDataProvider>();
+      if (metroProvider.stations.isNotEmpty) {
+        _trainSimulation.initialize(metroProvider.stations);
+        _trainSimulation.start();
+        _startTrainUpdates(metroProvider.trains);
+      }
+    });
+  }
+
+  void _startTrainUpdates(List<TrainModel> originalTrains) {
+    // Actualizar trenes cada 500ms para movimiento más fluido
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
+      if (mounted) {
+        setState(() {
+          _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
+        });
+        // Actualizar marcadores
+        _updateTrainMarkers(_simulatedTrains);
+      }
+    });
+    // Actualización inicial
+    if (mounted) {
+      setState(() {
+        _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
+      });
+      _updateTrainMarkers(_simulatedTrains);
+    }
+  }
+
+  Future<void> _updateTrainMarkers(List<TrainModel> trains) async {
+    final markers = await _mapService.createTrainMarkers(trains);
+    if (mounted) {
+      setState(() {
+        _trainMarkers = markers;
+      });
+    }
+  }
+
+  Future<void> _updateStationMarkers(List<StationModel> stations) async {
+    final markers = await _mapService.createStationMarkers(
+      stations,
+      onStationTap: (station) => _showStationBottomSheet(station),
+    );
+    if (mounted) {
+      setState(() {
+        _stationMarkers = markers;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +97,32 @@ class _MapWidgetState extends State<MapWidget> {
           _lastKnownPosition = currentPosition;
         }
 
+        // Inicializar simulación si aún no está inicializada o si las estaciones cambiaron
+        if (stations.isNotEmpty) {
+          if (_simulatedTrains.isEmpty) {
+            _trainSimulation.initialize(stations);
+            _trainSimulation.start();
+            _startTrainUpdates(trains);
+          }
+        }
+
+        // Usar trenes simulados si están disponibles, sino usar los originales
+        final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : trains;
+
+        // Actualizar marcadores si cambian los trenes
+        if (_trainMarkers.isEmpty && trainsToDisplay.isNotEmpty) {
+          _updateTrainMarkers(trainsToDisplay);
+        }
+
+        // Actualizar marcadores de estaciones si cambian
+        if (_stationMarkers.isEmpty && stations.isNotEmpty) {
+          _updateStationMarkers(stations);
+        }
+
         // Crear marcadores y capas
         final markers = <Marker>{};
-        markers.addAll(_mapService.createTrainMarkers(trains));
+        markers.addAll(_trainMarkers);
+        markers.addAll(_stationMarkers);
         // Ya no se agrega marcador azul; el propio map muestra el icono de persona
 
         final stationCircles = _createStationCircles(stations);
@@ -72,29 +159,18 @@ class _MapWidgetState extends State<MapWidget> {
           polylines: polylines,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
-          zoomControlsEnabled: true,
+          zoomControlsEnabled: false,
           mapToolbarEnabled: false,
           mapType: MapType.normal,
+          style: MapService.metroMapStyle,
           onMapCreated: (GoogleMapController controller) async {
             _mapController = controller;
-            await _mapService.applyMapStyle(controller);
           },
           onTap: (_) {
             Navigator.of(context).maybePop();
           },
         );
       },
-    );
-  }
-
-  Marker _createCurrentLocationMarker(Position position) {
-    return Marker(
-      markerId: const MarkerId('current_location'),
-      position: LatLng(position.latitude, position.longitude),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-        BitmapDescriptor.hueAzure,
-      ),
-      infoWindow: const InfoWindow(title: 'Tu ubicación'),
     );
   }
 
@@ -122,19 +198,7 @@ class _MapWidgetState extends State<MapWidget> {
         ),
       );
 
-      // Punto exacto de la estación
-      circles.add(
-        Circle(
-          circleId: CircleId('station_dot_${station.id}'),
-          center: center,
-          radius: 12, // ~12 metros para mostrar un punto exacto
-          strokeColor: Colors.white,
-          strokeWidth: 2,
-          fillColor: MetroColors.grayDark,
-          consumeTapEvents: true,
-          onTap: () => _showStationBottomSheet(station),
-        ),
-      );
+      // Ya no se dibuja el círculo pequeño, se usa el icono de estación en su lugar
     }
 
     return circles;
@@ -234,7 +298,7 @@ class _MapWidgetState extends State<MapWidget> {
     final second = nearestStations.last;
     if (!mounted || _mapController == null) return;
 
-    Future<void> _flyToStation(StationModel station, double zoom) async {
+    Future<void> flyToStation(StationModel station, double zoom) async {
       await _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
@@ -250,8 +314,8 @@ class _MapWidgetState extends State<MapWidget> {
     }
 
     try {
-      await _flyToStation(closest, 16);
-      await _flyToStation(second, 16);
+      await flyToStation(closest, 16);
+      await flyToStation(second, 16);
       await _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
@@ -289,32 +353,11 @@ class _MapWidgetState extends State<MapWidget> {
     );
   }
 
-  LatLngBounds _boundsFromPoints(List<LatLng> points) {
-    double? minLat, maxLat, minLng, maxLng;
-    for (final point in points) {
-      minLat = (minLat == null) ? point.latitude : (point.latitude < minLat ? point.latitude : minLat);
-      maxLat = (maxLat == null) ? point.latitude : (point.latitude > maxLat ? point.latitude : maxLat);
-      minLng = (minLng == null) ? point.longitude : (point.longitude < minLng ? point.longitude : minLng);
-      maxLng = (maxLng == null) ? point.longitude : (point.longitude > maxLng ? point.longitude : maxLng);
-    }
-
-    if (minLat != null && maxLat != null && minLat == maxLat) {
-      minLat -= 0.001;
-      maxLat += 0.001;
-    }
-    if (minLng != null && maxLng != null && minLng == maxLng) {
-      minLng -= 0.001;
-      maxLng += 0.001;
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat ?? 0, minLng ?? 0),
-      northeast: LatLng(maxLat ?? 0, maxLng ?? 0),
-    );
-  }
-
   @override
   void dispose() {
+    _updateTimer?.cancel();
+    _trainSimulation.stop();
+    _trainSimulation.dispose();
     _mapController?.dispose();
     super.dispose();
   }

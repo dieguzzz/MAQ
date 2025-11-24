@@ -116,10 +116,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                      child: const Padding(
+                        padding: EdgeInsets.all(16.0),
                         child: Column(
-                          children: const [
+                          children: [
                             _FeatureBullet(icon: Icons.flash_on, text: 'Reportes en menos de 3 toques'),
                             SizedBox(height: 12),
                             _FeatureBullet(icon: Icons.groups, text: 'Impacto comunitario visible'),

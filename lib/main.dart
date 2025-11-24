@@ -2,22 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/metro_data_provider.dart';
 import 'providers/report_provider.dart';
 import 'services/notification_service.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
 import 'services/firebase_service.dart';
 import 'utils/metro_data.dart';
 import 'models/station_model.dart';
+import 'theme/metro_theme.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await _ensureFirebaseInitialized();
   print('Background message: ${message.messageId}');
 }
 
@@ -25,7 +30,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Firebase
-  await Firebase.initializeApp();
+  await _ensureFirebaseInitialized();
   
   // Initialize notification service
   final notificationService = NotificationService();
@@ -38,6 +43,14 @@ void main() async {
   await _initializeStations();
   
   runApp(const MetroPTYApp());
+}
+
+Future<void> _ensureFirebaseInitialized() async {
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 }
 
 Future<void> _initializeStations() async {
@@ -67,6 +80,8 @@ Future<void> _initializeStations() async {
         final docRef = firebaseService.firestore
             .collection('stations')
             .doc(station.id);
+        // Usar set() sin merge para crear el documento (equivalente a create)
+        // Como ya verificamos que no hay estaciones, esto creará nuevos documentos
         batch.set(docRef, station.toFirestore());
       }
       
@@ -82,8 +97,35 @@ Future<void> _initializeStations() async {
   }
 }
 
-class MetroPTYApp extends StatelessWidget {
+class MetroPTYApp extends StatefulWidget {
   const MetroPTYApp({super.key});
+
+  @override
+  State<MetroPTYApp> createState() => _MetroPTYAppState();
+}
+
+class _MetroPTYAppState extends State<MetroPTYApp> {
+  static const String _onboardingKey = 'has_completed_onboarding';
+  late Future<bool> _onboardingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _onboardingFuture = _loadOnboardingStatus();
+  }
+
+  Future<bool> _loadOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_onboardingKey) ?? false;
+  }
+
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingKey, true);
+    setState(() {
+      _onboardingFuture = Future.value(true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,15 +136,62 @@ class MetroPTYApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MetroDataProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
       ],
-      child: MaterialApp(
-        title: 'MetroPTY',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
-        home: const MainNavigationScreen(),
-        debugShowCheckedModeBanner: false,
+      child: FutureBuilder<bool>(
+        future: _onboardingFuture,
+        builder: (context, snapshot) {
+          final bool isReady = snapshot.connectionState == ConnectionState.done;
+          final bool hasCompleted = snapshot.data ?? false;
+
+          return MaterialApp(
+            title: 'MetroPTY',
+            theme: MetroTheme.light(),
+            themeMode: ThemeMode.light,
+            home: !isReady
+                ? const _SplashScaffold()
+                : hasCompleted
+                    ? const AuthGate()
+                    : OnboardingScreen(onFinished: _completeOnboarding),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
+    );
+  }
+}
+
+class _SplashScaffold extends StatelessWidget {
+  const _SplashScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: MetroColors.grayLight,
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (auth.isAuthenticated) {
+          return const MainNavigationScreen();
+        }
+
+        return const LoginScreen();
+      },
     );
   }
 }

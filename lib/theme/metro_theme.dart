@@ -45,7 +45,6 @@ class MetroTheme {
       primary: seed,
       secondary: MetroColors.green,
       surface: MetroColors.grayLight,
-      background: MetroColors.grayLight,
       brightness: Brightness.light,
     );
 
@@ -83,7 +82,7 @@ class MetroTheme {
       ),
       chipTheme: base.chipTheme.copyWith(
         backgroundColor: MetroColors.grayLight,
-        selectedColor: MetroColors.energyOrange.withOpacity(0.15),
+        selectedColor: MetroColors.energyOrange.withValues(alpha: 0.15),
         labelStyle: textTheme.labelLarge,
       ),
       cardTheme: base.cardTheme.copyWith(

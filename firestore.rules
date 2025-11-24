@@ -10,13 +10,29 @@ service cloud.firestore {
     // Stations collection
     match /stations/{stationId} {
       allow read: if true; // Todos pueden leer
-      allow write: if false; // Solo system (Cloud Functions) puede escribir
+      // Permitir crear para inicialización (no requiere autenticación si el documento no existe)
+      // set() sin merge se trata como create si el documento no existe
+      allow create: if !exists(/databases/$(database)/documents/stations/$(stationId));
+      // Permitir actualizar solo si el documento existe y el usuario está autenticado
+      allow update: if exists(/databases/$(database)/documents/stations/$(stationId)) && request.auth != null;
+      // Permitir write (set) solo para crear nuevos documentos (inicialización)
+      allow write: if !exists(/databases/$(database)/documents/stations/$(stationId));
+      // No permitir eliminar
+      allow delete: if false;
     }
     
     // Trains collection
     match /trains/{trainId} {
       allow read: if true; // Todos pueden leer
-      allow write: if false; // Solo system (Cloud Functions) puede escribir
+      // Permitir crear para inicialización (no requiere autenticación si el documento no existe)
+      // set() sin merge se trata como create si el documento no existe
+      allow create: if !exists(/databases/$(database)/documents/trains/$(trainId));
+      // Permitir actualizar solo si el documento existe y el usuario está autenticado
+      allow update: if exists(/databases/$(database)/documents/trains/$(trainId)) && request.auth != null;
+      // Permitir write (set) solo para crear nuevos documentos (inicialización)
+      allow write: if !exists(/databases/$(database)/documents/trains/$(trainId));
+      // No permitir eliminar
+      allow delete: if false;
     }
     
     // Reports collection

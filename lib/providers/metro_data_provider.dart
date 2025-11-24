@@ -45,12 +45,13 @@ class MetroDataProvider with ChangeNotifier {
     // Listen to trains stream
     _firebaseService.getTrainsStream().listen(
       (trains) {
-        _trains = trains;
+        _trains =
+            trains.isNotEmpty ? trains : MetroData.getSampleTrains();
         notifyListeners();
       },
       onError: (error) {
         print('Error en stream de trenes: $error');
-        _trains = [];
+        _trains = MetroData.getSampleTrains();
         notifyListeners();
       },
     );
@@ -66,6 +67,9 @@ class MetroDataProvider with ChangeNotifier {
     try {
       _stations = await _firebaseService.getStations();
       _trains = await _firebaseService.getTrains();
+      if (_trains.isEmpty) {
+        _trains = MetroData.getSampleTrains();
+      }
       
       // Si no hay estaciones en Firestore, usar datos estáticos como fallback
       if (_stations.isEmpty) {
@@ -77,7 +81,7 @@ class MetroDataProvider with ChangeNotifier {
       // Si hay error, usar datos estáticos como fallback
       print('Usando datos estáticos como fallback...');
       _stations = MetroData.getAllStations();
-      _trains = []; // Los trenes pueden quedar vacíos si hay error
+      _trains = MetroData.getSampleTrains();
     } finally {
       _isLoading = false;
       notifyListeners();

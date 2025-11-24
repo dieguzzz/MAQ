@@ -31,7 +31,7 @@ class StationBottomSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SheetHandle(color: MetroColors.grayMedium),
+                const _SheetHandle(color: MetroColors.grayMedium),
                 const SizedBox(height: 16),
                 _HeaderSection(station: station),
                 const SizedBox(height: 24),
@@ -104,7 +104,7 @@ class _HeaderSection extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: estadoColor.withOpacity(0.15),
+                color: estadoColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -353,7 +353,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(

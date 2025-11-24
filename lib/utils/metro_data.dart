@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/station_model.dart';
+import '../models/train_model.dart';
 
 /// Datos estáticos de las estaciones del Metro de Panamá
 class MetroData {
@@ -14,6 +16,138 @@ class MetroData {
     return [
       ...getLinea1Stations(),
       ...getLinea2Stations(),
+    ];
+  }
+
+  static List<TrainModel> getSampleTrains() {
+    final now = DateTime.now();
+    return [
+      // Línea 1 - 3 trenes de ida (norte) y 3 de regreso (sur)
+      // Trenes de ida (norte)
+      TrainModel(
+        id: 'train_l1_norte_1',
+        linea: 'linea1',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(8.9755, -79.5330),
+        velocidad: 40,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l1_norte_2',
+        linea: 'linea1',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(9.0062, -79.5097),
+        velocidad: 38,
+        estado: EstadoTren.normal,
+        aglomeracion: 3,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l1_norte_3',
+        linea: 'linea1',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(9.0405, -79.5070),
+        velocidad: 42,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      // Trenes de regreso (sur)
+      TrainModel(
+        id: 'train_l1_sur_1',
+        linea: 'linea1',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(9.0799, -79.5272),
+        velocidad: 39,
+        estado: EstadoTren.normal,
+        aglomeracion: 3,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l1_sur_2',
+        linea: 'linea1',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(9.0301, -79.5051),
+        velocidad: 37,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l1_sur_3',
+        linea: 'linea1',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(8.9901, -79.5222),
+        velocidad: 41,
+        estado: EstadoTren.normal,
+        aglomeracion: 4,
+        ultimaActualizacion: now,
+      ),
+      // Línea 2 - 3 trenes de ida (norte) y 3 de regreso (sur)
+      // Trenes de ida (norte)
+      TrainModel(
+        id: 'train_l2_norte_1',
+        linea: 'linea2',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(9.0301, -79.5065),
+        velocidad: 40,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l2_norte_2',
+        linea: 'linea2',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(9.0440, -79.4710),
+        velocidad: 38,
+        estado: EstadoTren.normal,
+        aglomeracion: 3,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l2_norte_3',
+        linea: 'linea2',
+        direccion: DireccionTren.norte,
+        ubicacionActual: const GeoPoint(9.0598, -79.4292),
+        velocidad: 42,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      // Trenes de regreso (sur)
+      TrainModel(
+        id: 'train_l2_sur_1',
+        linea: 'linea2',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(9.1129, -79.3380),
+        velocidad: 39,
+        estado: EstadoTren.normal,
+        aglomeracion: 3,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l2_sur_2',
+        linea: 'linea2',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(9.0744, -79.4010),
+        velocidad: 37,
+        estado: EstadoTren.normal,
+        aglomeracion: 2,
+        ultimaActualizacion: now,
+      ),
+      TrainModel(
+        id: 'train_l2_sur_3',
+        linea: 'linea2',
+        direccion: DireccionTren.sur,
+        ubicacionActual: const GeoPoint(9.0519, -79.4449),
+        velocidad: 41,
+        estado: EstadoTren.normal,
+        aglomeracion: 4,
+        ultimaActualizacion: now,
+      ),
     ];
   }
 

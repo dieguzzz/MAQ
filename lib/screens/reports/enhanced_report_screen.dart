@@ -22,7 +22,6 @@ class EnhancedReportScreen extends StatefulWidget {
 
 class _EnhancedReportScreenState extends State<EnhancedReportScreen> {
   CategoriaReporte? _selectedCategory;
-  String? _descripcion;
   final TextEditingController _descripcionController = TextEditingController();
 
   @override

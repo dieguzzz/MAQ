@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum EstadoEstacion {
   normal,
-  congestionado,
+  moderado,
+  lleno,
   cerrado,
 }
 
@@ -69,8 +70,12 @@ class StationModel {
 
   static EstadoEstacion _parseEstadoEstacion(String estado) {
     switch (estado) {
+      case 'moderado':
       case 'congestionado':
-        return EstadoEstacion.congestionado;
+        return EstadoEstacion.moderado;
+      case 'lleno':
+      case 'critico':
+        return EstadoEstacion.lleno;
       case 'cerrado':
         return EstadoEstacion.cerrado;
       default:
@@ -80,8 +85,10 @@ class StationModel {
 
   static String _estadoToString(EstadoEstacion estado) {
     switch (estado) {
-      case EstadoEstacion.congestionado:
-        return 'congestionado';
+      case EstadoEstacion.moderado:
+        return 'moderado';
+      case EstadoEstacion.lleno:
+        return 'lleno';
       case EstadoEstacion.cerrado:
         return 'cerrado';
       default:

@@ -15,12 +15,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
-  final List<_OnboardingPageData> _pages = [
+  final List<_OnboardingPageData> _pages = const [
     _OnboardingPageData(
       title: 'Bienvenido al pulso del metro',
       description:
           'Explora un mapa vivo que muestra cómo se mueve el Metro de Panamá en tiempo real.',
-      highlights: const [
+      highlights: [
         'Líneas 1 y 2',
         'Trenes animados',
         'Estados por estación',
@@ -32,7 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Reporta y gana puntos',
       description:
           'Comparte lo que ves en segundos y desbloquea logros, niveles y recompensas.',
-      highlights: const [
+      highlights: [
         'Reportes en 3 toques',
         'Puntos y rachas',
         'Badges épicos',
@@ -44,7 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Ayuda a la comunidad',
       description:
           'Cada reporte mejora la experiencia de miles de viajeros que dependen del metro.',
-      highlights: const [
+      highlights: [
         'Impacto comunitario',
         'Alertas colaborativas',
         'Seguimiento automático',
@@ -141,7 +141,7 @@ class _OnboardingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: page.accentColor.withOpacity(0.15),
+            color: page.accentColor.withValues(alpha: 0.15),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -176,7 +176,7 @@ class _OnboardingCard extends StatelessWidget {
                 .map(
                   (item) => Chip(
                     label: Text(item),
-                    backgroundColor: page.accentColor.withOpacity(0.1),
+                    backgroundColor: page.accentColor.withValues(alpha: 0.1),
                     labelStyle: theme.textTheme.labelLarge?.copyWith(
                       color: page.accentColor.darken(),
                       fontWeight: FontWeight.w600,
@@ -214,7 +214,7 @@ class _PageIndicator extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive
                 ? MetroColors.energyOrange
-                : MetroColors.energyOrange.withOpacity(0.3),
+                : MetroColors.energyOrange.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
           ),
         );
@@ -240,8 +240,8 @@ class _OnboardingIllustration extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            accentColor.withOpacity(0.1),
-            accentColor.withOpacity(0.3),
+            accentColor.withValues(alpha: 0.1),
+            accentColor.withValues(alpha: 0.3),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

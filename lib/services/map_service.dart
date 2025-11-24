@@ -1,4 +1,6 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
@@ -14,8 +16,90 @@ class MapService {
     zoom: 12.0,
   );
 
+  // Cache para los iconos de tren
+  static BitmapDescriptor? _trainIconNorte;
+  static BitmapDescriptor? _trainIconSur;
+  
+  // Cache para el icono de estación
+  static BitmapDescriptor? _stationIcon;
+
+  // Crear icono personalizado de tren
+  Future<BitmapDescriptor> _createTrainIcon(DireccionTren direccion) async {
+    // Usar emoji de tren 🚇
+    const String emoji = '🚇';
+    const double size = 60.0;
+    
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    
+    // Color de fondo según la dirección
+    final Color backgroundColor = direccion == DireccionTren.norte 
+        ? Colors.blue.shade700 
+        : Colors.orange.shade700;
+    
+    // Dibujar círculo de fondo
+    final Paint backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2 - 2,
+      backgroundPaint,
+    );
+    
+    // Dibujar borde
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2 - 2,
+      borderPaint,
+    );
+    
+    // Dibujar emoji de tren
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: emoji,
+        style: TextStyle(
+          fontSize: size * 0.5,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+    
+    final ui.Picture picture = pictureRecorder.endRecording();
+    final ui.Image image = await picture.toImage(size.toInt(), size.toInt());
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final Uint8List uint8List = byteData!.buffer.asUint8List();
+    
+    return BitmapDescriptor.fromBytes(uint8List);
+  }
+
   // Crear marcador para tren
-  Marker createTrainMarker(TrainModel train) {
+  Future<Marker> createTrainMarker(TrainModel train) async {
+    // Usar cache si está disponible
+    BitmapDescriptor icon;
+    if (train.direccion == DireccionTren.norte) {
+      _trainIconNorte ??= await _createTrainIcon(DireccionTren.norte);
+      icon = _trainIconNorte!;
+    } else {
+      _trainIconSur ??= await _createTrainIcon(DireccionTren.sur);
+      icon = _trainIconSur!;
+    }
+    
     return Marker(
       markerId: MarkerId(train.id),
       position: LatLng(
@@ -26,23 +110,120 @@ class MapService {
         title: 'Tren ${train.linea}',
         snippet: 'Dirección: ${train.direccion == DireccionTren.norte ? "Norte" : "Sur"}',
       ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-        BitmapDescriptor.hueBlue,
-      ),
+      icon: icon,
     );
   }
 
-  // Convertir color a hue de BitmapDescriptor
-  double _getMarkerHue(Color color) {
-    if (color == Colors.green) return BitmapDescriptor.hueGreen;
-    if (color == Colors.orange) return BitmapDescriptor.hueOrange;
-    if (color == Colors.red) return BitmapDescriptor.hueRed;
-    return BitmapDescriptor.hueBlue;
-  }
-  
   // Crear conjunto de marcadores para trenes
-  Set<Marker> createTrainMarkers(List<TrainModel> trains) {
-    return trains.map((train) => createTrainMarker(train)).toSet();
+  Future<Set<Marker>> createTrainMarkers(List<TrainModel> trains) async {
+    final markers = <Marker>[];
+    for (var train in trains) {
+      markers.add(await createTrainMarker(train));
+    }
+    return markers.toSet();
+  }
+
+  // Crear icono personalizado de estación de metro
+  Future<BitmapDescriptor> _createStationIcon() async {
+    // Usar emoji de estación de metro 🚉
+    const String emoji = '🚉';
+    const double size = 50.0;
+    
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    
+    // Color de fondo gris oscuro para estaciones
+    final Color backgroundColor = Colors.grey.shade800;
+    
+    // Dibujar círculo de fondo
+    final Paint backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2 - 2,
+      backgroundPaint,
+    );
+    
+    // Dibujar borde blanco
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2 - 2,
+      borderPaint,
+    );
+    
+    // Dibujar emoji de estación
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: emoji,
+        style: TextStyle(
+          fontSize: size * 0.5,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+    
+    final ui.Picture picture = pictureRecorder.endRecording();
+    final ui.Image image = await picture.toImage(size.toInt(), size.toInt());
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final Uint8List uint8List = byteData!.buffer.asUint8List();
+    
+    return BitmapDescriptor.fromBytes(uint8List);
+  }
+
+  // Crear marcador para estación
+  Future<Marker> createStationMarker(
+    StationModel station, {
+    VoidCallback? onTap,
+  }) async {
+    // Usar cache si está disponible
+    _stationIcon ??= await _createStationIcon();
+    
+    return Marker(
+      markerId: MarkerId('station_marker_${station.id}'),
+      position: LatLng(
+        station.ubicacion.latitude,
+        station.ubicacion.longitude,
+      ),
+      icon: _stationIcon!,
+      infoWindow: InfoWindow(
+        title: station.nombre,
+        snippet: 'Línea ${station.linea}',
+      ),
+      onTap: onTap,
+    );
+  }
+
+  // Crear conjunto de marcadores para estaciones
+  Future<Set<Marker>> createStationMarkers(
+    List<StationModel> stations, {
+    Function(StationModel)? onStationTap,
+  }) async {
+    final markers = <Marker>[];
+    for (var station in stations) {
+      markers.add(
+        await createStationMarker(
+          station,
+          onTap: onStationTap != null ? () => onStationTap(station) : null,
+        ),
+      );
+    }
+    return markers.toSet();
   }
 
   // Calcular zoom para mostrar todas las estaciones
@@ -106,11 +287,7 @@ class MapService {
     }
   }
 
-  Future<void> applyMapStyle(GoogleMapController controller) async {
-    await controller.setMapStyle(_metroMapStyle);
-  }
-
-  static const String _metroMapStyle = '''
+  static const String metroMapStyle = '''
   [
     {
       "featureType": "poi",

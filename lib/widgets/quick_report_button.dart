@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/reports/report_screen.dart';
+import 'quick_report_sheet.dart';
 
 class QuickReportButton extends StatelessWidget {
   const QuickReportButton({super.key});
@@ -8,10 +8,11 @@ class QuickReportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
       onPressed: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const ReportScreen(),
-          ),
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const QuickReportSheet(),
         );
       },
       icon: const Icon(Icons.add_alert),

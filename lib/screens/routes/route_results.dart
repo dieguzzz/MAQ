@@ -41,11 +41,11 @@ class RouteResults extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Estado de la ruta
             Card(
-              color: estadoColor.withOpacity(0.1),
+                color: estadoColor.withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(

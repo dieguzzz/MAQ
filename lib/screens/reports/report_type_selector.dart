@@ -49,10 +49,12 @@ class ReportTypeSelector extends StatelessWidget {
 
     return InkWell(
       onTap: () => onTipoSelected(tipo),
-      child: Container(
+        child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.grey[100],
+            color: isSelected
+                ? color.withValues(alpha: 0.2)
+                : Colors.grey[100],
           border: Border.all(
             color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,

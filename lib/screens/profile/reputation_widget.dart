@@ -74,8 +74,8 @@ class ReputationWidget extends StatelessWidget {
                   valueColor: AlwaysStoppedAnimation<Color>(nivelColor),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  '${reputacion}/100 puntos de reputación',
+                  Text(
+                    '$reputacion/100 puntos de reputación',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
