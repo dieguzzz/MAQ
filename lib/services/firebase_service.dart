@@ -131,6 +131,51 @@ class FirebaseService {
     });
   }
 
+  /// Obtiene todos los reportes de un usuario específico
+  Stream<List<ReportModel>> getUserReportsStream(String userId) {
+    return _firestore
+        .collection('reports')
+        .where('usuario_id', isEqualTo: userId)
+        .orderBy('creado_en', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ReportModel.fromFirestore(doc))
+            .toList());
+  }
+
+  /// Obtiene todos los reportes de un usuario (una vez)
+  Future<List<ReportModel>> getUserReports(String userId) async {
+    final snapshot = await _firestore
+        .collection('reports')
+        .where('usuario_id', isEqualTo: userId)
+        .orderBy('creado_en', descending: true)
+        .get();
+    
+    return snapshot.docs
+        .map((doc) => ReportModel.fromFirestore(doc))
+        .toList();
+  }
+
+  /// Elimina todos los datos del usuario de Firestore
+  /// Nota: Los reportes no se eliminan (solo se marcan como inactivos si es necesario)
+  /// ya que las reglas de Firestore no permiten eliminar reportes
+  Future<void> deleteUserData(String userId) async {
+    // Eliminar documento del usuario
+    await _firestore.collection('users').doc(userId).delete();
+    
+    // Nota: Los reportes no se eliminan porque las reglas de Firestore
+    // no permiten eliminar reportes. Si se necesita, se pueden marcar
+    // como eliminados o anónimos en una actualización futura.
+  }
+
+  /// Elimina la cuenta de Firebase Auth
+  Future<void> deleteAuthAccount() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
+  }
+
   // Route operations
   Future<RouteModel?> getRoute(String origen, String destino) async {
     final snapshot = await _firestore

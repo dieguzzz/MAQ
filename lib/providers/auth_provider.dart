@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
+import '../services/storage_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -175,6 +176,48 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Elimina la cuenta del usuario y todos sus datos
+  /// Retorna true si la eliminación fue exitosa
+  Future<bool> deleteAccount() async {
+    if (_currentUser == null) return false;
+    
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final userId = _currentUser!.uid;
+      
+      // 1. Eliminar imagen de perfil de Storage si existe
+      if (_currentUser!.fotoUrl != null) {
+        try {
+          final storageService = StorageService();
+          await storageService.deleteProfileImage(userId);
+        } catch (e) {
+          print('Error eliminando imagen de perfil: $e');
+          // Continuar aunque falle la eliminación de la imagen
+        }
+      }
+
+      // 2. Eliminar datos del usuario de Firestore
+      await _firebaseService.deleteUserData(userId);
+
+      // 3. Eliminar cuenta de Firebase Auth
+      await _firebaseService.deleteAuthAccount();
+
+      // 4. Limpiar estado local
+      _currentUser = null;
+      _isLoading = false;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      print('Error eliminando cuenta: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> updateUserReputation(int newReputacion) async {
     if (_currentUser == null) return;
 
@@ -187,6 +230,45 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error updating reputation: $e');
+    }
+  }
+
+  /// Actualiza el perfil del usuario
+  /// Retorna true si la actualización fue exitosa
+  Future<bool> updateProfile({
+    String? nombre,
+    String? fotoUrl,
+  }) async {
+    if (_currentUser == null) return false;
+
+    try {
+      final updateData = <String, dynamic>{};
+      
+      if (nombre != null && nombre.trim().isNotEmpty) {
+        updateData['nombre'] = nombre.trim();
+      }
+      
+      if (fotoUrl != null) {
+        updateData['foto_url'] = fotoUrl;
+      }
+
+      if (updateData.isEmpty) {
+        return true; // No hay cambios que guardar
+      }
+
+      await _firebaseService.updateUser(_currentUser!.uid, updateData);
+      
+      // Actualizar el modelo local
+      _currentUser = _currentUser!.copyWith(
+        nombre: nombre ?? _currentUser!.nombre,
+        fotoUrl: fotoUrl ?? _currentUser!.fotoUrl,
+      );
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error updating profile: $e');
+      return false;
     }
   }
 }

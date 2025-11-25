@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../legal/privacy_policy_screen.dart';
 import '../legal/terms_screen.dart';
 import '../premium/premium_screen.dart';
+import '../profile/edit_profile_screen.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -32,7 +36,12 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Editar Perfil'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: Navegar a editar perfil
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
             },
           ),
           const Divider(),
@@ -61,7 +70,12 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Notificaciones'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: Configurar notificaciones
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
             },
           ),
           ListTile(
@@ -205,9 +219,9 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Entendido'),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Abrir configuración del sistema
+            onPressed: () async {
               Navigator.pop(context);
+              await _openAppSettings(context);
             },
             child: const Text('Configurar'),
           ),
@@ -237,36 +251,49 @@ class SettingsScreen extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // Mostrar confirmación final
-              final confirm = await showDialog<bool>(
+              // Mostrar confirmación final con campo de texto
+              final confirmText = await showDialog<String>(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('¿Estás seguro?'),
-                  content: const Text(
-                    'Escribe "ELIMINAR" para confirmar que quieres borrar todos tus datos permanentemente.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('Eliminar'),
-                    ),
-                  ],
-                ),
+                barrierDismissible: false,
+                builder: (context) => _DeleteAccountDialog(),
               );
 
-              if (confirm == true) {
-                // TODO: Implementar eliminación de datos
+              if (confirmText == 'ELIMINAR' && context.mounted) {
+                // Mostrar indicador de carga
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final success = await authProvider.deleteAccount();
+
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Funcionalidad de eliminación en desarrollo'),
-                    ),
-                  );
+                  Navigator.pop(context); // Cerrar indicador de carga
+
+                  if (success) {
+                    // Navegar a la pantalla de login
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/login',
+                      (route) => false,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Tu cuenta ha sido eliminada exitosamente'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error al eliminar la cuenta. Por favor, intenta de nuevo.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               }
             },
@@ -275,6 +302,136 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Abre la configuración de la app en el sistema
+  static Future<void> _openAppSettings(BuildContext context) async {
+    try {
+      Uri settingsUri;
+      
+      if (Platform.isAndroid) {
+        // Android: Abrir configuración de la app específica
+        const packageName = 'com.example.metropty';
+        settingsUri = Uri.parse('package:$packageName');
+      } else if (Platform.isIOS) {
+        // iOS: Abrir configuración de la app
+        settingsUri = Uri.parse('app-settings:');
+      } else {
+        // Web u otra plataforma
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se puede abrir la configuración en esta plataforma'),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (await canLaunchUrl(settingsUri)) {
+        await launchUrl(settingsUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo abrir la configuración del sistema'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir configuración: $e'),
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// Diálogo para confirmar eliminación de cuenta con campo de texto
+class _DeleteAccountDialog extends StatefulWidget {
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final TextEditingController _confirmController = TextEditingController();
+  bool _canDelete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _confirmController.addListener(() {
+      setState(() {
+        _canDelete = _confirmController.text.trim() == 'ELIMINAR';
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        '¿Estás seguro?',
+        style: TextStyle(color: Colors.red),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Esta acción no se puede deshacer. Se eliminarán permanentemente:',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          const Text('• Tu cuenta de usuario'),
+          const Text('• Tu perfil y datos personales'),
+          const Text('• Tu foto de perfil'),
+          const SizedBox(height: 16),
+          const Text(
+            'Escribe "ELIMINAR" para confirmar:',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _confirmController,
+            decoration: InputDecoration(
+              hintText: 'Escribe ELIMINAR',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              errorText: _confirmController.text.isNotEmpty &&
+                      _confirmController.text.trim() != 'ELIMINAR'
+                  ? 'Debes escribir exactamente "ELIMINAR"'
+                  : null,
+            ),
+            autofocus: true,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: _canDelete
+              ? () => Navigator.pop(context, _confirmController.text.trim())
+              : null,
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Eliminar cuenta'),
+        ),
+      ],
     );
   }
 }

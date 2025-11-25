@@ -1,5 +1,6 @@
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io';
+import 'ad_session_service.dart';
 
 class AdService {
   static AdService? _instance;
@@ -103,7 +104,38 @@ class AdService {
   void showInterstitialAd() {
     if (_interstitialAd != null) {
       _interstitialAd!.show();
+      // Registrar que se mostró un intersticial
+      AdSessionService.instance.incrementInterstitialsShown();
     }
+  }
+
+  /// Muestra un intersticial de forma inteligente (solo si cumple las condiciones)
+  /// Retorna true si se mostró, false si no se debe mostrar
+  Future<bool> showInterstitialIfAppropriate({
+    required void Function() onAdDismissed,
+  }) async {
+    // Verificar límites diarios
+    final interstitialsToday = await AdSessionService.instance.getInterstitialsShownToday();
+    if (interstitialsToday >= 3) {
+      return false; // Ya se mostraron 3 intersticiales hoy
+    }
+
+    // Cargar anuncio si no está cargado
+    if (_interstitialAd == null) {
+      await loadInterstitialAd(
+        onAdDismissed: () {
+          onAdDismissed();
+        },
+      );
+    }
+
+    // Mostrar si está listo
+    if (_interstitialAd != null) {
+      showInterstitialAd();
+      return true;
+    }
+
+    return false;
   }
 
   RewardedAd? _rewardedAd;

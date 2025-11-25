@@ -21,6 +21,7 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/legal/privacy_policy_screen.dart';
 import 'screens/legal/terms_screen.dart';
 import 'services/ad_service.dart';
+import 'services/ad_session_service.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -41,6 +42,9 @@ void main() async {
   
   // Initialize AdMob
   await AdService.instance.initialize();
+  
+  // Initialize Ad Session Service
+  await AdSessionService.instance.initializeSession();
   
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

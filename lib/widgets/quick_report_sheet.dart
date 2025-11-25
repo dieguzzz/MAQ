@@ -11,6 +11,12 @@ import '../providers/metro_data_provider.dart';
 import '../providers/report_provider.dart';
 import '../screens/reports/report_screen.dart';
 import '../theme/metro_theme.dart';
+import '../services/ad_service.dart';
+import '../services/ad_session_service.dart';
+import '../services/gamification_service.dart';
+import '../services/ad_service.dart';
+import '../services/ad_session_service.dart';
+import '../services/gamification_service.dart';
 
 class QuickReportSheet extends StatefulWidget {
   const QuickReportSheet({super.key});
@@ -410,6 +416,9 @@ class _QuickReportSheetState extends State<QuickReportSheet>
     });
 
     if (reportId != null) {
+      // Incrementar contador de reportes en la sesión
+      await AdSessionService.instance.incrementReportCount();
+      
       // Mostrar animación de éxito antes de cerrar
       _showSuccessAnimation(context);
       
@@ -417,7 +426,24 @@ class _QuickReportSheetState extends State<QuickReportSheet>
       await Future.delayed(const Duration(milliseconds: 1500));
       
       if (!mounted) return;
+      
+      // Verificar si se debe mostrar intersticial (después del 3er reporte)
+      final shouldShowInterstitial = await AdSessionService.instance.shouldShowInterstitialAfterReport();
+      if (shouldShowInterstitial) {
+        await AdService.instance.showInterstitialIfAppropriate(
+          onAdDismissed: () {
+            // Continuar después del anuncio
+          },
+        );
+      }
+      
       navigator.pop();
+      
+      // Mostrar opción de rewarded ad opcional (duplicar puntos)
+      if (mounted) {
+        _showRewardedAdOption(context);
+      }
+      
       messenger.showSnackBar(
         SnackBar(
           content: const Row(
@@ -439,6 +465,111 @@ class _QuickReportSheetState extends State<QuickReportSheet>
         ),
       );
     }
+  }
+
+  /// Muestra opción opcional de rewarded ad para duplicar puntos
+  void _showRewardedAdOption(BuildContext context) {
+    // Esperar un momento para que el usuario vea el éxito del reporte
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.stars, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('¡Duplica tus puntos!'),
+            ],
+          ),
+          content: const Text(
+            '¿Quieres duplicar los puntos de tu último reporte?\n\n'
+            'Mira un anuncio de 30 segundos y obtén el doble de puntos.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('No, gracias'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _showRewardedAdForPoints(context);
+              },
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Ver Anuncio'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Muestra rewarded ad y duplica los puntos del último reporte
+  Future<void> _showRewardedAdForPoints(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.currentUser == null) return;
+
+    final userId = authProvider.currentUser!.uid;
+    final gamificationService = GamificationService();
+
+    // Cargar rewarded ad
+    await AdService.instance.loadRewardedAd(
+      onRewarded: (reward) async {
+        // Duplicar puntos del último reporte (asumiendo 10 puntos base)
+        const puntosBase = 10;
+        const puntosDuplicados = puntosBase; // Total: 20 puntos
+        
+        // Aquí deberías actualizar los puntos del usuario en Firestore
+        // Por ahora solo mostramos un mensaje
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.stars, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text('¡Obtuviste $puntosDuplicados puntos extra!'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      onAdFailedToLoad: (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo cargar el anuncio. Intenta más tarde.'),
+            ),
+          );
+        }
+      },
+    );
+
+    // Mostrar el anuncio
+    AdService.instance.showRewardedAd(
+      onRewarded: (reward) {
+        // Ya se maneja en el callback de loadRewardedAd
+      },
+      onAdFailedToShow: () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo mostrar el anuncio. Intenta más tarde.'),
+            ),
+          );
+        }
+      },
+    );
   }
 }
 

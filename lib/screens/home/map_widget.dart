@@ -160,9 +160,14 @@ class _MapWidgetState extends State<MapWidget> {
         // Inicializar simulación si aún no está inicializada o si las estaciones cambiaron
         if (stations.isNotEmpty) {
           if (_simulatedTrains.isEmpty) {
-            _trainSimulation.initialize(stations);
-            _trainSimulation.start();
-            _startTrainUpdates(trains);
+            // Usar addPostFrameCallback para evitar setState durante build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _trainSimulation.initialize(stations);
+                _trainSimulation.start();
+                _startTrainUpdates(trains);
+              }
+            });
           }
         }
 
