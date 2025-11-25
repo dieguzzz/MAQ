@@ -19,7 +19,8 @@ class QuickReportSheet extends StatefulWidget {
   State<QuickReportSheet> createState() => _QuickReportSheetState();
 }
 
-class _QuickReportSheetState extends State<QuickReportSheet> {
+class _QuickReportSheetState extends State<QuickReportSheet>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _descripcionController = TextEditingController();
   TipoReporte _tipoSeleccionado = TipoReporte.estacion;
   String? _stationId;
@@ -27,11 +28,34 @@ class _QuickReportSheetState extends State<QuickReportSheet> {
   CategoriaReporte? _categoriaSeleccionada;
   bool _isSubmitting = false;
   bool _initialized = false;
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+  }
 
   @override
   void dispose() {
     _descripcionController.dispose();
+    _animationController.dispose();
     super.dispose();
+  }
+
+  void _showSuccessAnimation(BuildContext context) {
+    _animationController.forward();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) => _SuccessAnimationDialog(
+        controller: _animationController,
+      ),
+    );
   }
 
   @override
@@ -386,15 +410,78 @@ class _QuickReportSheetState extends State<QuickReportSheet> {
     });
 
     if (reportId != null) {
+      // Mostrar animación de éxito antes de cerrar
+      _showSuccessAnimation(context);
+      
+      // Esperar un momento para que se vea la animación
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Reporte enviado')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('¡Reporte enviado exitosamente!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } else {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Ocurrió un error al enviar')),
+        const SnackBar(
+          content: Text('Ocurrió un error al enviar'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
+  }
+}
+
+class _SuccessAnimationDialog extends StatelessWidget {
+  final AnimationController controller;
+
+  const _SuccessAnimationDialog({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: Curves.elasticOut.transform(controller.value),
+          child: Opacity(
+            opacity: controller.value,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 80,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

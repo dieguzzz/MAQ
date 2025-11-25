@@ -41,6 +41,12 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCsef9R3HyDoipRIKM9Yj7LSM5XMRDIFMc"/>
+        
+        <!-- AdMob App ID -->
+        <!-- App ID de prueba de AdMob - Reemplazar con tu App ID real en producción -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-8674103204445992~9711238018"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

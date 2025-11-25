@@ -28,6 +28,7 @@ class CustomMetroMap extends StatefulWidget {
   final List<TrainModel> trains;
   final Function(StationModel)? onStationTap;
   final Function(TrainModel)? onTrainTap;
+  final List<StationModel>? highlightedRoute;
 
   const CustomMetroMap({
     super.key,
@@ -35,6 +36,7 @@ class CustomMetroMap extends StatefulWidget {
     required this.trains,
     this.onStationTap,
     this.onTrainTap,
+    this.highlightedRoute,
   });
 
   @override
@@ -216,6 +218,8 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                     nextTrainMinutes: _nextTrainMinutes,
                     getStationColor: _getStationColor,
                     getStationEmoji: _getStationEmoji,
+                    highlightedRoute: widget.highlightedRoute,
+                    allStations: widget.stations,
                   ),
                 ),
               ),
@@ -298,6 +302,8 @@ class MetroMapPainter extends CustomPainter {
   final Map<String, int> nextTrainMinutes;
   final Color Function(StationStatus) getStationColor;
   final String Function(StationStatus) getStationEmoji;
+  final List<StationModel>? highlightedRoute;
+  final List<StationModel> allStations;
 
   MetroMapPainter({
     required this.linea1Stations,
@@ -308,6 +314,8 @@ class MetroMapPainter extends CustomPainter {
     required this.nextTrainMinutes,
     required this.getStationColor,
     required this.getStationEmoji,
+    this.highlightedRoute,
+    required this.allStations,
   });
 
   @override
@@ -338,6 +346,76 @@ class MetroMapPainter extends CustomPainter {
         line2Points,
         'LÍNEA 2 VERDE',
       );
+    }
+
+    // Dibujar ruta resaltada si existe
+    if (highlightedRoute != null && highlightedRoute!.isNotEmpty) {
+      _drawHighlightedRoute(canvas, paint);
+    }
+  }
+
+  void _drawHighlightedRoute(Canvas canvas, Paint paint) {
+    if (highlightedRoute == null || highlightedRoute!.length < 2) return;
+
+    // Crear un mapa de estaciones a sus puntos en el canvas
+    final stationToPoint = <String, Offset>{};
+    
+    // Mapear estaciones de línea 1
+    for (int i = 0; i < linea1Stations.length && i < line1Points.length; i++) {
+      stationToPoint[linea1Stations[i].id] = line1Points[i];
+    }
+    
+    // Mapear estaciones de línea 2
+    for (int i = 0; i < linea2Stations.length && i < line2Points.length; i++) {
+      stationToPoint[linea2Stations[i].id] = line2Points[i];
+    }
+
+    // Dibujar la ruta resaltada
+    paint
+      ..color = Colors.blue
+      ..strokeWidth = 8
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    bool isFirst = true;
+
+    for (final station in highlightedRoute!) {
+      final point = stationToPoint[station.id];
+      if (point != null) {
+        if (isFirst) {
+          path.moveTo(point.dx, point.dy);
+          isFirst = false;
+        } else {
+          path.lineTo(point.dx, point.dy);
+        }
+      }
+    }
+
+    canvas.drawPath(path, paint);
+
+    // Dibujar círculos más grandes en las estaciones de la ruta
+    paint
+      ..style = PaintingStyle.fill
+      ..color = Colors.blue.withValues(alpha: 0.3);
+
+    for (final station in highlightedRoute!) {
+      final point = stationToPoint[station.id];
+      if (point != null) {
+        canvas.drawCircle(point, 12, paint);
+      }
+    }
+
+    // Dibujar borde azul más grueso
+    paint
+      ..style = PaintingStyle.stroke
+      ..color = Colors.blue
+      ..strokeWidth = 2;
+
+    for (final station in highlightedRoute!) {
+      final point = stationToPoint[station.id];
+      if (point != null) {
+        canvas.drawCircle(point, 12, paint);
+      }
     }
   }
 

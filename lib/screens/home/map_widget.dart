@@ -13,7 +13,12 @@ import '../../theme/metro_theme.dart';
 import '../../widgets/station_bottom_sheet.dart';
 
 class MapWidget extends StatefulWidget {
-  const MapWidget({super.key});
+  final List<StationModel>? highlightedRoute;
+
+  const MapWidget({
+    super.key,
+    this.highlightedRoute,
+  });
 
   @override
   State<MapWidget> createState() => _MapWidgetState();
@@ -75,15 +80,70 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Future<void> _updateStationMarkers(List<StationModel> stations) async {
+    // Calcular tiempos estimados basados en la simulación de trenes
+    final estimatedTimes = _calculateEstimatedTimes(stations);
+    
     final markers = await _mapService.createStationMarkers(
       stations,
       onStationTap: (station) => _showStationBottomSheet(station),
+      estimatedTimes: estimatedTimes,
     );
     if (mounted) {
       setState(() {
         _stationMarkers = markers;
       });
     }
+  }
+
+  Map<String, int> _calculateEstimatedTimes(List<StationModel> stations) {
+    final estimatedTimes = <String, int>{};
+    
+    // Agrupar estaciones por línea
+    final stationsByLine = <String, List<StationModel>>{};
+    for (var station in stations) {
+      stationsByLine.putIfAbsent(station.linea, () => []).add(station);
+    }
+    
+    // Para cada línea, calcular tiempo estimado basado en trenes cercanos
+    for (var entry in stationsByLine.entries) {
+      final lineStations = entry.value;
+      final lineTrains = _simulatedTrains.where((t) => t.linea == entry.key).toList();
+      
+      for (var station in lineStations) {
+        int? minTime;
+        
+        for (var train in lineTrains) {
+          // Calcular distancia entre tren y estación
+          final distance = _distanceBetweenPoints(
+            train.ubicacionActual.latitude,
+            train.ubicacionActual.longitude,
+            station.ubicacion.latitude,
+            station.ubicacion.longitude,
+          );
+          
+          // Asumir velocidad promedio de 30 km/h y calcular tiempo
+          // 1 grado ≈ 111 km, entonces distance en grados * 111 = km
+          final distanceKm = distance * 111;
+          final timeMinutes = (distanceKm / 30 * 60).round();
+          
+          if (minTime == null || timeMinutes < minTime) {
+            minTime = timeMinutes;
+          }
+        }
+        
+        if (minTime != null && minTime < 30) { // Solo mostrar si es menos de 30 minutos
+          estimatedTimes[station.id] = minTime;
+        }
+      }
+    }
+    
+    return estimatedTimes;
+  }
+
+  double _distanceBetweenPoints(double lat1, double lon1, double lat2, double lon2) {
+    final dLat = (lat1 - lat2).abs();
+    final dLon = (lon1 - lon2).abs();
+    return dLat + dLon; // Aproximación simple
   }
 
   @override
@@ -127,6 +187,9 @@ class _MapWidgetState extends State<MapWidget> {
 
         final stationCircles = _createStationCircles(stations);
         final polylines = _createLinePolylines(stations);
+        final highlightedPolylines = widget.highlightedRoute != null
+            ? _createHighlightedRoutePolylines(widget.highlightedRoute!)
+            : <Polyline>{};
 
         _maybeAnimateInitialCamera(stations, _lastKnownPosition);
 
@@ -152,11 +215,22 @@ class _MapWidgetState extends State<MapWidget> {
           );
         }
 
+        // Combinar polylines normales con la ruta resaltada
+        final allPolylines = <Polyline>{
+          ...polylines,
+          ...highlightedPolylines,
+        };
+
+        // Ajustar cámara para mostrar la ruta resaltada si existe
+        if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
+          _maybeAnimateToRoute(widget.highlightedRoute!);
+        }
+
         return GoogleMap(
           initialCameraPosition: initialPosition,
           markers: markers,
           circles: stationCircles,
-          polylines: polylines,
+          polylines: allPolylines,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
@@ -165,6 +239,10 @@ class _MapWidgetState extends State<MapWidget> {
           style: MapService.metroMapStyle,
           onMapCreated: (GoogleMapController controller) async {
             _mapController = controller;
+            // Animar a la ruta después de que el mapa se cree
+            if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
+              _animateToRoute(widget.highlightedRoute!);
+            }
           },
           onTap: (_) {
             Navigator.of(context).maybePop();
@@ -350,6 +428,73 @@ class _MapWidgetState extends State<MapWidget> {
       station.ubicacion.longitude,
       position.latitude,
       position.longitude,
+    );
+  }
+
+  Set<Polyline> _createHighlightedRoutePolylines(List<StationModel> route) {
+    final polylines = <Polyline>{};
+    
+    if (route.length < 2) return polylines;
+
+    // Crear polylines para cada segmento de la ruta
+    for (int i = 0; i < route.length - 1; i++) {
+      final start = route[i];
+      final end = route[i + 1];
+      
+      polylines.add(
+        Polyline(
+          polylineId: PolylineId('highlighted_${start.id}_${end.id}'),
+          color: Colors.blue,
+          width: 6,
+          points: [
+            LatLng(
+              start.ubicacion.latitude,
+              start.ubicacion.longitude,
+            ),
+            LatLng(
+              end.ubicacion.latitude,
+              end.ubicacion.longitude,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return polylines;
+  }
+
+  void _maybeAnimateToRoute(List<StationModel> route) {
+    if (_mapController == null || route.isEmpty) return;
+    _animateToRoute(route);
+  }
+
+  Future<void> _animateToRoute(List<StationModel> route) async {
+    if (_mapController == null || route.isEmpty) return;
+
+    // Calcular bounds para incluir todas las estaciones de la ruta
+    double minLat = route.first.ubicacion.latitude;
+    double maxLat = route.first.ubicacion.latitude;
+    double minLng = route.first.ubicacion.longitude;
+    double maxLng = route.first.ubicacion.longitude;
+
+    for (final station in route) {
+      minLat = minLat < station.ubicacion.latitude ? minLat : station.ubicacion.latitude;
+      maxLat = maxLat > station.ubicacion.latitude ? maxLat : station.ubicacion.latitude;
+      minLng = minLng < station.ubicacion.longitude ? minLng : station.ubicacion.longitude;
+      maxLng = maxLng > station.ubicacion.longitude ? maxLng : station.ubicacion.longitude;
+    }
+
+    // Agregar padding
+    final latPadding = (maxLat - minLat) * 0.2;
+    final lngPadding = (maxLng - minLng) * 0.2;
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat - latPadding, minLng - lngPadding),
+      northeast: LatLng(maxLat + latPadding, maxLng + lngPadding),
+    );
+
+    await _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 100),
     );
   }
 

@@ -190,9 +190,15 @@ class MapService {
   Future<Marker> createStationMarker(
     StationModel station, {
     VoidCallback? onTap,
+    int? estimatedMinutes,
   }) async {
     // Usar cache si está disponible
     _stationIcon ??= await _createStationIcon();
+    
+    String snippet = 'Línea ${station.linea}';
+    if (estimatedMinutes != null) {
+      snippet += '\nPróximo tren: ~$estimatedMinutes min';
+    }
     
     return Marker(
       markerId: MarkerId('station_marker_${station.id}'),
@@ -203,7 +209,7 @@ class MapService {
       icon: _stationIcon!,
       infoWindow: InfoWindow(
         title: station.nombre,
-        snippet: 'Línea ${station.linea}',
+        snippet: snippet,
       ),
       onTap: onTap,
     );
@@ -213,13 +219,16 @@ class MapService {
   Future<Set<Marker>> createStationMarkers(
     List<StationModel> stations, {
     Function(StationModel)? onStationTap,
+    Map<String, int>? estimatedTimes, // Map<stationId, minutes>
   }) async {
     final markers = <Marker>[];
     for (var station in stations) {
+      final estimatedMinutes = estimatedTimes?[station.id];
       markers.add(
         await createStationMarker(
           station,
           onTap: onStationTap != null ? () => onStationTap(station) : null,
+          estimatedMinutes: estimatedMinutes,
         ),
       );
     }

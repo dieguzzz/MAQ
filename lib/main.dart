@@ -18,6 +18,9 @@ import 'utils/metro_data.dart';
 import 'models/station_model.dart';
 import 'theme/metro_theme.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/legal/privacy_policy_screen.dart';
+import 'screens/legal/terms_screen.dart';
+import 'services/ad_service.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -35,6 +38,9 @@ void main() async {
   // Initialize notification service
   final notificationService = NotificationService();
   await notificationService.initialize();
+  
+  // Initialize AdMob
+  await AdService.instance.initialize();
   
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

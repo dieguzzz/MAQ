@@ -5,6 +5,7 @@ import '../../providers/location_provider.dart';
 import 'map_widget.dart';
 import '../../widgets/quick_report_button.dart';
 import '../../widgets/custom_metro_map.dart';
+import '../../widgets/ad_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,28 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('MetroPTY'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(30),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            color: Colors.orange[100],
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                SizedBox(width: 4),
+                Text(
+                  'Aplicación NO oficial del Metro de Panamá',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         actions: [
           // Botón para cambiar entre mapas
           IconButton(
@@ -66,7 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Stack(
         children: [
-          _showCustomMap
+          Column(
+            children: [
+              Expanded(
+                child: _showCustomMap
               ? Consumer<MetroDataProvider>(
                   builder: (context, metroProvider, child) {
                     return metroProvider.isLoading
@@ -87,13 +113,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 )
               : const MapWidget(),
+              ),
+              // Banner de publicidad
+              const SafeArea(
+                child: AdBanner(),
+              ),
+            ],
+          ),
           const Positioned(
-            bottom: 20,
+            bottom: 80,
             left: 20,
             child: QuickReportButton(),
           ),
           Positioned(
-            bottom: 20,
+            bottom: 80,
             right: 8,
             child: Consumer<LocationProvider>(
               builder: (context, locationProvider, child) {
