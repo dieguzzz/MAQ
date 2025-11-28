@@ -5,7 +5,6 @@ import 'dart:ui' as ui show lerpDouble;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
-import '../data/train_simulation_table.dart';
 import '../services/train_simulation_service.dart';
 import '../utils/metro_data.dart';
 
@@ -51,7 +50,6 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   final TrainSimulationService _trainSimulation = TrainSimulationService();
   List<TrainModel> _simulatedTrains = [];
   Timer? _updateTimer;
-  final Map<String, List<StationModel>> _orderedStations = {};
 
   @override
   void initState() {
@@ -100,12 +98,35 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   @override
   void didUpdateWidget(CustomMetroMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.stations != widget.stations || oldWidget.trains != widget.trains) {
+    
+    // Detectar cambios en estaciones o trenes
+    final stationsChanged = oldWidget.stations.length != widget.stations.length ||
+        !_listsEqualStations(oldWidget.stations, widget.stations);
+    final trainsChanged = oldWidget.trains.length != widget.trains.length ||
+        !_listsEqualTrains(oldWidget.trains, widget.trains);
+    
+    if (stationsChanged || trainsChanged) {
       _initializeStatuses();
       _initializeTrainSimulation();
     } else {
       _initializeStatuses();
     }
+  }
+
+  /// Compara dos listas de estaciones para ver si son iguales (por ID)
+  bool _listsEqualStations(List<StationModel> list1, List<StationModel> list2) {
+    if (list1.length != list2.length) return false;
+    final ids1 = list1.map((s) => s.id).toSet();
+    final ids2 = list2.map((s) => s.id).toSet();
+    return ids1.length == ids2.length && ids1.every((id) => ids2.contains(id));
+  }
+
+  /// Compara dos listas de trenes para ver si son iguales (por ID)
+  bool _listsEqualTrains(List<TrainModel> list1, List<TrainModel> list2) {
+    if (list1.length != list2.length) return false;
+    final ids1 = list1.map((t) => t.id).toSet();
+    final ids2 = list2.map((t) => t.id).toSet();
+    return ids1.length == ids2.length && ids1.every((id) => ids2.contains(id));
   }
 
   List<StationModel> _getOrderedStations(String linea) {

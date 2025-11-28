@@ -14,9 +14,6 @@ import '../theme/metro_theme.dart';
 import '../services/ad_service.dart';
 import '../services/ad_session_service.dart';
 import '../services/gamification_service.dart';
-import '../services/ad_service.dart';
-import '../services/ad_session_service.dart';
-import '../services/gamification_service.dart';
 
 class QuickReportSheet extends StatefulWidget {
   const QuickReportSheet({super.key});
@@ -515,9 +512,6 @@ class _QuickReportSheetState extends State<QuickReportSheet>
   Future<void> _showRewardedAdForPoints(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.currentUser == null) return;
-
-    final userId = authProvider.currentUser!.uid;
-    final gamificationService = GamificationService();
 
     // Cargar rewarded ad
     await AdService.instance.loadRewardedAd(

@@ -15,16 +15,22 @@ class MetroDataProvider with ChangeNotifier {
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
-    return _selectedLinea == null
-        ? _stations
-        : _stations.where((s) => s.linea == _selectedLinea).toList();
+    // Siempre retornar una nueva lista para que la comparación funcione correctamente
+    if (_selectedLinea == null) {
+      return List.from(_stations);
+    } else {
+      return _stations.where((s) => s.linea == _selectedLinea).toList();
+    }
   }
   
   List<TrainModel> get trains {
     _ensureStreamInitialized();
-    return _selectedLinea == null
-        ? _trains
-        : _trains.where((t) => t.linea == _selectedLinea).toList();
+    // Siempre retornar una nueva lista para que la comparación funcione correctamente
+    if (_selectedLinea == null) {
+      return List.from(_trains);
+    } else {
+      return _trains.where((t) => t.linea == _selectedLinea).toList();
+    }
   }
 
   bool get isLoading => _isLoading;
@@ -106,7 +112,10 @@ class MetroDataProvider with ChangeNotifier {
   }
 
   void setSelectedLinea(String? linea) {
+    // Siempre actualizar y notificar, incluso si el valor es el mismo
+    // Esto asegura que "Todas las líneas" funcione correctamente
     _selectedLinea = linea;
+    print('🔍 MetroDataProvider: setSelectedLinea($linea) - notificando listeners');
     notifyListeners();
   }
 

@@ -10,7 +10,7 @@ import '../../services/train_simulation_service.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 import '../../theme/metro_theme.dart';
-import '../../widgets/station_bottom_sheet.dart';
+import '../../widgets/station_report_sheet.dart';
 import '../../widgets/enhanced_report_modal.dart';
 
 class MapWidget extends StatefulWidget {
@@ -35,6 +35,9 @@ class _MapWidgetState extends State<MapWidget> {
   Timer? _updateTimer;
   Set<Marker> _trainMarkers = {};
   Set<Marker> _stationMarkers = {};
+  List<StationModel>? _previousStations;
+  List<TrainModel>? _previousTrains;
+  String? _previousSelectedLinea;
 
   @override
   void initState() {
@@ -160,20 +163,52 @@ class _MapWidgetState extends State<MapWidget> {
     return dLat + dLon; // Aproximación simple
   }
 
+  /// Compara dos listas de estaciones para ver si son iguales (por ID)
+  bool _listsEqualStations(List<StationModel> list1, List<StationModel> list2) {
+    if (list1.length != list2.length) return false;
+    final ids1 = list1.map((s) => s.id).toSet();
+    final ids2 = list2.map((s) => s.id).toSet();
+    return ids1.length == ids2.length && ids1.every((id) => ids2.contains(id));
+  }
+
+  /// Compara dos listas de trenes para ver si son iguales (por ID)
+  bool _listsEqualTrains(List<TrainModel> list1, List<TrainModel> list2) {
+    if (list1.length != list2.length) return false;
+    final ids1 = list1.map((t) => t.id).toSet();
+    final ids2 = list2.map((t) => t.id).toSet();
+    return ids1.length == ids2.length && ids1.every((id) => ids2.contains(id));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<MetroDataProvider, LocationProvider>(
       builder: (context, metroProvider, locationProvider, child) {
         final stations = metroProvider.stations;
         final trains = metroProvider.trains;
+        final selectedLinea = metroProvider.selectedLinea;
         final currentPosition = locationProvider.currentPosition;
         if (currentPosition != null) {
           _lastKnownPosition = currentPosition;
         }
 
-        // Inicializar simulación si aún no está inicializada o si las estaciones cambiaron
+        // Detectar cambios en el filtro de línea (más confiable que comparar listas)
+        final filterChanged = _previousSelectedLinea != selectedLinea;
+        
+        // Debug
+        if (filterChanged) {
+          print('🔍 MapWidget: Filtro cambió de $_previousSelectedLinea a $selectedLinea');
+          print('🔍 MapWidget: Estaciones: ${stations.length}, Trenes: ${trains.length}');
+        }
+        
+        // También detectar cambios en las listas filtradas (por si cambian los datos)
+        final stationsChanged = filterChanged || _previousStations == null || 
+            !_listsEqualStations(_previousStations!, stations);
+        final trainsChanged = filterChanged || _previousTrains == null || 
+            !_listsEqualTrains(_previousTrains!, trains);
+
+        // Inicializar o reinicializar simulación si las estaciones cambiaron
         if (stations.isNotEmpty) {
-          if (_simulatedTrains.isEmpty) {
+          if (_simulatedTrains.isEmpty || stationsChanged) {
             // Usar addPostFrameCallback para evitar setState durante build
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -188,14 +223,72 @@ class _MapWidgetState extends State<MapWidget> {
         // Usar trenes simulados si están disponibles, sino usar los originales
         final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : trains;
 
-        // Actualizar marcadores si cambian los trenes
-        if (_trainMarkers.isEmpty && trainsToDisplay.isNotEmpty) {
-          _updateTrainMarkers(trainsToDisplay);
-        }
-
-        // Actualizar marcadores de estaciones si cambian
-        if (_stationMarkers.isEmpty && stations.isNotEmpty) {
-          _updateStationMarkers(stations);
+        // Actualizar marcadores cuando cambian las listas filtradas
+        if (stationsChanged || trainsChanged) {
+          print('🔍 MapWidget: Actualizando marcadores - stationsChanged=$stationsChanged, trainsChanged=$trainsChanged, filterChanged=$filterChanged');
+          
+          // Si el filtro cambió a "Todas las líneas" (null), reinicializar todo como si fuera la primera carga
+          if (filterChanged && selectedLinea == null) {
+            print('🔍 MapWidget: Cambio a "Todas las líneas" - reinicializando todo');
+            // Limpiar todo
+            _stationMarkers.clear();
+            _trainMarkers.clear();
+            _simulatedTrains.clear();
+            _previousStations = null;
+            _previousTrains = null;
+            
+            // Reinicializar simulación con todas las estaciones
+            if (stations.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _trainSimulation.initialize(stations);
+                  _trainSimulation.start();
+                  _startTrainUpdates(trains);
+                }
+              });
+            }
+          }
+          
+          // Limpiar marcadores antiguos inmediatamente
+          _stationMarkers.clear();
+          _trainMarkers.clear();
+          
+          // Actualizar marcadores con las nuevas listas
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              print('🔍 MapWidget: Actualizando ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
+              
+              if (stations.isNotEmpty) {
+                _updateStationMarkers(stations);
+              }
+              if (trainsToDisplay.isNotEmpty) {
+                _updateTrainMarkers(trainsToDisplay);
+              }
+              
+              // Guardar estado actual para la próxima comparación (siempre crear nuevas listas)
+              _previousStations = stations.map((s) => s).toList();
+              _previousTrains = trainsToDisplay.map((t) => t).toList();
+              _previousSelectedLinea = selectedLinea;
+              
+              print('🔍 MapWidget: Estado guardado - selectedLinea=$selectedLinea, estaciones=${_previousStations?.length ?? 0}');
+            }
+          });
+        } else {
+          // Solo actualizar si están vacíos (primera carga)
+          if (_trainMarkers.isEmpty && trainsToDisplay.isNotEmpty) {
+            _updateTrainMarkers(trainsToDisplay);
+            _previousTrains = trainsToDisplay.map((t) => t).toList();
+            if (_previousSelectedLinea == null) {
+              _previousSelectedLinea = selectedLinea;
+            }
+          }
+          if (_stationMarkers.isEmpty && stations.isNotEmpty) {
+            _updateStationMarkers(stations);
+            _previousStations = stations.map((s) => s).toList();
+            if (_previousSelectedLinea == null) {
+              _previousSelectedLinea = selectedLinea;
+            }
+          }
         }
 
         // Crear marcadores y capas
@@ -363,11 +456,18 @@ class _MapWidgetState extends State<MapWidget> {
 
   Future<void> _showStationBottomSheet(StationModel station) async {
     if (!mounted) return;
+    final navigatorContext = context;
+    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
+    
     await showModalBottomSheet<void>(
-      context: context,
+      context: navigatorContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => EnhancedReportModal(station: station),
+      builder: (sheetContext) => StationReportSheet(
+        station: station,
+        trains: trains.isNotEmpty ? trains : null,
+      ),
     );
   }
 

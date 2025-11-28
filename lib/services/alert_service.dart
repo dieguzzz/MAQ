@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/report_model.dart';
 import '../models/user_model.dart';
 import '../services/firebase_service.dart';
@@ -15,7 +14,6 @@ class AlertService {
   Future<void> sendRelevantAlerts(ReportModel report) async {
     try {
       final objetivoId = report.objetivoId;
-      final tipo = report.tipo;
       final estadoPrincipal = report.estadoPrincipal;
       final prioridad = report.prioridad;
 
@@ -98,8 +96,7 @@ class AlertService {
     required double radiusKm,
   }) async {
     try {
-      // Obtener todos los usuarios con ubicación reciente (últimos 10 minutos)
-      final tenMinutesAgo = DateTime.now().subtract(const Duration(minutes: 10));
+      // Obtener todos los usuarios con ubicación reciente
       final snapshot = await _firestore
           .collection('users')
           .where('ultima_ubicacion', isNotEqualTo: null)

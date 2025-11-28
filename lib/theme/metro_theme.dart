@@ -92,6 +92,29 @@ class MetroTheme {
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: MetroColors.white,
+        selectedItemColor: MetroColors.blue,
+        unselectedItemColor: MetroColors.grayDark.withValues(alpha: 0.6),
+        selectedIconTheme: const IconThemeData(
+          color: MetroColors.blue,
+          size: 28,
+        ),
+        unselectedIconTheme: IconThemeData(
+          color: MetroColors.grayDark.withValues(alpha: 0.6),
+          size: 24,
+        ),
+        selectedLabelStyle: GoogleFonts.montserrat(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: GoogleFonts.montserrat(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+      ),
     );
   }
 

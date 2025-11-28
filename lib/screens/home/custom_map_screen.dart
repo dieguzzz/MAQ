@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../widgets/custom_metro_map.dart';
 import '../../widgets/enhanced_report_modal.dart';
+import '../../widgets/station_report_sheet.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 
@@ -111,15 +112,29 @@ class CustomMapScreen extends StatelessWidget {
     StationModel? station,
     TrainModel? train,
   }) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EnhancedReportModal(
-        station: station,
-        train: train,
-      ),
-    );
+    if (station != null) {
+      // Para estaciones: mostrar StationReportSheet con deslizamiento
+      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
+      
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => StationReportSheet(
+          station: station,
+          trains: trains.isNotEmpty ? trains : null,
+        ),
+      );
+    } else if (train != null) {
+      // Para trenes: abrir directamente el modal de reporte
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => EnhancedReportModal(train: train),
+      );
+    }
   }
 }
 

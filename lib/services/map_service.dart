@@ -10,6 +10,50 @@ class MapService {
   // Centro de Panamá (aproximado)
   static const LatLng panamaCenter = LatLng(9.0, -79.5);
 
+  // Mapa de abreviaciones para estaciones (más cortas y limpias)
+  static const Map<String, String> _stationAbbreviations = {
+    // Línea 1
+    'Albrook': 'Alb',
+    '5 de Mayo': '5 Mayo',
+    'Lotería': 'Lot',
+    'Santo Tomás': 'S. Tomás',
+    'Iglesia del Carmen': 'I. Carmen',
+    'Vía Argentina': 'V. Arg',
+    'Fernández de Córdoba': 'F. Córdoba',
+    'El Ingenio': 'Ingenio',
+    '12 de Octubre': '12 Oct',
+    'Pueblo Nuevo': 'P. Nuevo',
+    'San Miguelito': 'S. Miguel',
+    'Pan de Azúcar': 'P. Azúcar',
+    'Los Andes': 'Andes',
+    'San Isidro': 'S. Isidro',
+    'Villa Zaita': 'V. Zaita',
+    // Línea 2
+    'San Miguelito L1': 'S. Mig L1',
+    'Paraíso': 'Paraíso',
+    'Cincuentenario': '50 Años',
+    'Villa Lucre': 'V. Lucre',
+    'El Crisol': 'Crisol',
+    'Brisas del Golf': 'B. Golf',
+    'Cerro Viento': 'C. Viento',
+    'San Antonio': 'S. Antonio',
+    'Pedregal': 'Pedregal',
+    'Don Bosco': 'D. Bosco',
+    'Corredor Sur': 'C. Sur',
+    'Las Mañanitas': 'Mañanitas',
+    'Hospital del Este': 'H. Este',
+    'Altos de Tocumen': 'A. Tocumen',
+    '24 de Diciembre': '24 Dic',
+    'Nuevo Tocumen': 'N. Tocumen',
+    'ITSE': 'ITSE',
+    'Aeropuerto': 'Aerop',
+  };
+
+  /// Obtiene la abreviación de una estación
+  static String getStationAbbreviation(String fullName) {
+    return _stationAbbreviations[fullName] ?? fullName;
+  }
+
   // Configuración inicial del mapa
   static const CameraPosition initialCameraPosition = CameraPosition(
     target: panamaCenter,
@@ -220,7 +264,7 @@ class MapService {
       ),
       icon: _stationIcon!,
       infoWindow: InfoWindow(
-        title: station.nombre,
+        title: getStationAbbreviation(station.nombre),
         snippet: snippet,
       ),
       onTap: onTap,

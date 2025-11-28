@@ -1,0 +1,22 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "files.exclude": {
+    "**/flutter/": true
+  },
+  "java.project.sourcePaths": [
+    "android"
+  ],
+  "java.project.referencedLibraries": [
+    "android/**/*.jar"
+  ],
+  "java.import.gradle.enabled": true,
+  "java.import.gradle.wrapper.enabled": true,
+  "java.configuration.runtimes": [],
+  "files.watcherExclude": {
+    "**/flutter/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true
+  }
+}
+

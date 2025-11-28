@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/gamification_model.dart';
 import 'accuracy_service.dart';
+import 'level_service.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -12,12 +13,9 @@ class GamificationService {
   static const int puntosPorReporteEpico = 100;
   static const int puntosPorStreak = 2;
 
-  // Calcular nivel basado en reportes
-  UserLevel calculateLevel(int reportesCount) {
-    if (reportesCount >= 201) return UserLevel.heroeMetro;
-    if (reportesCount >= 51) return UserLevel.reporteroConfiable;
-    if (reportesCount >= 11) return UserLevel.viajeroFrecuente;
-    return UserLevel.novato;
+  // Calcular nivel basado en puntos (usando LevelService)
+  int calculateLevel(int totalPoints) {
+    return LevelService.calculateLevel(totalPoints);
   }
 
   // Calcular puntos por reporte verificado
@@ -39,8 +37,12 @@ class GamificationService {
       final newPuntos = currentPuntos + puntosPorReporteVerificado;
       puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + puntosPorReporteVerificado;
 
+      // Calcular nuevo nivel
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
       await userRef.update({
         'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         'gamification.puntos_por_linea': puntosPorLinea,
         'gamification.reportes_verificados':
             (gamification?['reportes_verificados'] ?? 0) + 1,
@@ -48,6 +50,14 @@ class GamificationService {
 
       // Verificar si desbloquea algún badge
       await _checkAndAwardBadges(userId, newPuntos);
+      
+      // Verificar badge de influencer (100+ personas ayudadas)
+      final reportesVerificados = (gamification?['reportes_verificados'] ?? 0) + 1;
+      // Asumimos que cada reporte verificado ayuda a ~10 personas en promedio
+      // Si tiene 10+ reportes verificados, ha ayudado a ~100+ personas
+      if (reportesVerificados >= 10) {
+        await _awardBadge(userId, BadgeType.influencerMetro);
+      }
     } catch (e) {
       print('Error awarding points: $e');
     }
@@ -58,18 +68,28 @@ class GamificationService {
       String userId, String reportId) async {
     try {
       final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final newPuntos = currentPuntos + puntosPorConfirmarReporte;
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
       await userRef.update({
         'gamification.puntos': FieldValue.increment(puntosPorConfirmarReporte),
+        'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         'gamification.verificaciones_hechas': FieldValue.increment(1),
       });
 
-      // Verificar badge de Verificador
-      final userDoc = await userRef.get();
-      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
-      final verificaciones = gamification?['verificaciones_hechas'] ?? 0;
+      // Verificar badges de verificación
+      final updatedDoc = await userRef.get();
+      final updatedGamification = updatedDoc.data()?['gamification'] as Map<String, dynamic>?;
+      final verificaciones = updatedGamification?['verificaciones_hechas'] ?? 0;
       
       if (verificaciones == 10) {
         await _awardBadge(userId, BadgeType.verificador);
+      }
+      if (verificaciones == 50) {
+        await _awardBadge(userId, BadgeType.ayudanteComunidad);
       }
     } catch (e) {
       print('Error awarding verification points: $e');
@@ -100,10 +120,15 @@ class GamificationService {
 
         if (daysDifference == 1) {
           // Continuar streak
+          final currentPuntos = gamification?['puntos'] ?? 0;
+          final newPuntos = currentPuntos + puntosPorStreak;
+          final nuevoNivel = LevelService.calculateLevel(newPuntos);
+          
           await userRef.update({
             'gamification.streak': currentStreak + 1,
             'gamification.ultimo_reporte': Timestamp.now(),
             'gamification.puntos': FieldValue.increment(puntosPorStreak),
+            'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
           });
         } else if (daysDifference > 1) {
           // Resetear streak
@@ -254,6 +279,62 @@ class GamificationService {
           icono: '👀',
           desbloqueadoEn: DateTime.now(),
         );
+      case BadgeType.ojoDeAguila80:
+        return Badge(
+          type: type,
+          nombre: 'Ojo de Águila',
+          descripcion: '80%+ de precisión en tus reportes',
+          icono: '🎯',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.ayudanteComunidad:
+        return Badge(
+          type: type,
+          nombre: 'Ayudante de la Comunidad',
+          descripcion: 'Verificaste 50 reportes de otros usuarios',
+          icono: '🤝',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.influencerMetro:
+        return Badge(
+          type: type,
+          nombre: 'Influencer del Metro',
+          descripcion: 'Tus reportes han ayudado a 100+ personas',
+          icono: '📢',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.expertoLinea1:
+        return Badge(
+          type: type,
+          nombre: 'Experto Línea 1',
+          descripcion: '100+ reportes en Línea 1',
+          icono: '🔵',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.maestroLinea2:
+        return Badge(
+          type: type,
+          nombre: 'Maestro Línea 2',
+          descripcion: '100+ reportes en Línea 2',
+          icono: '🟢',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.almaPollera:
+        return Badge(
+          type: type,
+          nombre: 'Alma Pollera',
+          descripcion: 'Reportaste durante el mes patrio',
+          icono: '🇵🇦',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.reyCarnaval:
+        return Badge(
+          type: type,
+          nombre: 'Rey del Carnaval',
+          descripcion: 'Reportaste durante carnavales',
+          icono: '🎭',
+          desbloqueadoEn: DateTime.now(),
+        );
     }
   }
 
@@ -271,6 +352,12 @@ class GamificationService {
 
     // Verificar badges de precisión
     await _checkAccuracyBadges(userId);
+    
+    // Verificar badges de especialización por línea
+    await _checkLineaBadges(userId);
+    
+    // Verificar badges de eventos panameños
+    await _checkEventBadges(userId);
   }
 
   /// Verifica y otorga badges basados en precisión
@@ -283,6 +370,8 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.francotirador);
       } else if (accuracy >= 85) {
         await _awardBadge(userId, BadgeType.detective);
+      } else if (accuracy >= 80) {
+        await _awardBadge(userId, BadgeType.ojoDeAguila80);
       } else if (accuracy >= 70) {
         await _awardBadge(userId, BadgeType.observador);
       }
@@ -291,13 +380,64 @@ class GamificationService {
     }
   }
 
+  /// Verifica y otorga badges basados en reportes por línea
+  Future<void> _checkLineaBadges(String userId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
+      final puntosPorLinea = Map<String, int>.from(gamification?['puntos_por_linea'] ?? {});
+      
+      // Cada 10 puntos = aproximadamente 1 reporte (asumiendo 10 puntos por reporte verificado)
+      final reportesLinea1 = (puntosPorLinea['Línea 1'] ?? 0) ~/ 10;
+      final reportesLinea2 = (puntosPorLinea['Línea 2'] ?? 0) ~/ 10;
+      
+      if (reportesLinea1 >= 100) {
+        await _awardBadge(userId, BadgeType.expertoLinea1);
+      }
+      if (reportesLinea2 >= 100) {
+        await _awardBadge(userId, BadgeType.maestroLinea2);
+      }
+    } catch (e) {
+      print('Error checking linea badges: $e');
+    }
+  }
+
+  /// Verifica y otorga badges basados en eventos panameños
+  Future<void> _checkEventBadges(String userId) async {
+    try {
+      final now = DateTime.now();
+      final month = now.month;
+      
+      // Mes patrio (noviembre) - Panamá
+      if (month == 11) {
+        await _awardBadge(userId, BadgeType.almaPollera);
+      }
+      
+      // Carnavales (febrero/marzo) - típicamente antes de miércoles de ceniza
+      // Simplificado: febrero
+      if (month == 2) {
+        await _awardBadge(userId, BadgeType.reyCarnaval);
+      }
+    } catch (e) {
+      print('Error checking event badges: $e');
+    }
+  }
+
   // Reporte épico (cuando un reporte ayuda a muchas personas)
   Future<void> awardEpicReport(String userId, int personasAyudadas) async {
     if (personasAyudadas >= 500) {
       try {
         final userRef = _firestore.collection('users').doc(userId);
+        final userDoc = await userRef.get();
+        final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
+        final currentPuntos = gamification?['puntos'] ?? 0;
+        final newPuntos = currentPuntos + puntosPorReporteEpico;
+        final nuevoNivel = LevelService.calculateLevel(newPuntos);
+        
         await userRef.update({
           'gamification.puntos': FieldValue.increment(puntosPorReporteEpico),
+          'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         });
       } catch (e) {
         print('Error awarding epic report: $e');

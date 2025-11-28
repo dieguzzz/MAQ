@@ -83,12 +83,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Consumer<MetroDataProvider>(
             builder: (context, metroProvider, child) {
-              return PopupMenuButton<String>(
+              final currentLinea = metroProvider.selectedLinea;
+              return PopupMenuButton<String?>(
                 icon: const Icon(Icons.filter_list),
                 onSelected: (String? value) async {
                   // Registrar cambio de línea para anuncios inteligentes
                   final previousLine = metroProvider.selectedLinea;
+                  
+                  // Debug: verificar que se llamó
+                  print('🔍 HomeScreen: onSelected llamado con value=$value, previousLine=$previousLine');
+                  
+                  // Asegurar que se establece el valor (incluso si es null)
                   metroProvider.setSelectedLinea(value);
+                  
+                  // Verificar que se actualizó
+                  print('🔍 HomeScreen: Después de setSelectedLinea, selectedLinea=${metroProvider.selectedLinea}');
+                  print('🔍 HomeScreen: Estaciones después del cambio: ${metroProvider.stations.length}');
                   
                   // Notificar cambio de línea al servicio de sesión
                   await AdSessionService.instance.onLineChanged(value);
@@ -106,17 +116,44 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 itemBuilder: (BuildContext context) => [
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String?>(
                     value: null,
-                    child: Text('Todas las líneas'),
+                    child: Row(
+                      children: [
+                        if (currentLinea == null)
+                          const Icon(Icons.check, size: 20, color: Colors.blue)
+                        else
+                          const SizedBox(width: 20),
+                        const SizedBox(width: 8),
+                        const Text('Todas las líneas'),
+                      ],
+                    ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String?>(
                     value: 'linea1',
-                    child: Text('Línea 1'),
+                    child: Row(
+                      children: [
+                        if (currentLinea == 'linea1')
+                          const Icon(Icons.check, size: 20, color: Colors.blue)
+                        else
+                          const SizedBox(width: 20),
+                        const SizedBox(width: 8),
+                        const Text('Línea 1'),
+                      ],
+                    ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String?>(
                     value: 'linea2',
-                    child: Text('Línea 2'),
+                    child: Row(
+                      children: [
+                        if (currentLinea == 'linea2')
+                          const Icon(Icons.check, size: 20, color: Colors.blue)
+                        else
+                          const SizedBox(width: 20),
+                        const SizedBox(width: 8),
+                        const Text('Línea 2'),
+                      ],
+                    ),
                   ),
                 ],
               );

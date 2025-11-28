@@ -3,7 +3,6 @@ import '../models/user_model.dart';
 import '../services/firebase_service.dart';
 
 class AccuracyService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseService _firebaseService = FirebaseService();
 
   /// Calcula la precisión de un usuario basado en sus reportes verificados

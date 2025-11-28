@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
@@ -10,7 +9,6 @@ import '../models/report_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/report_provider.dart';
-import '../providers/metro_data_provider.dart';
 import '../services/storage_service.dart';
 import '../services/ad_session_service.dart';
 import '../services/ad_service.dart';
@@ -260,8 +258,10 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
         );
       }
       
+      if (!mounted) return;
       Navigator.of(context).pop();
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(

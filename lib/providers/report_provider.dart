@@ -82,7 +82,16 @@ class ReportProvider with ChangeNotifier {
       if (!canReport) {
         _isLoading = false;
         notifyListeners();
-        throw Exception('No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
+        
+        // Obtener mensaje de error específico
+        final errorMessage = await _validationService.getValidationErrorMessage(
+          usuarioId,
+          objetivoId,
+          userLocation,
+          ubicacion,
+        );
+        
+        throw Exception(errorMessage ?? 'No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
       }
 
       // Validación de ubicación

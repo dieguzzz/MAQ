@@ -1,11 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-enum UserLevel {
-  novato, // 0-10 reportes
-  viajeroFrecuente, // 11-50 reportes
-  reporteroConfiable, // 51-200 reportes
-  heroeMetro, // 201+ reportes
-}
+import '../services/level_service.dart';
 
 enum BadgeType {
   primerReporte,
@@ -20,6 +14,16 @@ enum BadgeType {
   francotirador,  // 95%+ precisión
   detective,      // 85%+ precisión
   observador,     // 70%+ precisión
+  ojoDeAguila80,  // 80%+ precisión
+  // Badges de comunidad
+  ayudanteComunidad,  // 50 verificaciones
+  influencerMetro,    // 100+ personas ayudadas
+  // Badges de especialización
+  expertoLinea1,      // 100+ reportes Línea 1
+  maestroLinea2,      // 100+ reportes Línea 2
+  // Badges de eventos panameños
+  almaPollera,        // Reportar durante mes patrio
+  reyCarnaval,        // Reportar durante carnavales
 }
 
 class Badge {
@@ -67,7 +71,7 @@ class Badge {
 
 class GamificationStats {
   final int puntos;
-  final UserLevel nivel;
+  final int nivel; // Nivel 1-50
   final int streak; // Días consecutivos reportando
   final double precision; // 0.0 - 1.0
   final int reportesVerificados; // Reportes confirmados por otros
@@ -82,7 +86,7 @@ class GamificationStats {
 
   GamificationStats({
     this.puntos = 0,
-    UserLevel? nivel,
+    int? nivel,
     this.streak = 0,
     this.precision = 0.0,
     this.reportesVerificados = 0,
@@ -94,17 +98,29 @@ class GamificationStats {
     List<Badge>? badges,
     this.ultimoReporte,
     Map<String, int>? puntosPorLinea,
-  })  : nivel = nivel ?? UserLevel.novato,
+  })  : nivel = nivel ?? LevelService.calculateLevel(0),
         badges = badges ?? [],
         puntosPorLinea = puntosPorLinea ?? {};
 
   factory GamificationStats.fromFirestore(Map<String, dynamic> data) {
+    final puntos = data['puntos'] ?? 0;
+    
+    // Migración: Si nivel es string (enum antiguo), calcular desde puntos
+    // Si es int, usarlo directamente
+    int nivelCalculado;
+    if (data['nivel'] is int) {
+      nivelCalculado = data['nivel'] as int;
+    } else if (data['nivel'] is String) {
+      // Migración desde enum antiguo - calcular desde puntos
+      nivelCalculado = LevelService.calculateLevel(puntos);
+    } else {
+      // Calcular desde puntos si no existe
+      nivelCalculado = LevelService.calculateLevel(puntos);
+    }
+    
     return GamificationStats(
-      puntos: data['puntos'] ?? 0,
-      nivel: UserLevel.values.firstWhere(
-        (e) => e.toString() == data['nivel'],
-        orElse: () => UserLevel.novato,
-      ),
+      puntos: puntos,
+      nivel: nivelCalculado,
       streak: data['streak'] ?? 0,
       precision: (data['precision'] ?? 0.0).toDouble(),
       reportesVerificados: data['reportes_verificados'] ?? 0,
@@ -125,9 +141,12 @@ class GamificationStats {
   }
 
   Map<String, dynamic> toFirestore() {
+    // Recalcular nivel desde puntos para asegurar consistencia
+    final nivelCalculado = LevelService.calculateLevel(puntos);
+    
     return {
       'puntos': puntos,
-      'nivel': nivel.toString(),
+      'nivel': nivelCalculado, // Guardar como int
       'streak': streak,
       'precision': precision,
       'reportes_verificados': reportesVerificados,
@@ -145,29 +164,16 @@ class GamificationStats {
   }
 
   String getNivelNombre() {
-    switch (nivel) {
-      case UserLevel.novato:
-        return '🥚 Novato del Metro';
-      case UserLevel.viajeroFrecuente:
-        return '🚶 Viajero Frecuente';
-      case UserLevel.reporteroConfiable:
-        return '🎯 Reportero Confiable';
-      case UserLevel.heroeMetro:
-        return '👑 Héroe del Metro';
-    }
+    return LevelService.getLevelName(nivel);
   }
 
   String getNivelDescripcion() {
-    switch (nivel) {
-      case UserLevel.novato:
-        return '0-10 reportes';
-      case UserLevel.viajeroFrecuente:
-        return '11-50 reportes';
-      case UserLevel.reporteroConfiable:
-        return '51-200 reportes';
-      case UserLevel.heroeMetro:
-        return '201+ reportes';
-    }
+    return LevelService.getLevelDescription(nivel);
+  }
+  
+  /// Obtiene el progreso hacia el siguiente nivel (0.0-1.0)
+  double getProgress() {
+    return LevelService.getProgress(puntos, nivel);
   }
 }
 

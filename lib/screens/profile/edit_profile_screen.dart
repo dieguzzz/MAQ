@@ -20,7 +20,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _hasChanges = false;
   bool _isUploadingImage = false;
   File? _selectedImageFile;
-  String? _tempImageUrl; // URL temporal para mostrar mientras se sube
   final StorageService _storageService = StorageService();
 
   @override

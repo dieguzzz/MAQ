@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'gamification_model.dart';
+import '../services/level_service.dart';
 
 class UserModel {
   final String uid;
@@ -91,6 +92,23 @@ class UserModel {
     if (reputacion >= 201) return 'Experto';
     if (reputacion >= 51) return 'Colaborador';
     return 'Principiante';
+  }
+
+  /// Obtiene el nivel actual del usuario (1-50) basado en puntos
+  int get level {
+    if (gamification == null) return 1;
+    return LevelService.calculateLevel(gamification!.puntos);
+  }
+
+  /// Obtiene el nombre del nivel con emoji
+  String get levelName {
+    return LevelService.getLevelName(level);
+  }
+
+  /// Obtiene el progreso hacia el siguiente nivel (0.0-1.0)
+  double get levelProgress {
+    if (gamification == null) return 0.0;
+    return LevelService.getProgress(gamification!.puntos, level);
   }
 }
 

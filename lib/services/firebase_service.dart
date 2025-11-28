@@ -242,6 +242,53 @@ class FirebaseService {
     }
   }
 
+  /// Obtiene el stream del leaderboard global (top 100 usuarios por puntos)
+  Stream<QuerySnapshot> getGlobalLeaderboardStream() {
+    return _firestore
+        .collection('users')
+        .orderBy('gamification.puntos', descending: true)
+        .limit(100)
+        .snapshots();
+  }
+
+  /// Obtiene el stream del leaderboard por línea (top 50 usuarios por puntos en una línea)
+  Stream<QuerySnapshot> getLineaLeaderboardStream(String linea) {
+    // Nota: Esto requiere un índice compuesto en Firestore
+    // Por ahora, filtramos en memoria después de obtener los datos
+    return _firestore
+        .collection('users')
+        .orderBy('gamification.puntos', descending: true)
+        .limit(100)
+        .snapshots();
+  }
+
+  /// Obtiene el stream del leaderboard por precisión (top 50 usuarios más precisos)
+  Stream<QuerySnapshot> getAccuracyLeaderboardStream() {
+    return _firestore
+        .collection('users')
+        .orderBy('precision', descending: true)
+        .limit(50)
+        .snapshots();
+  }
+
+  /// Obtiene el stream del leaderboard por streak (top 50 usuarios con mayor racha)
+  Stream<QuerySnapshot> getStreakLeaderboardStream() {
+    return _firestore
+        .collection('users')
+        .orderBy('gamification.streak', descending: true)
+        .limit(50)
+        .snapshots();
+  }
+
+  /// Obtiene el stream del leaderboard de helpers (top 50 usuarios que más verifican)
+  Stream<QuerySnapshot> getHelpersLeaderboardStream() {
+    return _firestore
+        .collection('users')
+        .orderBy('gamification.verificaciones_hechas', descending: true)
+        .limit(50)
+        .snapshots();
+  }
+
   /// Método legacy - mantener para compatibilidad
   Future<void> verifyReport(String reportId, String userId) async {
     // Usar el nuevo sistema de confirmaciones

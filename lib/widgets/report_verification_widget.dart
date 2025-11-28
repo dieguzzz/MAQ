@@ -39,12 +39,28 @@ class ReportVerificationWidget extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    _getCategoryText(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getCategoryText(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (report.estadoPrincipal != null && report.estadoPrincipal!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _getEstadoPrincipalText(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (_verificationCount > 0)
@@ -198,6 +214,33 @@ class ReportVerificationWidget extends StatelessWidget {
     } else {
       return 'Hace ${difference.inDays} días';
     }
+  }
+
+  String _getEstadoPrincipalText() {
+    if (report.estadoPrincipal == null || report.estadoPrincipal!.isEmpty) {
+      return '';
+    }
+
+    final estado = report.estadoPrincipal!;
+    
+    // Mapeo de estados principales
+    final estadoMap = {
+      // Estados de estación
+      'normal': '🟢 Normal',
+      'moderado': '🟡 Moderado',
+      'lleno': '🔴 Lleno',
+      'retraso': '⚠️ Retraso',
+      'cerrado': '🚫 Cerrado',
+      // Estados de tren
+      'asientos_disponibles': '🟢 Asientos Disponibles',
+      'de_pie_comodo': '🟡 De Pie Cómodo',
+      'sardina': '🔴 Sardina',
+      'express': '⚡ Express',
+      'lento': '🐌 Lento',
+      'detenido': '🛑 Detenido',
+    };
+
+    return estadoMap[estado] ?? estado;
   }
 }
 

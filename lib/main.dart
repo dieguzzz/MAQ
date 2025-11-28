@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -13,13 +14,12 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
+import 'screens/leaderboards/leaderboard_screen.dart';
 import 'services/firebase_service.dart';
 import 'utils/metro_data.dart';
 import 'models/station_model.dart';
 import 'theme/metro_theme.dart';
 import 'screens/onboarding/onboarding_screen.dart';
-import 'screens/legal/privacy_policy_screen.dart';
-import 'screens/legal/terms_screen.dart';
 import 'services/ad_service.dart';
 import 'services/ad_session_service.dart';
 
@@ -33,25 +33,65 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase
-  await _ensureFirebaseInitialized();
+  // Inicializar Firebase PRIMERO (con timeout para no bloquear demasiado)
+  try {
+    print('🔥 Inicializando Firebase...');
+    await _ensureFirebaseInitialized().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        print('⚠️ Firebase initialization timeout');
+        throw TimeoutException('Firebase initialization timeout');
+      },
+    );
+    print('✅ Firebase inicializado');
+  } catch (e, stackTrace) {
+    print('❌ Error inicializando Firebase: $e');
+    print('📍 Stack trace: $stackTrace');
+    // Continuar de todas formas, pero los servicios que dependen de Firebase fallarán
+  }
   
-  // Initialize notification service
-  final notificationService = NotificationService();
-  await notificationService.initialize();
+  // Inicializar NotificationService DESPUÉS de Firebase (de forma asíncrona)
+  NotificationService().initialize().catchError((e) {
+    print('❌ Error inicializando NotificationService (no crítico): $e');
+  });
+  print('🔔 Inicialización de NotificationService iniciada (asíncrona)');
   
-  // Initialize AdMob
-  await AdService.instance.initialize();
+  // Inicializar AdMob de forma asíncrona para no bloquear el arranque
+  AdService.instance.initialize().catchError((e) {
+    print('❌ Error inicializando AdService (no crítico): $e');
+  });
+  print('📢 Inicialización de AdService iniciada (asíncrona)');
   
-  // Initialize Ad Session Service
-  await AdSessionService.instance.initializeSession();
+  // Inicializar Ad Session Service de forma asíncrona
+  AdSessionService.instance.initializeSession().catchError((e) {
+    print('❌ Error inicializando AdSessionService (no crítico): $e');
+  });
+  print('📊 Inicialización de AdSessionService iniciada (asíncrona)');
   
-  // Set up background message handler
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  try {
+    // Set up background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    print('✅ Background message handler configurado');
+  } catch (e, stackTrace) {
+    print('❌ Error configurando background message handler: $e');
+    print('📍 Stack trace: $stackTrace');
+    // Continuar de todas formas
+  }
   
-  // Initialize static stations in Firestore (solo si no existen)
-  await _initializeStations();
+  try {
+    // Initialize static stations in Firestore (solo si no existen)
+    // Hacer esto de forma asíncrona para no bloquear el arranque
+    _initializeStations().catchError((e) {
+      print('❌ Error inicializando estaciones (no crítico): $e');
+    });
+    print('✅ Inicialización de estaciones iniciada (asíncrona)');
+  } catch (e, stackTrace) {
+    print('❌ Error iniciando inicialización de estaciones: $e');
+    print('📍 Stack trace: $stackTrace');
+    // Continuar de todas formas
+  }
   
+  print('🚀 Iniciando app...');
   runApp(const MetroPTYApp());
 }
 
@@ -239,6 +279,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const RoutePlanner(),
+    const LeaderboardScreen(),
     const ProfileScreen(),
   ];
 
@@ -261,6 +302,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.route),
             label: 'Rutas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_events),
+            label: 'Ranking',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

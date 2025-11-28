@@ -3,8 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Users collection
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Permitir leer cualquier usuario para leaderboards (usuarios autenticados)
+      allow read: if request.auth != null;
+      // Solo permitir escribir/actualizar el propio perfil
       allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // No permitir eliminar (usar función de Firebase Auth)
     }
     
     // Stations collection
@@ -43,8 +48,18 @@ service cloud.firestore {
       allow update: if request.auth != null 
         && (resource.data.usuario_id == request.auth.uid 
             || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['verificaciones'])); // Permitir actualizar verificaciones
+                .hasOnly(['confirmation_count', 'verification_status'])); // Permitir actualizar confirmaciones
       allow delete: if false; // No permitir eliminar
+      
+      // Subcolección de confirmaciones
+      match /confirmations/{userId} {
+        allow read: if request.auth != null; // Usuarios autenticados pueden leer
+        allow create: if request.auth != null 
+          && request.auth.uid == userId 
+          && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId)); // Solo crear si no existe
+        allow update: if false; // No permitir actualizar confirmaciones
+        allow delete: if false; // No permitir eliminar confirmaciones
+      }
     }
     
     // Routes collection

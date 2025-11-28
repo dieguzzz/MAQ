@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
-
 import '../models/station_model.dart';
+import '../models/train_model.dart';
 import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
+import 'enhanced_report_modal.dart';
 
-class StationBottomSheet extends StatelessWidget {
-  const StationBottomSheet({
+/// Widget que combina la información de la estación y el modal de reporte
+/// Permite deslizar entre las dos vistas
+class StationReportSheet extends StatefulWidget {
+  final StationModel station;
+  final List<TrainModel>? trains; // Trenes cercanos para reporte de tren
+  final int initialPage; // Página inicial (0 = info estación, 1 = reporte)
+  final double? initialChildSize; // Tamaño inicial del sheet (null = usar default)
+
+  const StationReportSheet({
     super.key,
     required this.station,
-    this.onReportPressed,
+    this.trains,
+    this.initialPage = 0, // Por defecto empieza en la primera página
+    this.initialChildSize, // Por defecto usa 0.45
   });
 
-  final StationModel station;
-  final VoidCallback? onReportPressed;
+  @override
+  State<StationReportSheet> createState() => _StationReportSheetState();
+}
+
+class _StationReportSheetState extends State<StationReportSheet> {
+  late PageController _pageController;
+  late int _currentPage;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPage = widget.initialPage;
+    _pageController = PageController(initialPage: widget.initialPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.45,
+      initialChildSize: widget.initialChildSize ?? 0.45,
       minChildSize: 0.35,
       maxChildSize: 0.85,
       builder: (context, scrollController) {
@@ -27,26 +55,71 @@ class StationBottomSheet extends StatelessWidget {
             color: MetroColors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: SingleChildScrollView(
-            controller: scrollController,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SheetHandle(color: MetroColors.grayMedium),
-                const SizedBox(height: 16),
-                _HeaderSection(station: station),
-                const SizedBox(height: 24),
-                _EtaSection(station: station),
-                const SizedBox(height: 24),
-                _StatusSection(station: station),
-                const SizedBox(height: 24),
-                _QuickActions(
-                  station: station,
-                  onReportPressed: onReportPressed,
+          child: Column(
+            children: [
+              // Handle con indicador de página
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    const _SheetHandle(color: MetroColors.grayMedium),
+                    const SizedBox(height: 8),
+                    // Indicadores de página
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _PageIndicator(isActive: _currentPage == 0),
+                        const SizedBox(width: 8),
+                        _PageIndicator(isActive: _currentPage == 1),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // PageView para deslizar entre vistas
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  children: [
+                    // Página 1: Información de la estación
+                    StationInfoView(
+                      station: widget.station,
+                      trains: widget.trains,
+                      scrollController: scrollController,
+                      onReportPressed: () {
+                        // Deslizar a la página de reporte de estación
+                        _pageController.animateToPage(
+                          1,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      onReportTrain: (train) {
+                        // Cerrar el bottom sheet actual y abrir modal de reporte de tren
+                        Navigator.of(context).pop();
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          if (context.mounted) {
+                            showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (modalContext) => EnhancedReportModal(train: train),
+                            );
+                          }
+                        });
+                      },
+                    ),
+                    // Página 2: Modal de reporte
+                    EnhancedReportModal(station: widget.station),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -54,6 +127,50 @@ class StationBottomSheet extends StatelessWidget {
   }
 }
 
+/// Vista de información de la estación (primera página)
+class StationInfoView extends StatelessWidget {
+  final StationModel station;
+  final List<TrainModel>? trains;
+  final ScrollController? scrollController;
+  final VoidCallback? onReportPressed;
+  final Function(TrainModel)? onReportTrain;
+
+  const StationInfoView({
+    super.key,
+    required this.station,
+    this.trains,
+    this.scrollController,
+    this.onReportPressed,
+    this.onReportTrain,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _HeaderSection(station: station),
+          const SizedBox(height: 24),
+          _EtaSection(station: station),
+          const SizedBox(height: 24),
+          _StatusSection(station: station),
+          const SizedBox(height: 24),
+          _QuickActions(
+            station: station,
+            trains: trains,
+            onReportStation: onReportPressed,
+            onReportTrain: onReportTrain,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Handle del bottom sheet
 class _SheetHandle extends StatelessWidget {
   const _SheetHandle({required this.color});
 
@@ -74,6 +191,26 @@ class _SheetHandle extends StatelessWidget {
   }
 }
 
+/// Indicador de página
+class _PageIndicator extends StatelessWidget {
+  const _PageIndicator({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: isActive ? 24 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: isActive ? MetroColors.blue : MetroColors.grayMedium,
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
+/// Sección de header con nombre y estado
 class _HeaderSection extends StatelessWidget {
   const _HeaderSection({required this.station});
 
@@ -142,6 +279,7 @@ class _HeaderSection extends StatelessWidget {
   }
 }
 
+/// Sección de próximos trenes
 class _EtaSection extends StatelessWidget {
   const _EtaSection({required this.station});
 
@@ -214,6 +352,7 @@ class _EtaSection extends StatelessWidget {
   }
 }
 
+/// Sección de estado actual
 class _StatusSection extends StatelessWidget {
   const _StatusSection({required this.station});
 
@@ -294,14 +433,71 @@ class _StatusSection extends StatelessWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
+/// Acciones rápidas con botón de reportar (solo icono)
+class _QuickActions extends StatefulWidget {
   const _QuickActions({
     required this.station,
-    this.onReportPressed,
+    this.trains,
+    this.onReportStation,
+    this.onReportTrain,
   });
 
   final StationModel station;
-  final VoidCallback? onReportPressed;
+  final List<TrainModel>? trains;
+  final VoidCallback? onReportStation;
+  final Function(TrainModel)? onReportTrain;
+
+  @override
+  State<_QuickActions> createState() => _QuickActionsState();
+}
+
+class _QuickActionsState extends State<_QuickActions> {
+  DateTime? _lastTap;
+  static const Duration _doubleTapDelay = Duration(milliseconds: 400);
+
+  void _handleTap() {
+    final now = DateTime.now();
+    
+    if (_lastTap == null) {
+      // Primer tap
+      _lastTap = now;
+      Future.delayed(_doubleTapDelay, () {
+        if (mounted && _lastTap != null && DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
+          // Solo un tap - reporte de estación
+          _lastTap = null;
+          widget.onReportStation?.call();
+        }
+      });
+    } else {
+      // Segundo tap dentro del delay
+      if (now.difference(_lastTap!) < _doubleTapDelay) {
+        // Doble tap - reporte de tren
+        _lastTap = null;
+        // Buscar el tren más cercano de la misma línea
+        if (widget.trains != null && widget.trains!.isNotEmpty) {
+          final nearestTrain = widget.trains!.first;
+          widget.onReportTrain?.call(nearestTrain);
+        } else {
+          // Si no hay trenes, mostrar mensaje
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No hay trenes disponibles para reportar'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // Taps muy separados, tratar como tap simple
+        _lastTap = now;
+        Future.delayed(_doubleTapDelay, () {
+          if (mounted && _lastTap != null && DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
+            _lastTap = null;
+            widget.onReportStation?.call();
+          }
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,47 +511,49 @@ class _QuickActions extends StatelessWidget {
               ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onReportPressed,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Reportar estado'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: MetroColors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+        // Botón de reportar solo con icono
+        Center(
+          child: GestureDetector(
+            onTap: _handleTap,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: MetroColors.blue,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: MetroColors.blue.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.campaign_outlined,
+                color: Colors.white,
+                size: 32,
               ),
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.info_outline),
-                label: const Text('Ver detalles'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.route),
-                label: const Text('Planificar'),
-              ),
-            ),
-          ],
+        // Texto de ayuda
+        Center(
+          child: Text(
+            'Toca para reportar estación\nToca dos veces para reportar tren',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: MetroColors.grayDark,
+                ),
+          ),
         ),
       ],
     );
   }
 }
 
+/// Chip de información
 class _InfoChip extends StatelessWidget {
   const _InfoChip({required this.label, required this.color});
 
@@ -382,6 +580,7 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
+/// Datos de ETA
 class _EtaData {
   const _EtaData({
     required this.label,
