@@ -10,6 +10,15 @@ class MapService {
   // Centro de Panamá (aproximado)
   static const LatLng panamaCenter = LatLng(9.0, -79.5);
 
+  // Límites geográficos de la Ciudad de Panamá
+  static final LatLngBounds panamaCityBounds = LatLngBounds(
+    southwest: const LatLng(8.85, -79.65),  // Esquina suroeste
+    northeast: const LatLng(9.15, -79.25),   // Esquina noreste
+  );
+
+  // Punto central del sistema de metro (centro aproximado de todas las estaciones)
+  static const LatLng metroSystemCenter = LatLng(9.0, -79.5);
+
   // Mapa de abreviaciones para estaciones (más cortas y limpias)
   static const Map<String, String> _stationAbbreviations = {
     // Línea 1
@@ -52,6 +61,29 @@ class MapService {
   /// Obtiene la abreviación de una estación
   static String getStationAbbreviation(String fullName) {
     return _stationAbbreviations[fullName] ?? fullName;
+  }
+
+  /// Verifica si una posición está dentro de los límites de la Ciudad de Panamá
+  static bool isWithinPanamaCityBounds(LatLng position) {
+    return panamaCityBounds.contains(position);
+  }
+
+  /// Calcula el punto central basado en una lista de estaciones
+  static LatLng calculateCenterFromStations(List<StationModel> stations) {
+    if (stations.isEmpty) return metroSystemCenter;
+    
+    double sumLat = 0;
+    double sumLng = 0;
+    
+    for (final station in stations) {
+      sumLat += station.ubicacion.latitude;
+      sumLng += station.ubicacion.longitude;
+    }
+    
+    return LatLng(
+      sumLat / stations.length,
+      sumLng / stations.length,
+    );
   }
 
   // Configuración inicial del mapa

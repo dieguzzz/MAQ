@@ -10,31 +10,44 @@ class MetroDataProvider with ChangeNotifier {
   List<StationModel> _stations = [];
   List<TrainModel> _trains = [];
   bool _isLoading = false;
-  String? _selectedLinea;
+  String _selectedLinea = 'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
   bool _streamInitialized = false;
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
     // Siempre retornar una nueva lista para que la comparación funcione correctamente
-    if (_selectedLinea == null) {
-      return List.from(_stations);
+    if (_selectedLinea == 'all') {
+      // "Todas las líneas" - retornar todas las estaciones (Línea 1 + Línea 2)
+      final allStations = List<StationModel>.from(_stations);
+      print('🔍 MetroDataProvider: stations getter - selectedLinea=all, retornando ${allStations.length} estaciones (todas)');
+      print('🔍 MetroDataProvider: L1=${allStations.where((s) => s.linea == 'linea1').length}, L2=${allStations.where((s) => s.linea == 'linea2').length}');
+      return allStations;
     } else {
-      return _stations.where((s) => s.linea == _selectedLinea).toList();
+      // Filtrar por línea específica
+      final filtered = _stations.where((s) => s.linea == _selectedLinea).toList();
+      print('🔍 MetroDataProvider: stations getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} estaciones');
+      return filtered;
     }
   }
   
   List<TrainModel> get trains {
     _ensureStreamInitialized();
     // Siempre retornar una nueva lista para que la comparación funcione correctamente
-    if (_selectedLinea == null) {
-      return List.from(_trains);
+    if (_selectedLinea == 'all') {
+      // "Todas las líneas" - retornar todos los trenes (Línea 1 + Línea 2)
+      final allTrains = List<TrainModel>.from(_trains);
+      print('🔍 MetroDataProvider: trains getter - selectedLinea=all, retornando ${allTrains.length} trenes (todos)');
+      return allTrains;
     } else {
-      return _trains.where((t) => t.linea == _selectedLinea).toList();
+      // Filtrar por línea específica
+      final filtered = _trains.where((t) => t.linea == _selectedLinea).toList();
+      print('🔍 MetroDataProvider: trains getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} trenes');
+      return filtered;
     }
   }
 
   bool get isLoading => _isLoading;
-  String? get selectedLinea => _selectedLinea;
+  String get selectedLinea => _selectedLinea;
 
   MetroDataProvider() {
     // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
@@ -111,7 +124,7 @@ class MetroDataProvider with ChangeNotifier {
     }
   }
 
-  void setSelectedLinea(String? linea) {
+  void setSelectedLinea(String linea) {
     // Siempre actualizar y notificar, incluso si el valor es el mismo
     // Esto asegura que "Todas las líneas" funcione correctamente
     _selectedLinea = linea;

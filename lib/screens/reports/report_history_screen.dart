@@ -136,12 +136,14 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
 
     final firebaseService = FirebaseService();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reportes'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
+    return PopScope(
+      canPop: true, // Permitir pop normal para pantallas secundarias
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Reportes'),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
             Tab(icon: Icon(Icons.history), text: 'Mis Reportes'),
             Tab(icon: Icon(Icons.people), text: 'Confirmar Reportes'),
           ],
@@ -188,6 +190,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
           // Pestaña 2: Reportes Cercanos (para confirmar)
           _buildNearbyReportsTab(user, firebaseService),
         ],
+      ),
       ),
     );
   }

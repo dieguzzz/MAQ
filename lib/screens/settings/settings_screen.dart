@@ -14,12 +14,14 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuración'),
-      ),
-      body: ListView(
-        children: [
+    return PopScope(
+      canPop: true, // Permitir pop normal para pantallas secundarias
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Configuración'),
+        ),
+        body: ListView(
+          children: [
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
@@ -197,6 +199,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

@@ -37,7 +37,7 @@ class _MapWidgetState extends State<MapWidget> {
   Set<Marker> _stationMarkers = {};
   List<StationModel>? _previousStations;
   List<TrainModel>? _previousTrains;
-  String? _previousSelectedLinea;
+  String? _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
 
   @override
   void initState() {
@@ -198,12 +198,17 @@ class _MapWidgetState extends State<MapWidget> {
         if (filterChanged) {
           print('🔍 MapWidget: Filtro cambió de $_previousSelectedLinea a $selectedLinea');
           print('🔍 MapWidget: Estaciones: ${stations.length}, Trenes: ${trains.length}');
+          print('🔍 MapWidget: Estaciones Línea 1: ${stations.where((s) => s.linea == 'linea1').length}');
+          print('🔍 MapWidget: Estaciones Línea 2: ${stations.where((s) => s.linea == 'linea2').length}');
         }
         
+        // Si el filtro cambió, forzar actualización de marcadores
         // También detectar cambios en las listas filtradas (por si cambian los datos)
         final stationsChanged = filterChanged || _previousStations == null || 
+            _previousStations!.length != stations.length ||
             !_listsEqualStations(_previousStations!, stations);
         final trainsChanged = filterChanged || _previousTrains == null || 
+            _previousTrains!.length != trains.length ||
             !_listsEqualTrains(_previousTrains!, trains);
 
         // Inicializar o reinicializar simulación si las estaciones cambiaron
@@ -224,12 +229,14 @@ class _MapWidgetState extends State<MapWidget> {
         final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : trains;
 
         // Actualizar marcadores cuando cambian las listas filtradas
-        if (stationsChanged || trainsChanged) {
+        if (stationsChanged || trainsChanged || filterChanged) {
           print('🔍 MapWidget: Actualizando marcadores - stationsChanged=$stationsChanged, trainsChanged=$trainsChanged, filterChanged=$filterChanged');
+          print('🔍 MapWidget: selectedLinea=$selectedLinea, estaciones totales=${stations.length}');
           
-          // Si el filtro cambió a "Todas las líneas" (null), reinicializar todo como si fuera la primera carga
-          if (filterChanged && selectedLinea == null) {
+          // Si el filtro cambió a "Todas las líneas" ('all'), reinicializar todo
+          if (filterChanged && selectedLinea == 'all') {
             print('🔍 MapWidget: Cambio a "Todas las líneas" - reinicializando todo');
+            print('🔍 MapWidget: Debe mostrar ${stations.length} estaciones (L1 + L2)');
             // Limpiar todo
             _stationMarkers.clear();
             _trainMarkers.clear();
@@ -241,6 +248,7 @@ class _MapWidgetState extends State<MapWidget> {
             if (stations.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
+                  print('🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
                   _trainSimulation.initialize(stations);
                   _trainSimulation.start();
                   _startTrainUpdates(trains);
@@ -256,18 +264,23 @@ class _MapWidgetState extends State<MapWidget> {
           // Actualizar marcadores con las nuevas listas
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              print('🔍 MapWidget: Actualizando ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
+              print('🔍 MapWidget: Actualizando marcadores - ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
+              print('🔍 MapWidget: Estaciones L1=${stations.where((s) => s.linea == 'linea1').length}, L2=${stations.where((s) => s.linea == 'linea2').length}');
               
               if (stations.isNotEmpty) {
-                _updateStationMarkers(stations);
+                _updateStationMarkers(stations).then((_) {
+                  print('🔍 MapWidget: Marcadores de estaciones actualizados: ${_stationMarkers.length}');
+                });
               }
               if (trainsToDisplay.isNotEmpty) {
-                _updateTrainMarkers(trainsToDisplay);
+                _updateTrainMarkers(trainsToDisplay).then((_) {
+                  print('🔍 MapWidget: Marcadores de trenes actualizados: ${_trainMarkers.length}');
+                });
               }
               
               // Guardar estado actual para la próxima comparación (siempre crear nuevas listas)
-              _previousStations = stations.map((s) => s).toList();
-              _previousTrains = trainsToDisplay.map((t) => t).toList();
+              _previousStations = List.from(stations);
+              _previousTrains = List.from(trainsToDisplay);
               _previousSelectedLinea = selectedLinea;
               
               print('🔍 MapWidget: Estado guardado - selectedLinea=$selectedLinea, estaciones=${_previousStations?.length ?? 0}');
@@ -307,22 +320,37 @@ class _MapWidgetState extends State<MapWidget> {
 
         // Calcular posición inicial de la cámara
         CameraPosition initialPosition = MapService.initialCameraPosition;
+        LatLng? userLocation;
+        bool isUserInPanamaCity = false;
+
         if (currentPosition != null) {
-          initialPosition = CameraPosition(
-            target: LatLng(
-              currentPosition.latitude,
-              currentPosition.longitude,
-            ),
-            zoom: 14.0,
+          userLocation = LatLng(
+            currentPosition.latitude,
+            currentPosition.longitude,
           );
+          isUserInPanamaCity = MapService.isWithinPanamaCityBounds(userLocation);
+          
+          if (isUserInPanamaCity) {
+            // Usuario está en la ciudad, centrar en su ubicación
+            initialPosition = CameraPosition(
+              target: userLocation,
+              zoom: 14.0,
+            );
+          } else {
+            // Usuario fuera de la ciudad, centrar en el sistema de metro
+            final metroCenter = stations.isNotEmpty
+                ? MapService.calculateCenterFromStations(stations)
+                : MapService.metroSystemCenter;
+            initialPosition = CameraPosition(
+              target: metroCenter,
+              zoom: 12.0,
+            );
+          }
         } else if (stations.isNotEmpty) {
-          // Centrar en la primera estación
-          final firstStation = stations.first;
+          // Sin ubicación, centrar en el sistema de metro
+          final metroCenter = MapService.calculateCenterFromStations(stations);
           initialPosition = CameraPosition(
-            target: LatLng(
-              firstStation.ubicacion.latitude,
-              firstStation.ubicacion.longitude,
-            ),
+            target: metroCenter,
             zoom: 12.0,
           );
         }
@@ -349,8 +377,27 @@ class _MapWidgetState extends State<MapWidget> {
           mapToolbarEnabled: false,
           mapType: MapType.normal,
           style: MapService.metroMapStyle,
+          // Limitar el mapa a la Ciudad de Panamá
+          cameraTargetBounds: CameraTargetBounds(MapService.panamaCityBounds),
+          minMaxZoomPreference: const MinMaxZoomPreference(10.0, 18.0),
           onMapCreated: (GoogleMapController controller) async {
             _mapController = controller;
+            
+            // Si el usuario no está en la ciudad, forzar centrado en el metro
+            if (currentPosition != null && !isUserInPanamaCity) {
+              final metroCenter = stations.isNotEmpty
+                  ? MapService.calculateCenterFromStations(stations)
+                  : MapService.metroSystemCenter;
+              await controller.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(
+                    target: metroCenter,
+                    zoom: 12.0,
+                  ),
+                ),
+              );
+            }
+            
             // Animar a la ruta después de que el mapa se cree
             if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
               _animateToRoute(widget.highlightedRoute!);

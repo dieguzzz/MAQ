@@ -204,9 +204,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Perfil'),
+    return PopScope(
+      canPop: true, // Permitir pop normal para pantallas secundarias
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Editar Perfil'),
         actions: [
           if (_isSaving)
             const Padding(
@@ -455,6 +457,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           );
         },
+      ),
       ),
     );
   }

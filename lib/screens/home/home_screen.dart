@@ -84,16 +84,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Consumer<MetroDataProvider>(
             builder: (context, metroProvider, child) {
               final currentLinea = metroProvider.selectedLinea;
-              return PopupMenuButton<String?>(
+              return PopupMenuButton<String>(
                 icon: const Icon(Icons.filter_list),
-                onSelected: (String? value) async {
+                onSelected: (String value) async {
                   // Registrar cambio de línea para anuncios inteligentes
                   final previousLine = metroProvider.selectedLinea;
                   
                   // Debug: verificar que se llamó
                   print('🔍 HomeScreen: onSelected llamado con value=$value, previousLine=$previousLine');
                   
-                  // Asegurar que se establece el valor (incluso si es null)
+                  // Asegurar que se establece el valor
                   metroProvider.setSelectedLinea(value);
                   
                   // Verificar que se actualizó
@@ -101,10 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   print('🔍 HomeScreen: Estaciones después del cambio: ${metroProvider.stations.length}');
                   
                   // Notificar cambio de línea al servicio de sesión
-                  await AdSessionService.instance.onLineChanged(value);
+                  await AdSessionService.instance.onLineChanged(value == 'all' ? null : value);
                   
                   // Verificar si se debe mostrar intersticial (solo si cambió de línea y estuvo tiempo suficiente)
-                  if (previousLine != value && previousLine != null) {
+                  if (previousLine != value && previousLine != 'all') {
                     final shouldShow = await AdSessionService.instance.shouldShowInterstitialOnLineChange();
                     if (shouldShow && context.mounted) {
                       await AdService.instance.showInterstitialIfAppropriate(
@@ -116,11 +116,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 itemBuilder: (BuildContext context) => [
-                  PopupMenuItem<String?>(
-                    value: null,
+                  PopupMenuItem<String>(
+                    value: 'all',
                     child: Row(
                       children: [
-                        if (currentLinea == null)
+                        if (currentLinea == 'all')
                           const Icon(Icons.check, size: 20, color: Colors.blue)
                         else
                           const SizedBox(width: 20),
@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  PopupMenuItem<String?>(
+                  PopupMenuItem<String>(
                     value: 'linea1',
                     child: Row(
                       children: [
@@ -142,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  PopupMenuItem<String?>(
+                  PopupMenuItem<String>(
                     value: 'linea2',
                     child: Row(
                       children: [

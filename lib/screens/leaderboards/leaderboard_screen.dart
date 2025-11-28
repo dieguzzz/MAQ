@@ -84,12 +84,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('🏆 Rankings'),
-        centerTitle: true,
-      ),
-      body: Column(
+    return PopScope(
+      canPop: true, // Permitir pop normal para pantallas secundarias
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('🏆 Rankings'),
+          centerTitle: true,
+        ),
+        body: Column(
         children: [
           // Selector de leaderboards
           _buildLeaderboardSelector(),
@@ -214,6 +216,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
