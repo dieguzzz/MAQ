@@ -8,6 +8,7 @@ class UserModel {
   final String? fotoUrl;
   final int reputacion; // 1-100
   final int reportesCount;
+  final double precision; // 0.0-100.0
   final DateTime creadoEn;
   final GeoPoint? ultimaUbicacion;
   final GamificationStats? gamification;
@@ -19,6 +20,7 @@ class UserModel {
     this.fotoUrl,
     this.reputacion = 50,
     this.reportesCount = 0,
+    this.precision = 0.0,
     required this.creadoEn,
     this.ultimaUbicacion,
     this.gamification,
@@ -33,6 +35,7 @@ class UserModel {
       fotoUrl: data['foto_url'],
       reputacion: data['reputacion'] ?? 50,
       reportesCount: data['reportes_count'] ?? 0,
+      precision: (data['precision'] ?? 0.0).toDouble(),
       creadoEn: (data['creado_en'] as Timestamp).toDate(),
       ultimaUbicacion: data['ultima_ubicacion'] as GeoPoint?,
       gamification: data['gamification'] != null
@@ -50,6 +53,7 @@ class UserModel {
       'foto_url': fotoUrl,
       'reputacion': reputacion,
       'reportes_count': reportesCount,
+      'precision': precision,
       'creado_en': Timestamp.fromDate(creadoEn),
       'ultima_ubicacion': ultimaUbicacion,
       'gamification': gamification?.toFirestore(),
@@ -63,6 +67,7 @@ class UserModel {
     String? fotoUrl,
     int? reputacion,
     int? reportesCount,
+    double? precision,
     DateTime? creadoEn,
     GeoPoint? ultimaUbicacion,
     GamificationStats? gamification,
@@ -74,6 +79,7 @@ class UserModel {
       fotoUrl: fotoUrl ?? this.fotoUrl,
       reputacion: reputacion ?? this.reputacion,
       reportesCount: reportesCount ?? this.reportesCount,
+      precision: precision ?? this.precision,
       creadoEn: creadoEn ?? this.creadoEn,
       ultimaUbicacion: ultimaUbicacion ?? this.ultimaUbicacion,
       gamification: gamification ?? this.gamification,

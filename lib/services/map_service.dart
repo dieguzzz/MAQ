@@ -89,7 +89,10 @@ class MapService {
   }
 
   // Crear marcador para tren
-  Future<Marker> createTrainMarker(TrainModel train) async {
+  Future<Marker> createTrainMarker(
+    TrainModel train, {
+    VoidCallback? onTap,
+  }) async {
     // Usar cache si está disponible
     BitmapDescriptor icon;
     if (train.direccion == DireccionTren.norte) {
@@ -111,14 +114,23 @@ class MapService {
         snippet: 'Dirección: ${train.direccion == DireccionTren.norte ? "Norte" : "Sur"}',
       ),
       icon: icon,
+      onTap: onTap,
     );
   }
 
   // Crear conjunto de marcadores para trenes
-  Future<Set<Marker>> createTrainMarkers(List<TrainModel> trains) async {
+  Future<Set<Marker>> createTrainMarkers(
+    List<TrainModel> trains, {
+    Function(TrainModel)? onTrainTap,
+  }) async {
     final markers = <Marker>[];
     for (var train in trains) {
-      markers.add(await createTrainMarker(train));
+      markers.add(
+        await createTrainMarker(
+          train,
+          onTap: onTrainTap != null ? () => onTrainTap(train) : null,
+        ),
+      );
     }
     return markers.toSet();
   }

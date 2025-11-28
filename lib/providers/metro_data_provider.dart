@@ -11,19 +11,36 @@ class MetroDataProvider with ChangeNotifier {
   List<TrainModel> _trains = [];
   bool _isLoading = false;
   String? _selectedLinea;
+  bool _streamInitialized = false;
 
-  List<StationModel> get stations => _selectedLinea == null
-      ? _stations
-      : _stations.where((s) => s.linea == _selectedLinea).toList();
+  List<StationModel> get stations {
+    _ensureStreamInitialized();
+    return _selectedLinea == null
+        ? _stations
+        : _stations.where((s) => s.linea == _selectedLinea).toList();
+  }
   
-  List<TrainModel> get trains => _selectedLinea == null
-      ? _trains
-      : _trains.where((t) => t.linea == _selectedLinea).toList();
-  
+  List<TrainModel> get trains {
+    _ensureStreamInitialized();
+    return _selectedLinea == null
+        ? _trains
+        : _trains.where((t) => t.linea == _selectedLinea).toList();
+  }
+
   bool get isLoading => _isLoading;
   String? get selectedLinea => _selectedLinea;
 
   MetroDataProvider() {
+    // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
+    // Cargar datos estáticos iniciales
+    _stations = MetroData.getAllStations();
+    _trains = MetroData.getSampleTrains();
+  }
+
+  /// Inicializa los streams solo cuando se necesitan (lazy initialization)
+  void _ensureStreamInitialized() {
+    if (_streamInitialized) return;
+    _streamInitialized = true;
     _init();
   }
 

@@ -11,6 +11,7 @@ import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 import '../../theme/metro_theme.dart';
 import '../../widgets/station_bottom_sheet.dart';
+import '../../widgets/enhanced_report_modal.dart';
 
 class MapWidget extends StatefulWidget {
   final List<StationModel>? highlightedRoute;
@@ -71,12 +72,25 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Future<void> _updateTrainMarkers(List<TrainModel> trains) async {
-    final markers = await _mapService.createTrainMarkers(trains);
+    final markers = await _mapService.createTrainMarkers(
+      trains,
+      onTrainTap: _showTrainReportModal,
+    );
     if (mounted) {
       setState(() {
         _trainMarkers = markers;
       });
     }
+  }
+
+  Future<void> _showTrainReportModal(TrainModel train) async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EnhancedReportModal(train: train),
+    );
   }
 
   Future<void> _updateStationMarkers(List<StationModel> stations) async {
@@ -353,7 +367,7 @@ class _MapWidgetState extends State<MapWidget> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StationBottomSheet(station: station),
+      builder: (context) => EnhancedReportModal(station: station),
     );
   }
 

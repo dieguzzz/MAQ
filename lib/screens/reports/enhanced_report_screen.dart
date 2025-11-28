@@ -246,18 +246,31 @@ class _EnhancedReportScreenState extends State<EnhancedReportScreen> {
       locationProvider.currentPosition!.longitude,
     );
 
-    final reportId = await reportProvider.createReport(
-      usuarioId: authProvider.currentUser!.uid,
-      tipo: widget.tipo,
-      objetivoId: widget.objetivoId ?? '',
-      categoria: _selectedCategory!,
-      descripcion: _descripcionController.text.isEmpty
-          ? null
-          : _descripcionController.text,
-      ubicacion: geoPoint,
-    );
+    String? reportId;
+    String? errorMessage;
+    
+    try {
+      reportId = await reportProvider.createReport(
+        usuarioId: authProvider.currentUser!.uid,
+        tipo: widget.tipo,
+        objetivoId: widget.objetivoId ?? '',
+        categoria: _selectedCategory!,
+        descripcion: _descripcionController.text.isEmpty
+            ? null
+            : _descripcionController.text,
+        ubicacion: geoPoint,
+      );
+    } on Exception catch (e) {
+      errorMessage = e.toString().replaceAll('Exception: ', '');
+      print('Error al crear reporte: $e');
+    } catch (e) {
+      errorMessage = 'Ocurrió un error inesperado. Por favor intenta de nuevo.';
+      print('Error inesperado al crear reporte: $e');
+    }
 
-    if (reportId != null && mounted) {
+    if (!mounted) return;
+
+    if (reportId != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ Reporte creado exitosamente'),
@@ -265,6 +278,14 @@ class _EnhancedReportScreenState extends State<EnhancedReportScreen> {
         ),
       );
       Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage ?? 'Error al crear el reporte'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 }

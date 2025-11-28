@@ -117,11 +117,31 @@ class MetroPTYApp extends StatefulWidget {
 class _MetroPTYAppState extends State<MetroPTYApp> {
   static const String _onboardingKey = 'has_completed_onboarding';
   late Future<bool> _onboardingFuture;
+  
+  // Crear providers una vez y reutilizarlos
+  late final AuthProvider _authProvider;
+  late final LocationProvider _locationProvider;
+  late final MetroDataProvider _metroDataProvider;
+  late final ReportProvider _reportProvider;
 
   @override
   void initState() {
     super.initState();
     _onboardingFuture = _loadOnboardingStatus();
+    
+    // Crear providers una vez en initState
+    _authProvider = AuthProvider();
+    _locationProvider = LocationProvider();
+    _metroDataProvider = MetroDataProvider();
+    _reportProvider = ReportProvider();
+    
+    // Inicializar AuthProvider después de que Firebase esté listo
+    // Usar un pequeño delay para asegurar que Firebase esté completamente inicializado
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _authProvider.ensureStreamInitialized();
+      }
+    });
   }
 
   Future<bool> _loadOnboardingStatus() async {
@@ -141,10 +161,10 @@ class _MetroPTYAppState extends State<MetroPTYApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
-        ChangeNotifierProvider(create: (_) => MetroDataProvider()),
-        ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider.value(value: _authProvider),
+        ChangeNotifierProvider.value(value: _locationProvider),
+        ChangeNotifierProvider.value(value: _metroDataProvider),
+        ChangeNotifierProvider.value(value: _reportProvider),
       ],
       child: FutureBuilder<bool>(
         future: _onboardingFuture,

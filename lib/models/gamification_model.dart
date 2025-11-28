@@ -16,6 +16,10 @@ enum BadgeType {
   streakSemana,
   streakMes,
   topContribuidor,
+  // Badges de precisión
+  francotirador,  // 95%+ precisión
+  detective,      // 85%+ precisión
+  observador,     // 70%+ precisión
 }
 
 class Badge {

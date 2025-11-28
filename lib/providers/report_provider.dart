@@ -1,29 +1,63 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/firebase_service.dart';
 import '../services/gamification_service.dart';
+import '../services/report_validation_service.dart';
+import '../services/confidence_service.dart';
+import '../services/alert_service.dart';
+import '../services/accuracy_service.dart';
+import '../services/error_handler_service.dart';
 import '../models/report_model.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   final GamificationService _gamificationService = GamificationService();
+  final ReportValidationService _validationService = ReportValidationService();
+  final ConfidenceService _confidenceService = ConfidenceService();
+  final AlertService _alertService = AlertService();
+  final AccuracyService _accuracyService = AccuracyService();
   
   List<ReportModel> _activeReports = [];
   bool _isLoading = false;
+  bool _streamInitialized = false;
 
-  List<ReportModel> get activeReports => _activeReports;
+  List<ReportModel> get activeReports {
+    _ensureStreamInitialized();
+    return _activeReports;
+  }
+  
   bool get isLoading => _isLoading;
 
   ReportProvider() {
+    // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
+  }
+
+  /// Inicializa los streams solo cuando se necesitan (lazy initialization)
+  void _ensureStreamInitialized() {
+    if (_streamInitialized) return;
+    _streamInitialized = true;
     _init();
   }
 
   void _init() {
-    // Listen to active reports stream
-    _firebaseService.getActiveReportsStream().listen((reports) {
-      _activeReports = reports;
-      notifyListeners();
-    });
+    // Listen to active reports stream de forma segura
+    try {
+      _firebaseService.getActiveReportsStream().listen(
+        (reports) {
+          _activeReports = reports;
+          notifyListeners();
+        },
+        onError: (error) {
+          print('Error listening to reports stream: $error');
+          // No hacer nada, solo loggear el error
+        },
+        cancelOnError: false,
+      );
+    } catch (e) {
+      print('Error initializing reports stream: $e');
+      // Continuar sin el stream si hay un error
+    }
   }
 
   Future<String?> createReport({
@@ -33,11 +67,56 @@ class ReportProvider with ChangeNotifier {
     required CategoriaReporte categoria,
     String? descripcion,
     required GeoPoint ubicacion,
+    String? estadoPrincipal,
+    List<String> problemasEspecificos = const [],
+    bool prioridad = false,
+    String? fotoUrl,
+    Position? userLocation,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Validación anti-spam
+      final canReport = await _validationService.canUserReport(usuarioId, objetivoId);
+      if (!canReport) {
+        _isLoading = false;
+        notifyListeners();
+        throw Exception('No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
+      }
+
+      // Validación de ubicación
+      if (userLocation != null) {
+        final isValidLocation = _validationService.isValidReportLocation(
+          userLocation,
+          ubicacion,
+        );
+        if (!isValidLocation) {
+          _isLoading = false;
+          notifyListeners();
+          throw Exception('Debes estar a menos de 1 km de la estación/tren para reportar.');
+        }
+      }
+
+      final createdAt = DateTime.now();
+      
+      // Buscar reportes similares para verificación automática
+      final similarReports = await _firebaseService.findSimilarReports(
+        objetivoId,
+        estadoPrincipal,
+        createdAt,
+      );
+
+      // Calcular confidence inicial
+      double confidence = 0.5;
+      String verificationStatus = 'pending';
+      
+      // Si hay 2 o más reportes similares, marcar como verificado
+      if (similarReports.length >= 2) {
+        confidence = 0.8;
+        verificationStatus = 'verified';
+      }
+
       final report = ReportModel(
         id: '', // Se generará en Firestore
         usuarioId: usuarioId,
@@ -46,7 +125,14 @@ class ReportProvider with ChangeNotifier {
         categoria: categoria,
         descripcion: descripcion,
         ubicacion: ubicacion,
-        creadoEn: DateTime.now(),
+        creadoEn: createdAt,
+        estadoPrincipal: estadoPrincipal,
+        problemasEspecificos: problemasEspecificos,
+        prioridad: prioridad,
+        fotoUrl: fotoUrl,
+        confidence: confidence,
+        verificationStatus: verificationStatus,
+        confirmationCount: 0,
       );
 
       final reportId = await _firebaseService.createReport(report);
@@ -63,6 +149,39 @@ class ReportProvider with ChangeNotifier {
         await _gamificationService.updateStreak(usuarioId);
       }
 
+      // Enviar alertas a usuarios afectados (en background)
+      if (prioridad || estadoPrincipal == 'lleno' || 
+          estadoPrincipal == 'cerrado' || estadoPrincipal == 'detenido' ||
+          estadoPrincipal == 'sardina') {
+        // Crear reporte con ID para alertas
+        final reportWithId = ReportModel(
+          id: reportId,
+          usuarioId: report.usuarioId,
+          tipo: report.tipo,
+          objetivoId: report.objetivoId,
+          categoria: report.categoria,
+          descripcion: report.descripcion,
+          ubicacion: report.ubicacion,
+          verificaciones: report.verificaciones,
+          estado: report.estado,
+          creadoEn: report.creadoEn,
+          estadoPrincipal: report.estadoPrincipal,
+          problemasEspecificos: report.problemasEspecificos,
+          prioridad: report.prioridad,
+          fotoUrl: report.fotoUrl,
+          confidence: report.confidence,
+          verificationStatus: report.verificationStatus,
+          confirmationCount: report.confirmationCount,
+        );
+
+        // Enviar alertas (no esperar para no bloquear)
+        if (prioridad) {
+          _alertService.sendPriorityAlert(reportWithId);
+        } else {
+          _alertService.sendRelevantAlerts(reportWithId);
+        }
+      }
+
       _isLoading = false;
       notifyListeners();
       return reportId;
@@ -70,13 +189,22 @@ class ReportProvider with ChangeNotifier {
       print('Error creating report: $e');
       _isLoading = false;
       notifyListeners();
-      return null;
+      // Re-lanzar la excepción con mensaje amigable
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
     }
   }
 
-  Future<void> verifyReport(String reportId, String userId) async {
+  /// Confirma un reporte de otro usuario
+  Future<bool> confirmReport(String reportId, String userId) async {
     try {
-      await _firebaseService.verifyReport(reportId, userId);
+      // Verificar si ya confirmó
+      final hasConfirmed = await _firebaseService.hasUserConfirmedReport(reportId, userId);
+      if (hasConfirmed) {
+        return false; // Ya confirmó este reporte
+      }
+
+      // Confirmar el reporte
+      await _firebaseService.confirmReport(reportId, userId);
       
       // Obtener información del reporte para saber la línea
       final reportDoc = await _firebaseService.firestore
@@ -85,7 +213,12 @@ class ReportProvider with ChangeNotifier {
           .get();
       
       final reportData = reportDoc.data();
-      final objetivoId = reportData?['objetivo_id'] as String?;
+      if (reportData == null) {
+        return false; // El reporte no existe
+      }
+
+      final objetivoId = reportData['objetivo_id'] as String?;
+      final confirmationCount = reportData['confirmation_count'] ?? 0;
       
       // Obtener estación para saber la línea
       String? linea;
@@ -97,13 +230,12 @@ class ReportProvider with ChangeNotifier {
         linea = stationDoc.data()?['linea'] as String?;
       }
       
-      // Otorgar puntos por verificar
+      // Otorgar puntos por confirmar
       await _gamificationService.awardPointsForVerifying(userId, reportId);
       
-      // Si el reporte tiene muchas verificaciones, otorgar puntos al creador
-      final verificaciones = reportData?['verificaciones'] ?? 0;
-      if (verificaciones >= 3) {
-        final creadorId = reportData?['usuario_id'] as String?;
+      // Si el reporte alcanza 3 confirmaciones, otorgar puntos al creador
+      if (confirmationCount >= 3) {
+        final creadorId = reportData['usuario_id'] as String?;
         if (creadorId != null && linea != null) {
           await _gamificationService.awardPointsForVerifiedReport(
             creadorId,
@@ -111,9 +243,23 @@ class ReportProvider with ChangeNotifier {
             linea,
           );
         }
+
+        // Actualizar estado de estación/tren basado en reportes verificados
+        if (objetivoId != null) {
+          await _updateStationStatusFromReport(objetivoId, reportData);
+        }
       }
       
-      // Incrementar reputación del usuario que verificó
+      // Actualizar confianza del reporte
+      await _confidenceService.updateReportConfidence(reportId);
+      
+      // Actualizar precisión del creador del reporte
+      final creadorId = reportData['usuario_id'] as String?;
+      if (creadorId != null) {
+        await _accuracyService.onReportVerified(creadorId);
+      }
+      
+      // Incrementar reputación del usuario que confirmó
       final user = await _firebaseService.getUser(userId);
       if (user != null) {
         final newReputacion = (user.reputacion + 5).clamp(0, 100);
@@ -122,9 +268,92 @@ class ReportProvider with ChangeNotifier {
           {'reputacion': newReputacion},
         );
       }
+
+      return true;
     } catch (e) {
-      print('Error verifying report: $e');
+      print('Error confirming report: $e');
+      // Re-lanzar la excepción con mensaje amigable
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
     }
+  }
+
+  /// Actualiza el estado de una estación/tren basado en reportes verificados
+  Future<void> _updateStationStatusFromReport(
+    String objetivoId,
+    Map<String, dynamic> reportData,
+  ) async {
+    try {
+      final tipo = reportData['tipo'] as String?;
+      final estadoPrincipal = reportData['estado_principal'] as String?;
+      
+      if (estadoPrincipal == null) return;
+
+      if (tipo == 'estacion') {
+        // Actualizar estado de estación
+        final stationRef = _firebaseService.firestore
+            .collection('stations')
+            .doc(objetivoId);
+        
+        // Mapear estadoPrincipal a estadoActual de estación
+        String? estadoActual;
+        switch (estadoPrincipal) {
+          case 'normal':
+            estadoActual = 'normal';
+            break;
+          case 'moderado':
+            estadoActual = 'moderado';
+            break;
+          case 'lleno':
+            estadoActual = 'lleno';
+            break;
+          case 'cerrado':
+            estadoActual = 'cerrado';
+            break;
+        }
+
+        if (estadoActual != null) {
+          await stationRef.update({
+            'estado_actual': estadoActual,
+            'ultima_actualizacion': FieldValue.serverTimestamp(),
+          });
+        }
+      } else if (tipo == 'tren') {
+        // Actualizar estado de tren
+        final trainRef = _firebaseService.firestore
+            .collection('trains')
+            .doc(objetivoId);
+        
+        // Mapear estadoPrincipal a estado de tren
+        String? estadoTren;
+        switch (estadoPrincipal) {
+          case 'asientos_disponibles':
+          case 'de_pie_comodo':
+            estadoTren = 'normal';
+            break;
+          case 'sardina':
+            estadoTren = 'retrasado';
+            break;
+          case 'lento':
+          case 'detenido':
+            estadoTren = 'detenido';
+            break;
+        }
+
+        if (estadoTren != null) {
+          await trainRef.update({
+            'estado': estadoTren,
+            'ultima_actualizacion': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e) {
+      print('Error updating station/train status: $e');
+    }
+  }
+
+  /// Método legacy - mantener para compatibilidad
+  Future<void> verifyReport(String reportId, String userId) async {
+    await confirmReport(reportId, userId);
   }
 
   Future<List<ReportModel>> getReportsByLocation(

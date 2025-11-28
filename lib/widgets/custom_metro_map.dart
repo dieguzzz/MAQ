@@ -227,6 +227,14 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 line1Points: line1Points,
                 line2Points: line2Points,
               ),
+              // Overlay invisible para detectar taps en estaciones
+              ..._buildStationTapOverlays(
+                linea1Stations: linea1Stations,
+                linea2Stations: linea2Stations,
+                line1Points: line1Points,
+                line2Points: line2Points,
+                size: size,
+              ),
             ],
           ),
         );
@@ -290,6 +298,104 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   double _getTrainProgress(TrainModel train) {
     // Obtener el progreso directamente desde el servicio de simulación
     return _trainSimulation.getTrainProgress(train);
+  }
+
+  List<Widget> _buildStationTapOverlays({
+    required List<StationModel> linea1Stations,
+    required List<StationModel> linea2Stations,
+    required List<Offset> line1Points,
+    required List<Offset> line2Points,
+    required Size size,
+  }) {
+    final widgets = <Widget>[];
+    const tapRadius = 30.0;
+
+    // Agregar overlays para estaciones de línea 1
+    for (int i = 0; i < linea1Stations.length && i < line1Points.length; i++) {
+      final station = linea1Stations[i];
+      final point = line1Points[i];
+      widgets.add(
+        Positioned(
+          left: point.dx - tapRadius,
+          top: point.dy - tapRadius,
+          child: GestureDetector(
+            onTap: () => widget.onStationTap?.call(station),
+            child: Container(
+              width: tapRadius * 2,
+              height: tapRadius * 2,
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Agregar overlays para estaciones de línea 2
+    for (int i = 0; i < linea2Stations.length && i < line2Points.length; i++) {
+      final station = linea2Stations[i];
+      final point = line2Points[i];
+      widgets.add(
+        Positioned(
+          left: point.dx - tapRadius,
+          top: point.dy - tapRadius,
+          child: GestureDetector(
+            onTap: () => widget.onStationTap?.call(station),
+            child: Container(
+              width: tapRadius * 2,
+              height: tapRadius * 2,
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Agregar overlays para trenes
+    final pointsByLine = {
+      'linea1': line1Points,
+      'linea2': line2Points,
+    };
+    final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : widget.trains;
+    
+    for (final train in trainsToDisplay) {
+      final points = pointsByLine[train.linea];
+      if (points == null || points.length < 2) continue;
+      
+      final progress = _getTrainProgress(train);
+      final position = _positionAlongLine(points, progress);
+      
+      widgets.add(
+        Positioned(
+          left: position.dx - tapRadius,
+          top: position.dy - tapRadius,
+          child: GestureDetector(
+            onTap: () => widget.onTrainTap?.call(train),
+            child: Container(
+              width: tapRadius * 2,
+              height: tapRadius * 2,
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return widgets;
+  }
+
+  Offset _positionAlongLine(List<Offset> points, double progress) {
+    if (points.length < 2) {
+      return points.isNotEmpty ? points.first : Offset.zero;
+    }
+    final totalSegments = points.length - 1;
+    final scaled = progress * totalSegments;
+    final index = scaled.floor().clamp(0, totalSegments - 1);
+    final t = scaled - index;
+    final start = points[index];
+    final end = points[index + 1];
+    final dx = ui.lerpDouble(start.dx, end.dx, t)!;
+    final dy = ui.lerpDouble(start.dy, end.dy, t)!;
+    return Offset(dx, dy);
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../widgets/custom_metro_map.dart';
+import '../../widgets/enhanced_report_modal.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 
@@ -36,10 +37,10 @@ class CustomMapScreen extends StatelessWidget {
                   stations: metroProvider.stations,
                   trains: metroProvider.trains,
                   onStationTap: (station) {
-                    _showStationDetails(context, station);
+                    _showReportModal(context, station: station);
                   },
                   onTrainTap: (train) {
-                    _showTrainDetails(context, train);
+                    _showReportModal(context, train: train);
                   },
                 ),
               ),
@@ -105,72 +106,18 @@ class CustomMapScreen extends StatelessWidget {
     );
   }
 
-  void _showStationDetails(BuildContext context, StationModel station) {
-    showModalBottomSheet(
+  void _showReportModal(
+    BuildContext context, {
+    StationModel? station,
+    TrainModel? train,
+  }) {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              station.nombre,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('Línea: ${station.linea}'),
-            const SizedBox(height: 8),
-            Text('Estado: ${station.getAglomeracionTexto()}'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navegar a pantalla de reporte
-              },
-              child: const Text('Reportar Estado'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTrainDetails(BuildContext context, TrainModel train) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Tren ${train.linea}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('Dirección: ${train.direccion == DireccionTren.norte ? "Norte" : "Sur"}'),
-            const SizedBox(height: 8),
-            Text('Velocidad: ${train.velocidad.toStringAsFixed(0)} km/h'),
-            const SizedBox(height: 8),
-            Text('Estado: ${train.getAglomeracionTexto()}'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navegar a pantalla de reporte
-              },
-              child: const Text('Reportar Estado'),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EnhancedReportModal(
+        station: station,
+        train: train,
       ),
     );
   }

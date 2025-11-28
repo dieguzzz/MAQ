@@ -8,6 +8,7 @@ import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../models/report_model.dart';
 import '../models/route_model.dart';
+import 'error_handler_service.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,19 +18,39 @@ class FirebaseService {
 
   // User operations
   Future<void> createUser(UserModel user) async {
-    await _firestore.collection('users').doc(user.uid).set(user.toFirestore());
+    try {
+      await _firestore.collection('users').doc(user.uid).set(user.toFirestore());
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al crear usuario: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Future<UserModel?> getUser(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (doc.exists) {
-      return UserModel.fromFirestore(doc);
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        return UserModel.fromFirestore(doc);
+      }
+      return null;
+    } on FirebaseException catch (e) {
+      print('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
+      return null;
+    } catch (e) {
+      print('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
+      return null;
     }
-    return null;
   }
 
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(uid).update(data);
+    try {
+      await _firestore.collection('users').doc(uid).update(data);
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al actualizar usuario: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Stream<UserModel?> getUserStream(String uid) {
@@ -78,8 +99,31 @@ class FirebaseService {
 
   // Report operations
   Future<String> createReport(ReportModel report) async {
-    final docRef = await _firestore.collection('reports').add(report.toFirestore());
-    return docRef.id;
+    try {
+      // Validar datos antes de enviar
+      final reportData = report.toFirestore();
+      
+      // Validaciones básicas
+      if (reportData['usuario_id'] == null || reportData['usuario_id'].toString().isEmpty) {
+        throw Exception('El ID de usuario es requerido');
+      }
+      if (reportData['objetivo_id'] == null || reportData['objetivo_id'].toString().isEmpty) {
+        throw Exception('El ID del objetivo es requerido');
+      }
+      if (reportData['ubicacion'] == null) {
+        throw Exception('La ubicación es requerida');
+      }
+      
+      final docRef = await _firestore.collection('reports').add(reportData);
+      return docRef.id;
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Error al crear reporte: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Stream<List<ReportModel>> getActiveReportsStream() {
@@ -118,17 +162,122 @@ class FirebaseService {
     return reports;
   }
 
-  Future<void> verifyReport(String reportId, String userId) async {
-    final reportRef = _firestore.collection('reports').doc(reportId);
-    await _firestore.runTransaction((transaction) async {
-      final reportDoc = await transaction.get(reportRef);
-      if (reportDoc.exists) {
-        final currentVerificaciones = reportDoc.data()?['verificaciones'] ?? 0;
-        transaction.update(reportRef, {
-          'verificaciones': currentVerificaciones + 1,
-        });
+  /// Confirma un reporte (nuevo sistema de confirmaciones)
+  Future<void> confirmReport(String reportId, String userId) async {
+    try {
+      // Validaciones básicas
+      if (reportId.isEmpty) {
+        throw Exception('El ID del reporte es requerido');
       }
-    });
+      if (userId.isEmpty) {
+        throw Exception('El ID del usuario es requerido');
+      }
+
+      final reportRef = _firestore.collection('reports').doc(reportId);
+      final confirmationsRef = _firestore
+          .collection('reports')
+          .doc(reportId)
+          .collection('confirmations')
+          .doc(userId);
+
+      await _firestore.runTransaction((transaction) async {
+        // Verificar que el usuario no haya confirmado antes
+        final confirmationDoc = await transaction.get(confirmationsRef);
+        if (confirmationDoc.exists) {
+          throw Exception('Ya confirmaste este reporte');
+        }
+
+        // Obtener el reporte
+        final reportDoc = await transaction.get(reportRef);
+        if (!reportDoc.exists) {
+          throw Exception('El reporte no existe');
+        }
+
+        final reportData = reportDoc.data()!;
+        final currentConfirmations = reportData['confirmation_count'] ?? 0;
+        final newConfirmations = currentConfirmations + 1;
+
+        // Crear la confirmación
+        transaction.set(confirmationsRef, {
+          'usuario_id': userId,
+          'confirmado_en': FieldValue.serverTimestamp(),
+        });
+
+        // Actualizar contador de confirmaciones
+        transaction.update(reportRef, {
+          'confirmation_count': newConfirmations,
+        });
+
+        // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
+        if (newConfirmations >= 3) {
+          transaction.update(reportRef, {
+            'verification_status': 'community_verified',
+            'confidence': 0.9, // Alta confianza
+          });
+        }
+      });
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Error al confirmar reporte: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
+  }
+
+  /// Verifica si un usuario ya confirmó un reporte
+  Future<bool> hasUserConfirmedReport(String reportId, String userId) async {
+    try {
+      final confirmationDoc = await _firestore
+          .collection('reports')
+          .doc(reportId)
+          .collection('confirmations')
+          .doc(userId)
+          .get();
+      return confirmationDoc.exists;
+    } catch (e) {
+      print('Error checking confirmation: $e');
+      return false;
+    }
+  }
+
+  /// Método legacy - mantener para compatibilidad
+  Future<void> verifyReport(String reportId, String userId) async {
+    // Usar el nuevo sistema de confirmaciones
+    await confirmReport(reportId, userId);
+  }
+
+  /// Busca reportes similares en los últimos 10 minutos
+  /// Similar = mismo objetivoId y mismo estadoPrincipal
+  Future<List<ReportModel>> findSimilarReports(
+    String objetivoId,
+    String? estadoPrincipal,
+    DateTime createdAt,
+  ) async {
+    try {
+      final tenMinutesAgo = createdAt.subtract(const Duration(minutes: 10));
+      
+      Query query = _firestore
+          .collection('reports')
+          .where('objetivo_id', isEqualTo: objetivoId)
+          .where('creado_en', isGreaterThan: Timestamp.fromDate(tenMinutesAgo))
+          .where('estado', isEqualTo: 'activo');
+
+      // Si hay estadoPrincipal, filtrar por él también
+      if (estadoPrincipal != null && estadoPrincipal.isNotEmpty) {
+        query = query.where('estado_principal', isEqualTo: estadoPrincipal);
+      }
+
+      final snapshot = await query.get();
+      
+      return snapshot.docs
+          .map((doc) => ReportModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error finding similar reports: $e');
+      return [];
+    }
   }
 
   /// Obtiene todos los reportes de un usuario específico
@@ -202,33 +351,57 @@ class FirebaseService {
 
   Future<UserCredential> signInWithEmailAndPassword(
       String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    try {
+      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al iniciar sesión: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Future<UserCredential> createUserWithEmailAndPassword(
       String email, String password) async {
-    return await _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
+    try {
+      return await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al crear cuenta: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Future<UserCredential> signInAnonymously() async {
-    return await _auth.signInAnonymously();
+    try {
+      return await _auth.signInAnonymously();
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al iniciar sesión como invitado: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-    if (kIsWeb) {
-      GoogleAuthProvider googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      return await _auth.signInWithPopup(googleProvider);
-    } else {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null;
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      return await _auth.signInWithCredential(credential);
+    try {
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        return await _auth.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return null;
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        return await _auth.signInWithCredential(credential);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al iniciar sesión con Google: ${ErrorHandlerService.getErrorMessage(e)}');
     }
   }
 

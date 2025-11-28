@@ -10,10 +10,14 @@ class ReportVerificationWidget extends StatelessWidget {
   const ReportVerificationWidget({
     super.key,
     required this.report,
-    required this.verificaciones,
+    this.verificaciones = 0,
     this.onVerify,
     this.isVerified = false,
   });
+
+  int get _verificationCount => report.confirmationCount > 0 
+      ? report.confirmationCount 
+      : verificaciones;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,7 @@ class ReportVerificationWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (verificaciones > 0)
+                if (_verificationCount > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -59,9 +63,38 @@ class ReportVerificationWidget extends StatelessWidget {
                         const Icon(Icons.check_circle, size: 16, color: Colors.green),
                         const SizedBox(width: 4),
                         Text(
-                          '$verificaciones confirmaciones',
+                          '$_verificationCount confirmaciones',
                           style: const TextStyle(
                             color: Colors.green,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Mostrar badge de verificado si está verificado
+                if (report.verificationStatus == 'verified' || 
+                    report.verificationStatus == 'community_verified')
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.verified, size: 16, color: Colors.blue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Verificado',
+                          style: TextStyle(
+                            color: Colors.blue,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),

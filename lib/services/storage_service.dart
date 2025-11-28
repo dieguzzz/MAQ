@@ -86,5 +86,35 @@ class StorageService {
     // Por ahora retornamos null, la UI manejará el diálogo
     return null;
   }
+
+  /// Sube una foto de reporte a Firebase Storage
+  /// Retorna la URL de descarga de la imagen
+  Future<String?> uploadReportImage(String reportId, File imageFile) async {
+    try {
+      // Crear referencia al archivo en Storage
+      // Ruta: report_images/{reportId}/photo.jpg
+      final ref = _storage.ref().child('report_images').child(reportId).child('photo.jpg');
+
+      // Subir el archivo
+      final uploadTask = ref.putFile(
+        imageFile,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          cacheControl: 'public, max-age=31536000', // Cache por 1 año
+        ),
+      );
+
+      // Esperar a que termine la subida
+      final snapshot = await uploadTask;
+      
+      // Obtener la URL de descarga
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      return downloadUrl;
+    } catch (e) {
+      print('Error subiendo imagen de reporte: $e');
+      return null;
+    }
+  }
 }
 

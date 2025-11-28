@@ -18,6 +18,35 @@ enum EstadoReporte {
   falso,
 }
 
+// Estados principales para estaciones
+enum EstadoPrincipalEstacion {
+  normal,      // 🟢 Normal
+  moderado,   // 🟡 Moderado
+  lleno,      // 🔴 Lleno
+  retraso,    // ⚠️ Retraso
+  cerrado,    // 🚫 Cerrado
+}
+
+// Estados principales para trenes
+enum EstadoPrincipalTren {
+  asientosDisponibles,  // 🟢 Asientos Disponibles
+  dePieComodo,         // 🟡 De Pie Cómodo
+  sardina,             // 🔴 Sardina
+  express,             // ⚡ Express
+  lento,               // 🐌 Lento
+  detenido,            // 🛑 Detenido
+}
+
+// Problemas específicos
+enum ProblemaEspecifico {
+  aireAcondicionado,   // ❄️ Aire Acondicionado roto
+  puertas,             // 🚪 Puertas automáticas fallando
+  limpieza,            // 🧹 Problemas de limpieza
+  mantenimiento,       // 🔧 Mantenimiento en progreso
+  sonido,              // 🔊 Sistema de sonido dañado
+  luces,               // 💡 Luces intermitentes
+}
+
 class ReportModel {
   final String id;
   final String usuarioId;
@@ -29,6 +58,15 @@ class ReportModel {
   final int verificaciones;
   final EstadoReporte estado;
   final DateTime creadoEn;
+  
+  // Nuevos campos
+  final String? estadoPrincipal; // 'normal', 'moderado', 'lleno', etc.
+  final List<String> problemasEspecificos; // Lista de problemas
+  final bool prioridad;
+  final String? fotoUrl;
+  final double confidence; // 0.0-1.0
+  final String verificationStatus; // 'pending', 'verified', 'community_verified'
+  final int confirmationCount;
 
   ReportModel({
     required this.id,
@@ -41,6 +79,13 @@ class ReportModel {
     this.verificaciones = 0,
     this.estado = EstadoReporte.activo,
     required this.creadoEn,
+    this.estadoPrincipal,
+    this.problemasEspecificos = const [],
+    this.prioridad = false,
+    this.fotoUrl,
+    this.confidence = 0.5,
+    this.verificationStatus = 'pending',
+    this.confirmationCount = 0,
   });
 
   factory ReportModel.fromFirestore(DocumentSnapshot doc) {
@@ -56,6 +101,13 @@ class ReportModel {
       verificaciones: data['verificaciones'] ?? 0,
       estado: _parseEstadoReporte(data['estado'] ?? 'activo'),
       creadoEn: (data['creado_en'] as Timestamp).toDate(),
+      estadoPrincipal: data['estado_principal'],
+      problemasEspecificos: List<String>.from(data['problemas_especificos'] ?? []),
+      prioridad: data['prioridad'] ?? false,
+      fotoUrl: data['foto_url'],
+      confidence: (data['confidence'] ?? 0.5).toDouble(),
+      verificationStatus: data['verification_status'] ?? 'pending',
+      confirmationCount: data['confirmation_count'] ?? 0,
     );
   }
 
@@ -71,6 +123,13 @@ class ReportModel {
       'verificaciones': verificaciones,
       'estado': _estadoToString(estado),
       'creado_en': Timestamp.fromDate(creadoEn),
+      'estado_principal': estadoPrincipal,
+      'problemas_especificos': problemasEspecificos,
+      'prioridad': prioridad,
+      'foto_url': fotoUrl,
+      'confidence': confidence,
+      'verification_status': verificationStatus,
+      'confirmation_count': confirmationCount,
     };
   }
 

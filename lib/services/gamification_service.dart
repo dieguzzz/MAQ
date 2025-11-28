@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/gamification_model.dart';
+import 'accuracy_service.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AccuracyService _accuracyService = AccuracyService();
 
   // Puntos por acciones
   static const int puntosPorReporteVerificado = 10;
@@ -228,6 +230,30 @@ class GamificationService {
           icono: '⭐',
           desbloqueadoEn: DateTime.now(),
         );
+      case BadgeType.francotirador:
+        return Badge(
+          type: type,
+          nombre: 'Francotirador',
+          descripcion: '95%+ de precisión en tus reportes',
+          icono: '🎯',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.detective:
+        return Badge(
+          type: type,
+          nombre: 'Detective',
+          descripcion: '85%+ de precisión en tus reportes',
+          icono: '🔍',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.observador:
+        return Badge(
+          type: type,
+          nombre: 'Observador',
+          descripcion: '70%+ de precisión en tus reportes',
+          icono: '👀',
+          desbloqueadoEn: DateTime.now(),
+        );
     }
   }
 
@@ -241,6 +267,27 @@ class GamificationService {
     
     if (reportesVerificados >= 50) {
       await _awardBadge(userId, BadgeType.ojoDeAguila);
+    }
+
+    // Verificar badges de precisión
+    await _checkAccuracyBadges(userId);
+  }
+
+  /// Verifica y otorga badges basados en precisión
+  Future<void> _checkAccuracyBadges(String userId) async {
+    try {
+      final accuracy = await _accuracyService.calculateUserAccuracy(userId);
+      
+      // Badge de precisión alta
+      if (accuracy >= 95) {
+        await _awardBadge(userId, BadgeType.francotirador);
+      } else if (accuracy >= 85) {
+        await _awardBadge(userId, BadgeType.detective);
+      } else if (accuracy >= 70) {
+        await _awardBadge(userId, BadgeType.observador);
+      }
+    } catch (e) {
+      print('Error checking accuracy badges: $e');
     }
   }
 

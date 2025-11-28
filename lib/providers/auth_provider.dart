@@ -3,30 +3,64 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
+import '../services/error_handler_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   UserModel? _currentUser;
   bool _isLoading = false;
+  bool _streamInitialized = false;
 
-  UserModel? get currentUser => _currentUser;
+  UserModel? get currentUser {
+    _ensureStreamInitialized();
+    return _currentUser;
+  }
+  
   bool get isLoading => _isLoading;
-  bool get isAuthenticated => _currentUser != null;
+  bool get isAuthenticated {
+    _ensureStreamInitialized();
+    return _currentUser != null;
+  }
 
   AuthProvider() {
+    // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
+  }
+
+  /// Inicializa los streams solo cuando se necesitan (lazy initialization)
+  void ensureStreamInitialized() {
+    if (_streamInitialized) return;
+    _streamInitialized = true;
     _init();
   }
 
+  // Método privado para uso interno
+  void _ensureStreamInitialized() => ensureStreamInitialized();
+
   void _init() {
-    _firebaseService.getAuthStateChanges().listen((User? user) async {
-      if (user != null) {
-        await loadUser(user.uid);
-      } else {
-        _currentUser = null;
-        notifyListeners();
+    try {
+      // Verificar el estado actual de autenticación primero
+      final currentUser = _firebaseService.getCurrentUser();
+      if (currentUser != null) {
+        loadUser(currentUser.uid);
       }
-    });
+      
+      // Luego escuchar cambios
+      _firebaseService.getAuthStateChanges().listen((User? user) async {
+        if (user != null) {
+          await loadUser(user.uid);
+        } else {
+          _currentUser = null;
+          notifyListeners();
+        }
+      }, onError: (error) {
+        print('Error en auth state stream: $error');
+        // Continuar sin el stream si hay un error
+      });
+    } catch (e) {
+      print('Error initializing auth stream: $e');
+      // Continuar sin el stream si hay un error
+    }
   }
 
   Future<void> loadUser(String uid) async {
@@ -79,29 +113,51 @@ class AuthProvider with ChangeNotifier {
     );
   }
 
-  Future<bool> signIn(String email, String password) async {
+  Future<String?> signIn(String email, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Validaciones básicas
+      if (email.isEmpty) {
+        throw Exception('El correo electrónico es requerido');
+      }
+      if (password.isEmpty) {
+        throw Exception('La contraseña es requerida');
+      }
+
       final userCredential = await _firebaseService.signInWithEmailAndPassword(
           email, password);
       await loadUser(userCredential.user!.uid);
-      return true;
-    } catch (e) {
-      print('Error signing in: $e');
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return null; // Éxito
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ErrorHandlerService.getErrorMessage(e);
     }
   }
 
-  Future<bool> signUp(String email, String password, String nombre) async {
+  Future<String?> signUp(String email, String password, String nombre) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Validaciones básicas
+      if (email.isEmpty) {
+        throw Exception('El correo electrónico es requerido');
+      }
+      if (password.isEmpty) {
+        throw Exception('La contraseña es requerida');
+      }
+      if (password.length < 6) {
+        throw Exception('La contraseña debe tener al menos 6 caracteres');
+      }
+      if (nombre.isEmpty) {
+        throw Exception('El nombre es requerido');
+      }
+
       final userCredential =
           await _firebaseService.createUserWithEmailAndPassword(email, password);
       
@@ -116,17 +172,17 @@ class AuthProvider with ChangeNotifier {
 
       await _firebaseService.createUser(newUser);
       await loadUser(userCredential.user!.uid);
-      return true;
-    } catch (e) {
-      print('Error signing up: $e');
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return null; // Éxito
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ErrorHandlerService.getErrorMessage(e);
     }
   }
 
-  Future<bool> signInWithGoogle() async {
+  Future<String?> signInWithGoogle() async {
     _isLoading = true;
     notifyListeners();
 
@@ -134,21 +190,23 @@ class AuthProvider with ChangeNotifier {
       final credential = await _firebaseService.signInWithGoogle();
       final user = credential?.user;
       if (user == null) {
-        return false;
+        _isLoading = false;
+        notifyListeners();
+        return 'Se canceló el inicio de sesión con Google';
       }
 
       await loadUser(user.uid);
-      return _currentUser != null;
-    } catch (e) {
-      print('Error signing in with Google: $e');
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ErrorHandlerService.getErrorMessage(e);
     }
   }
 
-  Future<bool> signInAsGuest() async {
+  Future<String?> signInAsGuest() async {
     _isLoading = true;
     notifyListeners();
 
@@ -156,17 +214,19 @@ class AuthProvider with ChangeNotifier {
       final credential = await _firebaseService.signInAnonymously();
       final user = credential.user;
       if (user == null) {
-        return false;
+        _isLoading = false;
+        notifyListeners();
+        return 'Error al crear sesión de invitado';
       }
 
       await loadUser(user.uid);
-      return _currentUser != null;
-    } catch (e) {
-      print('Error signing in as guest: $e');
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ErrorHandlerService.getErrorMessage(e);
     }
   }
 

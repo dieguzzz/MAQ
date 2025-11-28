@@ -11,23 +11,26 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
-    final success = await context.read<AuthProvider>().signInWithGoogle();
-    if (!success && mounted) {
+    final errorMessage = await context.read<AuthProvider>().signInWithGoogle();
+    if (errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('No se pudo iniciar sesión con Google. Intenta nuevamente.'),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
   }
 
   Future<void> _handleGuest() async {
-    final success = await context.read<AuthProvider>().signInAsGuest();
-    if (!success && mounted) {
+    final errorMessage = await context.read<AuthProvider>().signInAsGuest();
+    if (errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No pudimos crear tu ingreso como invitado.'),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
