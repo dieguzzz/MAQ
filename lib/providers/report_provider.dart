@@ -8,7 +8,12 @@ import '../services/confidence_service.dart';
 import '../services/alert_service.dart';
 import '../services/accuracy_service.dart';
 import '../services/error_handler_service.dart';
+import '../services/app_mode_service.dart';
+import '../services/time_estimation_service.dart';
 import '../models/report_model.dart';
+import '../models/train_model.dart';
+import '../models/station_model.dart';
+import '../providers/metro_data_provider.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -17,6 +22,7 @@ class ReportProvider with ChangeNotifier {
   final ConfidenceService _confidenceService = ConfidenceService();
   final AlertService _alertService = AlertService();
   final AccuracyService _accuracyService = AccuracyService();
+  final TimeEstimationService _timeEstimationService = TimeEstimationService();
   
   List<ReportModel> _activeReports = [];
   bool _isLoading = false;
@@ -72,11 +78,16 @@ class ReportProvider with ChangeNotifier {
     bool prioridad = false,
     String? fotoUrl,
     Position? userLocation,
+    int? tiempoEstimadoReportado,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Obtener el modo de app del usuario
+      final appModeService = AppModeService();
+      final appMode = await appModeService.getCurrentMode(usuarioId);
+      
       // Validación anti-spam
       final canReport = await _validationService.canUserReport(usuarioId, objetivoId);
       if (!canReport) {
@@ -89,16 +100,18 @@ class ReportProvider with ChangeNotifier {
           objetivoId,
           userLocation,
           ubicacion,
+          appMode: appMode,
         );
         
         throw Exception(errorMessage ?? 'No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
       }
 
-      // Validación de ubicación
-      if (userLocation != null) {
+      // Validación de ubicación (omitida en modo Test)
+      if (appMode != AppMode.test && userLocation != null) {
         final isValidLocation = _validationService.isValidReportLocation(
           userLocation,
           ubicacion,
+          appMode: appMode,
         );
         if (!isValidLocation) {
           _isLoading = false;
@@ -126,6 +139,15 @@ class ReportProvider with ChangeNotifier {
         verificationStatus = 'verified';
       }
 
+      // Validar tiempo estimado si se proporcionó
+      bool? tiempoEstimadoValidado;
+      if (tiempoEstimadoReportado != null && tipo == TipoReporte.estacion) {
+        // Obtener el tren más cercano y la estación para validar
+        // Nota: Esto requiere acceso a MetroDataProvider, por ahora lo dejamos como null
+        // La validación se puede hacer después de crear el reporte
+        tiempoEstimadoValidado = null; // Se validará después si es posible
+      }
+
       final report = ReportModel(
         id: '', // Se generará en Firestore
         usuarioId: usuarioId,
@@ -142,6 +164,8 @@ class ReportProvider with ChangeNotifier {
         confidence: confidence,
         verificationStatus: verificationStatus,
         confirmationCount: 0,
+        tiempoEstimadoReportado: tiempoEstimadoReportado,
+        tiempoEstimadoValidado: tiempoEstimadoValidado,
       );
 
       final reportId = await _firebaseService.createReport(report);

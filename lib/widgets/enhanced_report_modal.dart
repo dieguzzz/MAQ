@@ -12,6 +12,7 @@ import '../providers/report_provider.dart';
 import '../services/storage_service.dart';
 import '../services/ad_session_service.dart';
 import '../services/ad_service.dart';
+import '../services/app_mode_service.dart';
 import '../theme/metro_theme.dart';
 
 class EnhancedReportModal extends StatefulWidget {
@@ -37,6 +38,8 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
   bool _isSubmitting = false;
   bool _isUploadingImage = false;
   late AnimationController _animationController;
+  final TextEditingController _tiempoEstimadoController = TextEditingController();
+  bool _isTestMode = false;
 
   @override
   void initState() {
@@ -208,6 +211,28 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
       });
     }
 
+    // Obtener tiempo estimado si está en modo Test
+    int? tiempoEstimadoReportado;
+    if (_isTestMode && _tiempoEstimadoController.text.isNotEmpty) {
+      final tiempo = int.tryParse(_tiempoEstimadoController.text);
+      if (tiempo != null && tiempo >= 1 && tiempo <= 30) {
+        tiempoEstimadoReportado = tiempo;
+      } else if (tiempo != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('El tiempo estimado debe estar entre 1 y 30 minutos'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() {
+          _isSubmitting = false;
+        });
+        return;
+      }
+    }
+
     String? reportId;
     String? errorMessage;
     
@@ -223,6 +248,7 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
         prioridad: _prioridad,
         fotoUrl: fotoUrl,
         userLocation: userLocation,
+        tiempoEstimadoReportado: tiempoEstimadoReportado,
       );
     } on Exception catch (e) {
       errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -343,6 +369,11 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
                       // Prioridad
                       _buildPrioridadOption(),
                       const SizedBox(height: 16),
+                      // Tiempo estimado (solo en modo Test)
+                      if (_isTestMode) ...[
+                        _buildTiempoEstimadoField(),
+                        const SizedBox(height: 16),
+                      ],
                       // Foto opcional
                       _buildFotoOption(),
                       const SizedBox(height: 20),
@@ -531,6 +562,33 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
               _prioridad = value;
             });
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTiempoEstimadoField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tiempo estimado de llegada (minutos)',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: MetroColors.grayDark,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _tiempoEstimadoController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Ej: 5',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.access_time),
+            helperText: 'Tiempo estimado en minutos (1-30)',
+          ),
         ),
       ],
     );

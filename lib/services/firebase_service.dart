@@ -8,6 +8,7 @@ import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../models/report_model.dart';
 import '../models/route_model.dart';
+import '../models/learning_report_model.dart';
 import 'error_handler_service.dart';
 
 class FirebaseService {
@@ -482,6 +483,107 @@ class FirebaseService {
 
   double _toRadians(double degrees) {
     return degrees * (math.pi / 180);
+  }
+
+  // Learning Reports operations
+  /// Crea un reporte de aprendizaje en Firestore
+  Future<String> createLearningReport(LearningReportModel report) async {
+    try {
+      final docRef = await _firestore
+          .collection('learning_reports')
+          .add(report.toFirestore());
+      return docRef.id;
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception(
+          'Error al crear reporte de aprendizaje: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
+  }
+
+  /// Obtiene un stream de reportes de aprendizaje recientes
+  Stream<List<LearningReportModel>> getLearningReportsStream(
+      {int days = 14}) {
+    final cutoffDate = DateTime.now().subtract(Duration(days: days));
+    
+    return _firestore
+        .collection('learning_reports')
+        .where('creado_en',
+            isGreaterThan: Timestamp.fromDate(cutoffDate))
+        .orderBy('creado_en', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => LearningReportModel.fromFirestore(doc))
+            .toList());
+  }
+
+  /// Obtiene reportes de aprendizaje por estación
+  Future<List<LearningReportModel>> getLearningReportsByStation(
+      String stationId,
+      {int days = 30}) async {
+    try {
+      final cutoffDate = DateTime.now().subtract(Duration(days: days));
+      
+      final snapshot = await _firestore
+          .collection('learning_reports')
+          .where('estacion_id', isEqualTo: stationId)
+          .where('creado_en',
+              isGreaterThan: Timestamp.fromDate(cutoffDate))
+          .orderBy('creado_en', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => LearningReportModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error getting learning reports by station: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene el stream del leaderboard de profesores (top usuarios por teachingScore)
+  Stream<QuerySnapshot> getTeachersLeaderboardStream({int limit = 50}) {
+    return _firestore
+        .collection('users')
+        .orderBy('gamification.teaching_score', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
+
+  // Model Metrics operations
+  /// Referencia a la colección de métricas del modelo
+  CollectionReference get modelMetricsRef =>
+      _firestore.collection('model_metrics');
+
+  /// Guarda o actualiza las métricas del modelo
+  Future<void> updateModelMetrics(Map<String, dynamic> metrics) async {
+    try {
+      await modelMetricsRef.doc('current').set(metrics, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception(
+          'Error al actualizar métricas del modelo: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
+  }
+
+  /// Obtiene las métricas actuales del modelo
+  Future<Map<String, dynamic>?> getModelMetrics() async {
+    try {
+      final doc = await modelMetricsRef.doc('current').get();
+      if (doc.exists) {
+        return doc.data() as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting model metrics: $e');
+      return null;
+    }
+  }
+
+  /// Obtiene un stream de las métricas del modelo
+  Stream<DocumentSnapshot> getModelPerformanceStream() {
+    return modelMetricsRef.doc('current').snapshots();
   }
 }
 

@@ -10,6 +10,9 @@ import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/metro_data_provider.dart';
 import 'providers/report_provider.dart';
+import 'services/metro_simulator_service.dart';
+import 'services/station_position_editor_service.dart';
+import 'services/station_edit_mode_service.dart';
 import 'services/notification_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -206,6 +209,9 @@ class _MetroPTYAppState extends State<MetroPTYApp> {
         ChangeNotifierProvider.value(value: _locationProvider),
         ChangeNotifierProvider.value(value: _metroDataProvider),
         ChangeNotifierProvider.value(value: _reportProvider),
+        ChangeNotifierProvider.value(value: MetroSimulatorService()),
+        ChangeNotifierProvider.value(value: StationPositionEditorService()),
+        ChangeNotifierProvider.value(value: StationEditModeService()),
       ],
       child: FutureBuilder<bool>(
         future: _onboardingFuture,

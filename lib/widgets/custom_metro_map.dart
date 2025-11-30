@@ -1,11 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui show lerpDouble;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../services/train_simulation_service.dart';
+import '../services/app_mode_service.dart';
+import '../services/station_position_editor_service.dart';
+import '../services/station_edit_mode_service.dart';
+import '../providers/auth_provider.dart';
+import '../providers/metro_data_provider.dart';
+import '../widgets/station_position_editor_modal.dart';
 import '../utils/metro_data.dart';
 
 enum StationStatus {
@@ -48,8 +57,15 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   final Map<String, StationStatus> _stationStatus = {};
   final Map<String, int> _nextTrainMinutes = {}; // Minutos para próximo tren
   final TrainSimulationService _trainSimulation = TrainSimulationService();
+  final StationPositionEditorService _positionEditor = StationPositionEditorService();
   List<TrainModel> _simulatedTrains = [];
   Timer? _updateTimer;
+  bool _isTestMode = false;
+  String? _draggingStationId;
+  Offset? _dragOffset;
+  _GeoBounds? _currentBounds;
+  bool _hasDragged = false; // Para detectar si hubo movimiento durante el arrastre
+  Timer? _tapTimer; // Timer para retrasar el tap y permitir que el pan se active primero
 
   @override
   void initState() {
@@ -69,24 +85,64 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     _initializeTrainSimulation();
   }
 
-  void _initializeTrainSimulation() {
+  void _initializeTrainSimulation() async {
     if (widget.stations.isNotEmpty) {
       _trainSimulation.initialize(widget.stations);
+      
+      // Verificar si estamos en modo test
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      bool isTestMode = false;
+      
+      if (user != null) {
+        try {
+          final appModeService = AppModeService();
+          isTestMode = await appModeService.isTestMode(user.uid);
+          _trainSimulation.setTestMode(isTestMode);
+          
+          if (mounted) {
+            setState(() {
+              _isTestMode = isTestMode;
+            });
+          }
+          
+          // El editor de posiciones ahora se controla mediante el botón EDIT
+          print('🧪 Modo Test activado: Los trenes no se moverán.');
+          print('🧪 Activa el modo EDIT para mover estaciones.');
+        } catch (e) {
+          print('Error verificando modo test: $e');
+        }
+      }
+      
+      // Iniciar actualizaciones en ambos modos
+      // En modo test, se usará tiempo acelerado
       _trainSimulation.start();
-      _startTrainUpdates(widget.trains);
+      if (isTestMode) {
+        // En modo test, actualizar cada 3 segundos reales (equivalente a 1 minuto simulado)
+        _startTrainUpdates(widget.trains, isTestMode: true);
+      } else {
+        _startTrainUpdates(widget.trains, isTestMode: false);
+      }
     }
   }
 
-  void _startTrainUpdates(List<TrainModel> originalTrains) {
+  void _startTrainUpdates(List<TrainModel> originalTrains, {bool isTestMode = false}) {
     _updateTimer?.cancel();
-    // Actualizar más frecuentemente para movimiento más fluido (cada 1 segundo)
-    _updateTimer = Timer.periodic(const Duration(milliseconds: 1000), (_) {
+    
+    // En modo test, actualizar cada 3 segundos reales (equivalente a 1 minuto simulado)
+    // En modo normal, actualizar cada 1 segundo
+    final updateInterval = isTestMode 
+        ? const Duration(seconds: 3) 
+        : const Duration(milliseconds: 1000);
+    
+    _updateTimer = Timer.periodic(updateInterval, (_) {
       if (mounted) {
         setState(() {
           _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
         });
       }
     });
+    
     // Actualización inicial
     if (mounted) {
       setState(() {
@@ -110,6 +166,33 @@ class _CustomMetroMapState extends State<CustomMetroMap>
       _initializeTrainSimulation();
     } else {
       _initializeStatuses();
+      // Re-verificar modo test en caso de que haya cambiado
+      _checkTestMode();
+    }
+  }
+
+  Future<void> _checkTestMode() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    
+    if (user != null) {
+      try {
+        final appModeService = AppModeService();
+        final isTestMode = await appModeService.isTestMode(user.uid);
+        
+        if (mounted && _isTestMode != isTestMode) {
+          setState(() {
+            _isTestMode = isTestMode;
+          });
+          
+          // El editor de posiciones ahora se controla mediante el botón EDIT
+          if (isTestMode) {
+            print('🧪 Modo Test detectado. Activa el modo EDIT para mover estaciones.');
+          }
+        }
+      } catch (e) {
+        print('Error verificando modo test: $e');
+      }
     }
   }
 
@@ -216,9 +299,47 @@ class _CustomMetroMapState extends State<CustomMetroMap>
         final linea1Stations = _getOrderedStations('linea1');
         final linea2Stations = _getOrderedStations('linea2');
 
-        final bounds = _GeoBounds.fromStations(widget.stations);
-        final line1Points = _projectStations(linea1Stations, size, bounds);
-        final line2Points = _projectStations(linea2Stations, size, bounds);
+        // Aplicar coordenadas editadas a las estaciones antes de proyectarlas
+        final stationsWithEditedPositions = widget.stations.map((station) {
+          final editedPosition = _positionEditor.getPosition(station.id);
+          if (editedPosition != null) {
+            return StationModel(
+              id: station.id,
+              nombre: station.nombre,
+              linea: station.linea,
+              ubicacion: editedPosition,
+              estadoActual: station.estadoActual,
+              aglomeracion: station.aglomeracion,
+              ultimaActualizacion: DateTime.now(),
+            );
+          }
+          return station;
+        }).toList();
+        
+        final bounds = _GeoBounds.fromStations(stationsWithEditedPositions);
+        _currentBounds = bounds;
+        
+        // Calcular puntos para las líneas
+        var line1Points = _projectStations(linea1Stations, size, bounds);
+        var line2Points = _projectStations(linea2Stations, size, bounds);
+        
+        // Si hay una estación siendo arrastrada, ajustar su punto en las listas
+        if (_draggingStationId != null && _dragOffset != null) {
+          // Actualizar punto en línea 1
+          for (int i = 0; i < linea1Stations.length; i++) {
+            if (linea1Stations[i].id == _draggingStationId && i < line1Points.length) {
+              line1Points[i] = line1Points[i] + _dragOffset!;
+              break;
+            }
+          }
+          // Actualizar punto en línea 2
+          for (int i = 0; i < linea2Stations.length; i++) {
+            if (linea2Stations[i].id == _draggingStationId && i < line2Points.length) {
+              line2Points[i] = line2Points[i] + _dragOffset!;
+              break;
+            }
+          }
+        }
 
         return SizedBox(
           width: size.width,
@@ -241,6 +362,11 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                     getStationEmoji: _getStationEmoji,
                     highlightedRoute: widget.highlightedRoute,
                     allStations: widget.stations,
+                    positionEditor: _positionEditor,
+                    bounds: _currentBounds,
+                    size: size,
+                    draggingStationId: _draggingStationId,
+                    dragOffset: _dragOffset,
                   ),
                 ),
               ),
@@ -334,17 +460,119 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     // Agregar overlays para estaciones de línea 1
     for (int i = 0; i < linea1Stations.length && i < line1Points.length; i++) {
       final station = linea1Stations[i];
-      final point = line1Points[i];
+      final basePoint = line1Points[i];
+      final editedPosition = _positionEditor.getPosition(station.id);
+      
+      // Usar posición editada si existe, sino usar la proyectada
+      final point = editedPosition != null && _currentBounds != null
+          ? _geoPointToCanvas(editedPosition, size, _currentBounds!)
+          : basePoint;
+      
+      // Si está siendo arrastrada, usar el offset del drag
+      final finalPoint = _draggingStationId == station.id && _dragOffset != null
+          ? point + _dragOffset!
+          : point;
+      
       widgets.add(
         Positioned(
-          left: point.dx - tapRadius,
-          top: point.dy - tapRadius,
+          left: finalPoint.dx - tapRadius,
+          top: finalPoint.dy - tapRadius,
           child: GestureDetector(
-            onTap: () => widget.onStationTap?.call(station),
-            child: Container(
-              width: tapRadius * 2,
-              height: tapRadius * 2,
-              color: Colors.transparent,
+            behavior: HitTestBehavior.opaque,
+            onTap: (_draggingStationId == station.id || _hasDragged)
+                ? null
+                : () {
+                    // Cancelar cualquier timer de tap pendiente
+                    _tapTimer?.cancel();
+                    // En modo test, mostrar modal de edición de coordenadas
+                    if (_isTestMode && !_hasDragged) {
+                      _showPositionEditorModal(context, station);
+                    } else if (!_isTestMode && !_hasDragged) {
+                      widget.onStationTap?.call(station);
+                    }
+                  },
+            onPanStart: _isTestMode
+                ? (details) {
+                    // Cancelar el timer de tap para que no se abra el modal
+                    _tapTimer?.cancel();
+                    print('🧪 Drag start: ${station.nombre}');
+                    setState(() {
+                      _draggingStationId = station.id;
+                      _dragOffset = Offset.zero;
+                      _hasDragged = false; // Resetear el flag
+                    });
+                  }
+                : null,
+            onPanUpdate: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id) {
+                      // Si hay movimiento significativo, marcar como arrastrado
+                      if (details.delta.distance > 5.0) {
+                        _hasDragged = true;
+                      }
+                      setState(() {
+                        _dragOffset = _dragOffset! + details.delta;
+                      });
+                    }
+                  }
+                : null,
+            onPanEnd: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id && _currentBounds != null && _dragOffset != null) {
+                      // Actualizar posición siempre que haya movimiento (aunque sea mínimo)
+                      // Esto permite dejar la estación exactamente donde el usuario quiere
+                      final newCanvasPoint = point + _dragOffset!;
+                      
+                      // Validar que el punto esté dentro de los límites del canvas (con padding)
+                      const padding = 48.0;
+                      final clampedX = newCanvasPoint.dx.clamp(padding, size.width - padding);
+                      final clampedY = newCanvasPoint.dy.clamp(padding, size.height - padding);
+                      final clampedPoint = Offset(clampedX, clampedY);
+                      
+                      final newGeoPoint = _canvasToGeoPoint(clampedPoint, size, _currentBounds!);
+                      print('🧪 Drag end: ${station.nombre} -> [${newGeoPoint.latitude}, ${newGeoPoint.longitude}]');
+                      _positionEditor.updatePosition(station.id, newGeoPoint);
+                      
+                      // Notificar al provider para refrescar
+                      Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+                    }
+                    setState(() {
+                      _draggingStationId = null;
+                      _dragOffset = null;
+                      _hasDragged = false;
+                    });
+                  }
+                : null,
+            onPanCancel: () {
+              final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+              if (!editModeService.isEditModeActive) return null;
+              
+              return () {
+                print('🧪 Drag cancel: ${station.nombre}');
+                setState(() {
+                  _draggingStationId = null;
+                  _dragOffset = null;
+                  _hasDragged = false;
+                });
+              };
+            }(),
+            child: Consumer<StationEditModeService>(
+              builder: (context, editModeService, child) {
+                final isEditModeActive = editModeService.isEditModeActive;
+                return Container(
+                  width: tapRadius * 2,
+                  height: tapRadius * 2,
+                  decoration: BoxDecoration(
+                    color: isEditModeActive && _draggingStationId == station.id
+                        ? Colors.blue.withOpacity(0.3)
+                        : (isEditModeActive ? Colors.blue.withOpacity(0.1) : Colors.transparent),
+                    shape: BoxShape.circle,
+                    border: isEditModeActive 
+                        ? Border.all(color: Colors.blue.withOpacity(0.5), width: 2)
+                        : null,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -354,17 +582,119 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     // Agregar overlays para estaciones de línea 2
     for (int i = 0; i < linea2Stations.length && i < line2Points.length; i++) {
       final station = linea2Stations[i];
-      final point = line2Points[i];
+      final basePoint = line2Points[i];
+      final editedPosition = _positionEditor.getPosition(station.id);
+      
+      // Usar posición editada si existe, sino usar la proyectada
+      final point = editedPosition != null && _currentBounds != null
+          ? _geoPointToCanvas(editedPosition, size, _currentBounds!)
+          : basePoint;
+      
+      // Si está siendo arrastrada, usar el offset del drag
+      final finalPoint = _draggingStationId == station.id && _dragOffset != null
+          ? point + _dragOffset!
+          : point;
+      
       widgets.add(
         Positioned(
-          left: point.dx - tapRadius,
-          top: point.dy - tapRadius,
+          left: finalPoint.dx - tapRadius,
+          top: finalPoint.dy - tapRadius,
           child: GestureDetector(
-            onTap: () => widget.onStationTap?.call(station),
-            child: Container(
-              width: tapRadius * 2,
-              height: tapRadius * 2,
-              color: Colors.transparent,
+            behavior: HitTestBehavior.opaque,
+            onTap: (_draggingStationId == station.id || _hasDragged)
+                ? null
+                : () {
+                    // Cancelar cualquier timer de tap pendiente
+                    _tapTimer?.cancel();
+                    // En modo test, mostrar modal de edición de coordenadas
+                    if (_isTestMode && !_hasDragged) {
+                      _showPositionEditorModal(context, station);
+                    } else if (!_isTestMode && !_hasDragged) {
+                      widget.onStationTap?.call(station);
+                    }
+                  },
+            onPanStart: _isTestMode
+                ? (details) {
+                    // Cancelar el timer de tap para que no se abra el modal
+                    _tapTimer?.cancel();
+                    print('🧪 Drag start: ${station.nombre}');
+                    setState(() {
+                      _draggingStationId = station.id;
+                      _dragOffset = Offset.zero;
+                      _hasDragged = false; // Resetear el flag
+                    });
+                  }
+                : null,
+            onPanUpdate: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id) {
+                      // Si hay movimiento significativo, marcar como arrastrado
+                      if (details.delta.distance > 5.0) {
+                        _hasDragged = true;
+                      }
+                      setState(() {
+                        _dragOffset = _dragOffset! + details.delta;
+                      });
+                    }
+                  }
+                : null,
+            onPanEnd: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id && _currentBounds != null && _dragOffset != null) {
+                      // Actualizar posición siempre que haya movimiento (aunque sea mínimo)
+                      // Esto permite dejar la estación exactamente donde el usuario quiere
+                      final newCanvasPoint = point + _dragOffset!;
+                      
+                      // Validar que el punto esté dentro de los límites del canvas (con padding)
+                      const padding = 48.0;
+                      final clampedX = newCanvasPoint.dx.clamp(padding, size.width - padding);
+                      final clampedY = newCanvasPoint.dy.clamp(padding, size.height - padding);
+                      final clampedPoint = Offset(clampedX, clampedY);
+                      
+                      final newGeoPoint = _canvasToGeoPoint(clampedPoint, size, _currentBounds!);
+                      print('🧪 Drag end: ${station.nombre} -> [${newGeoPoint.latitude}, ${newGeoPoint.longitude}]');
+                      _positionEditor.updatePosition(station.id, newGeoPoint);
+                      
+                      // Notificar al provider para refrescar
+                      Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+                    }
+                    setState(() {
+                      _draggingStationId = null;
+                      _dragOffset = null;
+                      _hasDragged = false;
+                    });
+                  }
+                : null,
+            onPanCancel: () {
+              final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+              if (!editModeService.isEditModeActive) return null;
+              
+              return () {
+                print('🧪 Drag cancel: ${station.nombre}');
+                setState(() {
+                  _draggingStationId = null;
+                  _dragOffset = null;
+                  _hasDragged = false;
+                });
+              };
+            }(),
+            child: Consumer<StationEditModeService>(
+              builder: (context, editModeService, child) {
+                final isEditModeActive = editModeService.isEditModeActive;
+                return Container(
+                  width: tapRadius * 2,
+                  height: tapRadius * 2,
+                  decoration: BoxDecoration(
+                    color: isEditModeActive && _draggingStationId == station.id
+                        ? Colors.blue.withOpacity(0.3)
+                        : (isEditModeActive ? Colors.blue.withOpacity(0.1) : Colors.transparent),
+                    shape: BoxShape.circle,
+                    border: isEditModeActive 
+                        ? Border.all(color: Colors.blue.withOpacity(0.5), width: 2)
+                        : null,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -418,6 +748,103 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     final dy = ui.lerpDouble(start.dy, end.dy, t)!;
     return Offset(dx, dy);
   }
+
+  /// Muestra el modal para editar la posición de una estación
+  void _showPositionEditorModal(BuildContext context, StationModel station) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true, // Permitir cerrar tocando fuera
+      enableDrag: true, // Permitir arrastrar para cerrar
+      builder: (context) => StationPositionEditorModal(station: station),
+    );
+  }
+
+  /// Muestra un diálogo con las coordenadas de la estación
+  void _showCoordinatesDialog(BuildContext context, StationModel station) {
+    final editedPosition = _positionEditor.getPosition(station.id);
+    final position = editedPosition ?? station.ubicacion;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(station.nombre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Coordenadas:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Latitud: ${position.latitude}'),
+            Text('Longitud: ${position.longitude}'),
+            const SizedBox(height: 8),
+            SelectableText(
+              '[${position.latitude}, ${position.longitude}]',
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+            if (editedPosition != null) ...[
+              const SizedBox(height: 8),
+              const Text(
+                '(Coordenada editada)',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.blue),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(
+                text: '[${position.latitude}, ${position.longitude}]',
+              ));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coordenadas copiadas al portapapeles')),
+                );
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Copiar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Convierte coordenadas de canvas (píxeles) a GeoPoint
+  GeoPoint _canvasToGeoPoint(Offset canvasPoint, Size size, _GeoBounds bounds) {
+    const padding = 48.0;
+    final width = size.width - padding * 2;
+    final height = size.height - padding * 2;
+    
+    final normalizedX = ((canvasPoint.dx - padding) / width).clamp(0.0, 1.0);
+    final normalizedY = 1.0 - ((canvasPoint.dy - padding) / height).clamp(0.0, 1.0);
+    
+    final lng = bounds.minLng + normalizedX * bounds.lngSpan;
+    final lat = bounds.minLat + normalizedY * bounds.latSpan;
+    
+    return GeoPoint(lat, lng);
+  }
+
+  /// Convierte GeoPoint a coordenadas de canvas (píxeles)
+  Offset _geoPointToCanvas(GeoPoint geoPoint, Size size, _GeoBounds bounds) {
+    const padding = 48.0;
+    final width = size.width - padding * 2;
+    final height = size.height - padding * 2;
+    
+    final normalizedLng = (geoPoint.longitude - bounds.minLng) / bounds.lngSpan;
+    final normalizedLat = (geoPoint.latitude - bounds.minLat) / bounds.latSpan;
+    
+    final x = padding + normalizedLng * width;
+    final y = padding + (1 - normalizedLat) * height;
+    
+    return Offset(x, y);
+  }
 }
 
 class MetroMapPainter extends CustomPainter {
@@ -431,6 +858,11 @@ class MetroMapPainter extends CustomPainter {
   final String Function(StationStatus) getStationEmoji;
   final List<StationModel>? highlightedRoute;
   final List<StationModel> allStations;
+  final StationPositionEditorService? positionEditor;
+  final _GeoBounds? bounds;
+  final Size? size;
+  final String? draggingStationId;
+  final Offset? dragOffset;
 
   MetroMapPainter({
     required this.linea1Stations,
@@ -443,6 +875,11 @@ class MetroMapPainter extends CustomPainter {
     required this.getStationEmoji,
     this.highlightedRoute,
     required this.allStations,
+    this.positionEditor,
+    this.bounds,
+    this.size,
+    this.draggingStationId,
+    this.dragOffset,
   });
 
   @override
@@ -581,7 +1018,31 @@ class MetroMapPainter extends CustomPainter {
 
     for (int i = 0; i < stations.length; i++) {
       final station = stations[i];
-      final point = points[i];
+      var point = points[i];
+      
+      // Si está siendo arrastrada, aplicar el offset del drag
+      if (draggingStationId == station.id && dragOffset != null) {
+        point = point + dragOffset!;
+      }
+      // Usar coordenada editada si existe
+      else if (positionEditor != null && bounds != null && size != null) {
+        final editedPosition = positionEditor!.getPosition(station.id);
+        if (editedPosition != null) {
+          // Convertir GeoPoint editado a coordenadas de canvas
+          const padding = 48.0;
+          final width = size!.width - padding * 2;
+          final height = size!.height - padding * 2;
+          
+          final normalizedLng = (editedPosition.longitude - bounds!.minLng) / bounds!.lngSpan;
+          final normalizedLat = (editedPosition.latitude - bounds!.minLat) / bounds!.latSpan;
+          
+          final x = padding + normalizedLng * width;
+          final y = padding + (1 - normalizedLat) * height;
+          
+          point = Offset(x, y);
+        }
+      }
+      
       final status = stationStatus[station.id] ?? StationStatus.normal;
       final color = getStationColor(status);
       final emoji = getStationEmoji(status);
@@ -685,7 +1146,9 @@ class MetroMapPainter extends CustomPainter {
     return oldDelegate.stationStatus != stationStatus ||
         oldDelegate.nextTrainMinutes != nextTrainMinutes ||
         oldDelegate.line1Points != line1Points ||
-        oldDelegate.line2Points != line2Points;
+        oldDelegate.line2Points != line2Points ||
+        oldDelegate.draggingStationId != draggingStationId ||
+        oldDelegate.dragOffset != dragOffset;
   }
 }
 

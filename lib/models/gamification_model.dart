@@ -24,6 +24,8 @@ enum BadgeType {
   // Badges de eventos panameños
   almaPollera,        // Reportar durante mes patrio
   reyCarnaval,        // Reportar durante carnavales
+  // Badges de enseñanza
+  profesorDelMetro,   // 10+ reportes de enseñanza
 }
 
 class Badge {
@@ -83,6 +85,8 @@ class GamificationStats {
   final List<Badge> badges;
   final DateTime? ultimoReporte;
   final Map<String, int> puntosPorLinea; // Puntos por cada línea
+  final int teachingReportsCount; // Reportes de enseñanza realizados
+  final int teachingScore; // Puntuación para ranking de profesores
 
   GamificationStats({
     this.puntos = 0,
@@ -98,6 +102,8 @@ class GamificationStats {
     List<Badge>? badges,
     this.ultimoReporte,
     Map<String, int>? puntosPorLinea,
+    this.teachingReportsCount = 0,
+    this.teachingScore = 0,
   })  : nivel = nivel ?? LevelService.calculateLevel(0),
         badges = badges ?? [],
         puntosPorLinea = puntosPorLinea ?? {};
@@ -137,6 +143,8 @@ class GamificationStats {
           ? (data['ultimo_reporte'] as Timestamp).toDate()
           : null,
       puntosPorLinea: Map<String, int>.from(data['puntos_por_linea'] ?? {}),
+      teachingReportsCount: data['teaching_reports_count'] ?? 0,
+      teachingScore: data['teaching_score'] ?? 0,
     );
   }
 
@@ -160,6 +168,8 @@ class GamificationStats {
           ? Timestamp.fromDate(ultimoReporte!)
           : null,
       'puntos_por_linea': puntosPorLinea,
+      'teaching_reports_count': teachingReportsCount,
+      'teaching_score': teachingScore,
     };
   }
 

@@ -3,18 +3,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/train_model.dart';
 import '../models/station_model.dart';
 import '../utils/metro_data.dart';
+import 'simulated_time_service.dart';
 
 /// Servicio que simula el movimiento de los trenes a lo largo de las líneas
 class TrainSimulationService {
   final Map<String, double> _trainProgress = {}; // Progreso de cada tren (0.0 a 1.0)
   final Map<String, bool> _trainDirection = {}; // true = avanzando, false = retrocediendo
   final Map<String, List<StationModel>> _lineStations = {};
+  bool _isTestMode = false; // En modo test, los trenes se mueven con tiempo acelerado
+  final SimulatedTimeService _simulatedTime = SimulatedTimeService();
   
   // Intervalo de actualización (1 segundo para movimiento más fluido)
   static const Duration updateInterval = Duration(seconds: 1);
   
   // Velocidad de movimiento más rápida (factor de aumento)
   static const double speedFactor = 0.8; // 80% de la velocidad normal (más suave y visible)
+
+  /// Establece si estamos en modo test
+  void setTestMode(bool isTestMode) {
+    _isTestMode = isTestMode;
+    if (isTestMode) {
+      // En modo test, iniciar tiempo simulado
+      _simulatedTime.start();
+    } else {
+      // Salir de modo test, detener tiempo simulado
+      _simulatedTime.stop();
+    }
+  }
 
   /// Inicializa la simulación con las estaciones
   void initialize(List<StationModel> stations) {
@@ -127,10 +142,23 @@ class TrainSimulationService {
       var progress = _trainProgress[trainId] ?? 0.0;
       final isForward = _trainDirection[trainId] ?? true;
 
-      // Calcular incremento de progreso (más rápido)
-      // Velocidad base aumentada por el factor de velocidad
-      final baseSpeed = (train.velocidad / 100.0) * speedFactor; // Aumentar velocidad
-      final progressIncrement = baseSpeed * (updateInterval.inSeconds / 60.0); // Normalizar por tiempo
+      // Calcular incremento de progreso
+      double baseSpeed;
+      double timeFactor;
+      
+      if (_isTestMode) {
+        // En modo test: 3 segundos reales = 1 minuto simulado
+        // Entonces 1 segundo real = 20 segundos simulados
+        // Para el movimiento, necesitamos acelerar 20x
+        baseSpeed = (train.velocidad / 100.0) * speedFactor;
+        timeFactor = 20.0; // Aceleración 20x (1 segundo real = 20 segundos simulados)
+      } else {
+        // Modo normal
+        baseSpeed = (train.velocidad / 100.0) * speedFactor;
+        timeFactor = 1.0;
+      }
+      
+      final progressIncrement = baseSpeed * (updateInterval.inSeconds / 60.0) * timeFactor;
 
       // Actualizar progreso
       if (isForward) {

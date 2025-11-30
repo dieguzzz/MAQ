@@ -13,6 +13,7 @@ class UserModel {
   final DateTime creadoEn;
   final GeoPoint? ultimaUbicacion;
   final GamificationStats? gamification;
+  final String? appMode; // 'development' o 'test'
 
   UserModel({
     required this.uid,
@@ -25,6 +26,7 @@ class UserModel {
     required this.creadoEn,
     this.ultimaUbicacion,
     this.gamification,
+    this.appMode,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -43,6 +45,7 @@ class UserModel {
           ? GamificationStats.fromFirestore(
               data['gamification'] as Map<String, dynamic>)
           : null,
+      appMode: data['app_mode'] as String?,
     );
   }
 
@@ -58,6 +61,7 @@ class UserModel {
       'creado_en': Timestamp.fromDate(creadoEn),
       'ultima_ubicacion': ultimaUbicacion,
       'gamification': gamification?.toFirestore(),
+      'app_mode': appMode,
     };
   }
 
@@ -72,6 +76,7 @@ class UserModel {
     DateTime? creadoEn,
     GeoPoint? ultimaUbicacion,
     GamificationStats? gamification,
+    String? appMode,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -84,6 +89,7 @@ class UserModel {
       creadoEn: creadoEn ?? this.creadoEn,
       ultimaUbicacion: ultimaUbicacion ?? this.ultimaUbicacion,
       gamification: gamification ?? this.gamification,
+      appMode: appMode ?? this.appMode,
     );
   }
 

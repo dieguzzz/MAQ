@@ -12,6 +12,13 @@ import '../../models/train_model.dart';
 import '../../theme/metro_theme.dart';
 import '../../widgets/station_report_sheet.dart';
 import '../../widgets/enhanced_report_modal.dart';
+import '../../widgets/station_position_editor_modal.dart';
+import '../../services/app_mode_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/station_position_editor_service.dart';
+import '../../services/station_edit_mode_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 
 class MapWidget extends StatefulWidget {
   final List<StationModel>? highlightedRoute;
@@ -29,6 +36,7 @@ class _MapWidgetState extends State<MapWidget> {
   GoogleMapController? _mapController;
   final MapService _mapService = MapService();
   final TrainSimulationService _trainSimulation = TrainSimulationService();
+  final StationPositionEditorService _positionEditor = StationPositionEditorService();
   bool _hasAnimatedInitialCamera = false;
   Position? _lastKnownPosition;
   List<TrainModel> _simulatedTrains = [];
@@ -38,6 +46,7 @@ class _MapWidgetState extends State<MapWidget> {
   List<StationModel>? _previousStations;
   List<TrainModel>? _previousTrains;
   String? _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
+  bool _isTestMode = false;
 
   @override
   void initState() {
@@ -51,6 +60,21 @@ class _MapWidgetState extends State<MapWidget> {
         _startTrainUpdates(metroProvider.trains);
       }
     });
+    
+    // Escuchar cambios en el modo de edición para actualizar marcadores
+    final editModeService = StationEditModeService();
+    editModeService.addListener(_onEditModeChanged);
+  }
+
+  void _onEditModeChanged() {
+    // Cuando cambia el modo de edición, actualizar los marcadores
+    if (mounted) {
+      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      if (metroProvider.stations.isNotEmpty) {
+        print('🔄 Modo edición cambió - actualizando marcadores');
+        _updateStationMarkers(metroProvider.stations);
+      }
+    }
   }
 
   void _startTrainUpdates(List<TrainModel> originalTrains) {
@@ -100,10 +124,57 @@ class _MapWidgetState extends State<MapWidget> {
     // Calcular tiempos estimados basados en la simulación de trenes
     final estimatedTimes = _calculateEstimatedTimes(stations);
     
+    // Aplicar coordenadas editadas a las estaciones antes de crear marcadores
+    final stationsWithEditedPositions = stations.map((station) {
+      final editedPosition = _positionEditor.getPosition(station.id);
+      if (editedPosition != null) {
+        return StationModel(
+          id: station.id,
+          nombre: station.nombre,
+          linea: station.linea,
+          ubicacion: editedPosition,
+          estadoActual: station.estadoActual,
+          aglomeracion: station.aglomeracion,
+          ultimaActualizacion: station.ultimaActualizacion,
+        );
+      }
+      return station;
+    }).toList();
+    
     final markers = await _mapService.createStationMarkers(
-      stations,
-      onStationTap: (station) => _showStationBottomSheet(station),
+      stationsWithEditedPositions,
+      onStationTap: (station) {
+        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        // Si está en modo edición, mostrar coordenadas en lugar del bottom sheet
+        if (editModeService.isEditModeActive) {
+          _showCoordinatesDialog(station);
+        } else {
+          // Encontrar la estación original para pasar al bottom sheet
+          final originalStation = stations.firstWhere((s) => s.id == station.id);
+          _showStationBottomSheet(originalStation);
+        }
+      },
       estimatedTimes: estimatedTimes,
+      draggable: () {
+        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        return editModeService.isEditModeActive;
+      }(), // Hacer arrastrables solo cuando el modo de edición está activo
+      onStationDragEnd: () {
+        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        if (!editModeService.isEditModeActive) return null;
+        return (station, newPosition) {
+          // Cuando se arrastra un marcador en Google Maps, actualizar la posición
+          final newGeoPoint = GeoPoint(newPosition.latitude, newPosition.longitude);
+          print('🧪 Marker drag end: ${station.nombre} -> [${newPosition.latitude}, ${newPosition.longitude}]');
+          _positionEditor.updatePosition(station.id, newGeoPoint);
+          
+          // Notificar al provider para refrescar
+          Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+          
+          // Actualizar los marcadores para reflejar la nueva posición
+          _updateStationMarkers(stations);
+        };
+      }(),
     );
     if (mounted) {
       setState(() {
@@ -403,9 +474,8 @@ class _MapWidgetState extends State<MapWidget> {
               _animateToRoute(widget.highlightedRoute!);
             }
           },
-          onTap: (_) {
-            Navigator.of(context).maybePop();
-          },
+          // Removido onTap para evitar que al tocar fuera cierre la app
+          // Si hay algún modal abierto, el usuario puede cerrarlo tocando fuera del modal
         );
       },
     );
@@ -415,17 +485,19 @@ class _MapWidgetState extends State<MapWidget> {
     final circles = <Circle>{};
 
     for (final station in stations) {
+      // Usar coordenada editada si existe
+      final editedPosition = _positionEditor.getPosition(station.id);
+      final location = editedPosition != null
+          ? LatLng(editedPosition.latitude, editedPosition.longitude)
+          : LatLng(station.ubicacion.latitude, station.ubicacion.longitude);
+      
       final color = _mapService.getStationStateColor(station.estadoActual);
-      final center = LatLng(
-        station.ubicacion.latitude,
-        station.ubicacion.longitude,
-      );
 
       // Círculo principal que indica el estado
       circles.add(
         Circle(
           circleId: CircleId('station_${station.id}'),
-          center: center,
+          center: location,
           radius: _mapService.getStationRadius(station.estadoActual),
           strokeColor: color,
           strokeWidth: 3,
@@ -472,20 +544,25 @@ class _MapWidgetState extends State<MapWidget> {
         if (processedPairs.contains(pairId)) continue;
         processedPairs.add(pairId);
 
+        // Usar coordenadas editadas si existen
+        final stationEdited = _positionEditor.getPosition(station.id);
+        final nearestEdited = _positionEditor.getPosition(nearest.id);
+        
+        final stationPoint = stationEdited != null
+            ? LatLng(stationEdited.latitude, stationEdited.longitude)
+            : LatLng(station.ubicacion.latitude, station.ubicacion.longitude);
+        final nearestPoint = nearestEdited != null
+            ? LatLng(nearestEdited.latitude, nearestEdited.longitude)
+            : LatLng(nearest.ubicacion.latitude, nearest.ubicacion.longitude);
+
         connections.add(
           Polyline(
             polylineId: PolylineId('segment_${station.id}_${nearest.id}'),
             color: MetroColors.grayMedium,
             width: 4,
             points: [
-              LatLng(
-                station.ubicacion.latitude,
-                station.ubicacion.longitude,
-              ),
-              LatLng(
-                nearest.ubicacion.latitude,
-                nearest.ubicacion.longitude,
-              ),
+              stationPoint,
+              nearestPoint,
             ],
           ),
         );
@@ -501,21 +578,109 @@ class _MapWidgetState extends State<MapWidget> {
     return dLat + dLng;
   }
 
+  void _showCoordinatesDialog(StationModel station) {
+    final editedPosition = _positionEditor.getPosition(station.id);
+    final position = editedPosition ?? station.ubicacion;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(station.nombre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Coordenadas:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Latitud: ${position.latitude}'),
+            Text('Longitud: ${position.longitude}'),
+            const SizedBox(height: 8),
+            SelectableText(
+              '[${position.latitude}, ${position.longitude}]',
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+            if (editedPosition != null) ...[
+              const SizedBox(height: 8),
+              const Text(
+                '(Coordenada editada)',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.blue),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(
+                text: '[${position.latitude}, ${position.longitude}]',
+              ));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coordenadas copiadas al portapapeles')),
+                );
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Copiar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showStationBottomSheet(StationModel station) async {
     if (!mounted) return;
     final navigatorContext = context;
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-    final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
     
-    await showModalBottomSheet<void>(
-      context: navigatorContext,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StationReportSheet(
-        station: station,
-        trains: trains.isNotEmpty ? trains : null,
-      ),
-    );
+    // Verificar si estamos en modo test
+    bool isTestMode = false;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    
+    if (user != null) {
+      try {
+        final appModeService = AppModeService();
+        isTestMode = await appModeService.isTestMode(user.uid);
+        
+        if (mounted) {
+          setState(() {
+            _isTestMode = isTestMode;
+          });
+        }
+      } catch (e) {
+        print('Error verificando modo test: $e');
+      }
+    }
+    
+    // En modo test, mostrar modal de edición de coordenadas
+    if (isTestMode) {
+      await showModalBottomSheet<void>(
+        context: navigatorContext,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        isDismissible: true, // Permitir cerrar tocando fuera
+        enableDrag: true, // Permitir arrastrar para cerrar
+        builder: (sheetContext) => StationPositionEditorModal(station: station),
+      );
+    } else {
+      // Modo normal: mostrar bottom sheet de reporte
+      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
+      
+      await showModalBottomSheet<void>(
+        context: navigatorContext,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => StationReportSheet(
+          station: station,
+          trains: trains.isNotEmpty ? trains : null,
+        ),
+      );
+    }
   }
 
   void _maybeAnimateInitialCamera(
@@ -666,6 +831,9 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   void dispose() {
+    // Remover listener del modo de edición
+    final editModeService = StationEditModeService();
+    editModeService.removeListener(_onEditModeChanged);
     _updateTimer?.cancel();
     _trainSimulation.stop();
     _trainSimulation.dispose();

@@ -1,0 +1,214 @@
+<!-- 29a9c73e-8396-46fa-8042-b7275bede76a 3883c938-ee2f-4aff-821c-f1fa12d578d1 -->
+# Sistema de Horarios Base y Reportes de Llegada - Fase 1
+
+## Objetivo
+
+Implementar horarios base predeterminados del metro diferenciados por weekdays/weekends y UI para que usuarios reporten llegadas reales, creando la base de datos necesaria para un futuro algoritmo de aprendizaje automático.
+
+## Priorización por Sprints
+
+### SPRINT 1 (Crítico - 3-4 días): Horarios Base Funcionando
+
+- `schedule_service.dart` - Horarios inteligentes (weekdays/weekends)
+- `time_estimation_service.dart` - Integración con horarios base
+- Validación básica de ubicación
+
+### SPRINT 2 (Crítico - 3-4 días): Reportes de Llegada Básicos
+
+- `learning_report_model.dart` - Modelo de datos
+- `learning_
+
+### To-dos
+
+- [ ] Expandir BadgeType enum con más badges según el plan (25+ logros): precisión 80%, helper 50, influencer 100, línea 1 experto, línea 2 maestro, eventos panameños
+- [ ] Agregar leaderboards especializados: por línea (Línea 1 y Línea 2), semanal, precisión, streak, helpers
+- [ ] Actualizar LeaderboardScreen para incluir selector de tipos de leaderboard y mostrar diferentes rankings
+- [ ] Implementar verificación automática de nuevos badges en GamificationService
+- [ ] Agregar índices de Firestore para leaderboards especializados (puntos por línea, precisión, streak)
+- [ ] Remover imports no usados (scheduler.dart, user_model.dart en confidence_service, firebase_messaging en alert_service, train_simulation_table en custom_metro_map, geolocator y metro_data_provider en enhanced_report_modal)
+- [ ] Remover campos no usados (_tempImageUrl en edit_profile_screen, _firebaseService en accuracy_service y report_validation_service, _firestore en accuracy_service, _orderedStations en custom_metro_map)
+- [ ] Remover variables locales no usadas (userId y gamificationService en quick_report_sheet, tipo y tenMinutesAgo en alert_service)
+- [ ] Corregir use_build_context_synchronously en notification_settings_screen, enhanced_report_modal y quick_report_sheet
+- [ ] Agregar const donde sea posible (prefer_const_constructors y prefer_const_literals_to_create_immutables)
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Expandir BadgeType enum con más badges según el plan (25+ logros): precisión 80%, helper 50, influencer 100, línea 1 experto, línea 2 maestro, eventos panameños
+- [ ] Agregar leaderboards especializados: por línea (Línea 1 y Línea 2), semanal, precisión, streak, helpers
+- [ ] Actualizar LeaderboardScreen para incluir selector de tipos de leaderboard y mostrar diferentes rankings
+- [ ] Implementar verificación automática de nuevos badges en GamificationService
+- [ ] Agregar índices de Firestore para leaderboards especializados (puntos por línea, precisión, streak)
+- [ ] Remover imports no usados (scheduler.dart, user_model.dart en confidence_service, firebase_messaging en alert_service, train_simulation_table en custom_metro_map, geolocator y metro_data_provider en enhanced_report_modal)
+- [ ] Remover campos no usados (_tempImageUrl en edit_profile_screen, _firebaseService en accuracy_service y report_validation_service, _firestore en accuracy_service, _orderedStations en custom_metro_map)
+- [ ] Remover variables locales no usadas (userId y gamificationService en quick_report_sheet, tipo y tenMinutesAgo en alert_service)
+- [ ] Corregir use_build_context_synchronously en notification_settings_screen, enhanced_report_modal y quick_report_sheet
+- [ ] Agregar const donde sea posible (prefer_const_constructors y prefer_const_literals_to_create_immutables)
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Expandir BadgeType enum con más badges según el plan (25+ logros): precisión 80%, helper 50, influencer 100, línea 1 experto, línea 2 maestro, eventos panameños
+- [ ] Agregar leaderboards especializados: por línea (Línea 1 y Línea 2), semanal, precisión, streak, helpers
+- [ ] Actualizar LeaderboardScreen para incluir selector de tipos de leaderboard y mostrar diferentes rankings
+- [ ] Implementar verificación automática de nuevos badges en GamificationService
+- [ ] Agregar índices de Firestore para leaderboards especializados (puntos por línea, precisión, streak)
+- [ ] Remover imports no usados (scheduler.dart, user_model.dart en confidence_service, firebase_messaging en alert_service, train_simulation_table en custom_metro_map, geolocator y metro_data_provider en enhanced_report_modal)
+- [ ] Remover campos no usados (_tempImageUrl en edit_profile_screen, _firebaseService en accuracy_service y report_validation_service, _firestore en accuracy_service, _orderedStations en custom_metro_map)
+- [ ] Remover variables locales no usadas (userId y gamificationService en quick_report_sheet, tipo y tenMinutesAgo en alert_service)
+- [ ] Corregir use_build_context_synchronously en notification_settings_screen, enhanced_report_modal y quick_report_sheet
+- [ ] Agregar const donde sea posible (prefer_const_constructors y prefer_const_literals_to_create_immutables)
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Expandir BadgeType enum con más badges según el plan (25+ logros): precisión 80%, helper 50, influencer 100, línea 1 experto, línea 2 maestro, eventos panameños
+- [ ] Agregar leaderboards especializados: por línea (Línea 1 y Línea 2), semanal, precisión, streak, helpers
+- [ ] Actualizar LeaderboardScreen para incluir selector de tipos de leaderboard y mostrar diferentes rankings
+- [ ] Implementar verificación automática de nuevos badges en GamificationService
+- [ ] Agregar índices de Firestore para leaderboards especializados (puntos por línea, precisión, streak)
+- [ ] Remover imports no usados (scheduler.dart, user_model.dart en confidence_service, firebase_messaging en alert_service, train_simulation_table en custom_metro_map, geolocator y metro_data_provider en enhanced_report_modal)
+- [ ] Remover campos no usados (_tempImageUrl en edit_profile_screen, _firebaseService en accuracy_service y report_validation_service, _firestore en accuracy_service, _orderedStations en custom_metro_map)
+- [ ] Remover variables locales no usadas (userId y gamificationService en quick_report_sheet, tipo y tenMinutesAgo en alert_service)
+- [ ] Corregir use_build_context_synchronously en notification_settings_screen, enhanced_report_modal y quick_report_sheet
+- [ ] Agregar const donde sea posible (prefer_const_constructors y prefer_const_literals_to_create_immutables)
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports
+- [ ] Crear UI para confirmar reportes de otros usuarios (botón de confirmación en reportes)
+- [ ] Implementar cálculo de confidence basado en confirmaciones y reputación del usuario
+- [ ] Implementar verificación automática cuando hay 3+ confirmaciones
+- [ ] Actualizar estado de estación/tren basado en reportes verificados
+- [ ] Crear Cloud Functions para procesamiento en tiempo real de reportes
+- [ ] Implementar notificaciones automáticas cuando se crea un reporte relevante
+- [ ] Implementar sistema de alertas inteligentes para usuarios afectados
+- [ ] Implementar alertas prioritarias para reportes críticos
+- [ ] Implementar sistema de precisión de reportes por usuario
+- [ ] Agregar badges avanzados basados en precisión y contribuciones
+- [ ] Mejoras opcionales: Agregar pull-to-refresh en historial de reportes
+- [ ] Mejoras opcionales: Agregar filtros por estado en historial de reportes
+- [ ] Mejoras opcionales: Agregar búsqueda en historial de reportes
+- [ ] Extender ReportModel con nuevos campos: estadoPrincipal, problemasEspecificos, prioridad, fotoUrl, confidence, verificationStatus, confirmationCount
+- [ ] Crear EnhancedReportModal con header, botones de estado principal, problemas específicos, prioridad y foto opcional
+- [ ] Integrar modal en map_widget.dart y custom_metro_map.dart para abrir al tocar estación/tren
+- [ ] Crear ReportValidationService con validación anti-spam y de ubicación
+- [ ] Actualizar ReportProvider para aceptar nuevos campos y usar validación
+- [ ] Actualizar FirebaseService.createReport para guardar nuevos campos y agregar findSimilarReports

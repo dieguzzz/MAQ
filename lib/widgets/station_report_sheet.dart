@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
+import '../providers/location_provider.dart';
+import '../services/learning_report_service.dart';
+import '../services/time_estimation_service.dart';
+import '../services/schedule_service.dart';
 import 'enhanced_report_modal.dart';
+import 'arrival_confirmation_dialog.dart';
 
 /// Widget que combina la información de la estación y el modal de reporte
 /// Permite deslizar entre las dos vistas
@@ -157,6 +164,8 @@ class StationInfoView extends StatelessWidget {
           _EtaSection(station: station),
           const SizedBox(height: 24),
           _StatusSection(station: station),
+          const SizedBox(height: 24),
+          _ArrivalConfirmationSection(station: station),
           const SizedBox(height: 24),
           _QuickActions(
             station: station,
@@ -549,6 +558,124 @@ class _QuickActionsState extends State<_QuickActions> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Sección para confirmar llegada cuando el usuario está cerca
+class _ArrivalConfirmationSection extends StatelessWidget {
+  const _ArrivalConfirmationSection({required this.station});
+
+  final StationModel station;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<LocationProvider>(
+      builder: (context, locationProvider, child) {
+        if (!locationProvider.hasPermission ||
+            locationProvider.currentPosition == null) {
+          return const SizedBox.shrink();
+        }
+
+        // Calcular distancia a la estación
+        final distance = Geolocator.distanceBetween(
+          locationProvider.currentPosition!.latitude,
+          locationProvider.currentPosition!.longitude,
+          station.ubicacion.latitude,
+          station.ubicacion.longitude,
+        );
+
+        // Mostrar botón solo si está dentro de 500m
+        if (distance > 500) {
+          return const SizedBox.shrink();
+        }
+
+        // Calcular tiempo estimado para mostrar
+        final tiempoEstimado = ScheduleService.getEstimatedArrivalTime(
+          station.id,
+          station.linea,
+          DateTime.now(),
+        );
+
+        final theme = Theme.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Confirmar Llegada',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: MetroColors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: MetroColors.blue.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: MetroColors.blue,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Estás cerca de esta estación',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: MetroColors.blue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '¿Ya llegaste? Confirma tu llegada para ayudar a mejorar las predicciones del sistema.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: MetroColors.grayDark,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) =>
+                              ArrivalConfirmationDialog(
+                            station: station,
+                            tiempoEstimadoMostrado: tiempoEstimado,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Confirmar Llegada'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MetroColors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

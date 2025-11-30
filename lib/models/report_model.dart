@@ -67,6 +67,8 @@ class ReportModel {
   final double confidence; // 0.0-1.0
   final String verificationStatus; // 'pending', 'verified', 'community_verified'
   final int confirmationCount;
+  final int? tiempoEstimadoReportado; // Tiempo estimado reportado por el usuario (en minutos)
+  final bool? tiempoEstimadoValidado; // Si el tiempo reportado es válido según cálculo
 
   ReportModel({
     required this.id,
@@ -86,6 +88,8 @@ class ReportModel {
     this.confidence = 0.5,
     this.verificationStatus = 'pending',
     this.confirmationCount = 0,
+    this.tiempoEstimadoReportado,
+    this.tiempoEstimadoValidado,
   });
 
   factory ReportModel.fromFirestore(DocumentSnapshot doc) {
@@ -108,6 +112,8 @@ class ReportModel {
       confidence: (data['confidence'] ?? 0.5).toDouble(),
       verificationStatus: data['verification_status'] ?? 'pending',
       confirmationCount: data['confirmation_count'] ?? 0,
+      tiempoEstimadoReportado: data['tiempo_estimado_reportado'] as int?,
+      tiempoEstimadoValidado: data['tiempo_estimado_validado'] as bool?,
     );
   }
 
@@ -130,6 +136,8 @@ class ReportModel {
       'confidence': confidence,
       'verification_status': verificationStatus,
       'confirmation_count': confirmationCount,
+      'tiempo_estimado_reportado': tiempoEstimadoReportado,
+      'tiempo_estimado_validado': tiempoEstimadoValidado,
     };
   }
 

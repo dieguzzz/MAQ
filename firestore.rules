@@ -67,6 +67,24 @@ service cloud.firestore {
       allow read: if true; // Todos pueden leer
       allow write: if false; // Solo system (Cloud Functions) puede escribir
     }
+    
+    // Learning Reports collection (para reportes de aprendizaje/enseñanza)
+    match /learning_reports/{reportId} {
+      allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      // Permitir crear si el usuario está autenticado y:
+      // - El usuario_id coincide con el usuario autenticado (con prefijo simulated_ para admin)
+      allow create: if request.auth != null 
+        && (request.resource.data.usuario_id == request.auth.uid
+            || request.resource.data.usuario_id == 'simulated_' + request.auth.uid);
+      allow update: if false; // No permitir actualizar reportes
+      allow delete: if false; // No permitir eliminar reportes
+    }
+    
+    // Model Metrics collection (para métricas del modelo de ML)
+    match /model_metrics/{metricId} {
+      allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      allow write: if request.auth != null; // Usuarios autenticados pueden escribir (para admin/testing)
+    }
   }
 }
 

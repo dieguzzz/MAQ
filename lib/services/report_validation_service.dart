@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/firebase_service.dart';
+import '../services/app_mode_service.dart';
 
 class ReportValidationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -78,10 +79,18 @@ class ReportValidationService {
 
   /// Valida que el usuario esté cerca de la ubicación del reporte
   /// Máximo 1 km de distancia
+  /// En modo Test, siempre retorna true (omite validación)
   bool isValidReportLocation(
     Position? userLocation,
-    GeoPoint targetLocation,
-  ) {
+    GeoPoint targetLocation, {
+    AppMode? appMode,
+  }) {
+    // En modo Test, omitir validación de ubicación
+    if (appMode == AppMode.test) {
+      print('🧪 Modo Test: Omitiendo validación de ubicación');
+      return true;
+    }
+
     if (userLocation == null) {
       return false; // Sin ubicación del usuario
     }
@@ -125,8 +134,9 @@ class ReportValidationService {
     String userId,
     String? objetivoId,
     Position? userLocation,
-    GeoPoint? targetLocation,
-  ) async {
+    GeoPoint? targetLocation, {
+    AppMode? appMode,
+  }) async {
     try {
       final canReport = await canUserReport(userId, objetivoId);
       if (!canReport) {
@@ -160,8 +170,14 @@ class ReportValidationService {
         }
       }
 
+      // En modo Test, omitir validación de ubicación
+      if (appMode == AppMode.test) {
+        print('🧪 Modo Test: Omitiendo validación de ubicación');
+        return null; // Sin errores
+      }
+
       if (userLocation != null && targetLocation != null) {
-        final isValid = isValidReportLocation(userLocation, targetLocation);
+        final isValid = isValidReportLocation(userLocation, targetLocation, appMode: appMode);
         if (!isValid) {
           return 'Debes estar a menos de 1 km de la estación/tren para reportar.';
         }

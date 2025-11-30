@@ -279,6 +279,8 @@ class MapService {
     StationModel station, {
     VoidCallback? onTap,
     int? estimatedMinutes,
+    bool draggable = false,
+    Function(LatLng)? onDragEnd,
   }) async {
     // Usar cache si está disponible
     _stationIcon ??= await _createStationIcon();
@@ -300,6 +302,8 @@ class MapService {
         snippet: snippet,
       ),
       onTap: onTap,
+      draggable: draggable,
+      onDragEnd: onDragEnd != null ? (LatLng newPosition) => onDragEnd(newPosition) : null,
     );
   }
 
@@ -308,6 +312,8 @@ class MapService {
     List<StationModel> stations, {
     Function(StationModel)? onStationTap,
     Map<String, int>? estimatedTimes, // Map<stationId, minutes>
+    bool draggable = false,
+    Function(StationModel, LatLng)? onStationDragEnd,
   }) async {
     final markers = <Marker>[];
     for (var station in stations) {
@@ -317,6 +323,10 @@ class MapService {
           station,
           onTap: onStationTap != null ? () => onStationTap(station) : null,
           estimatedMinutes: estimatedMinutes,
+          draggable: draggable,
+          onDragEnd: onStationDragEnd != null 
+              ? (LatLng newPosition) => onStationDragEnd(station, newPosition)
+              : null,
         ),
       );
     }

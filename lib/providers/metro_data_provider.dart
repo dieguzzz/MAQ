@@ -1,33 +1,78 @@
 import 'package:flutter/foundation.dart';
 import '../services/firebase_service.dart';
+import '../services/app_mode_service.dart';
+import '../services/metro_simulator_service.dart';
+import '../services/station_position_editor_service.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../utils/metro_data.dart';
+import '../providers/auth_provider.dart';
 
 class MetroDataProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
+  final AppModeService _appModeService = AppModeService();
+  final MetroSimulatorService _simulator = MetroSimulatorService();
+  final StationPositionEditorService _positionEditor = StationPositionEditorService();
   
   List<StationModel> _stations = [];
   List<TrainModel> _trains = [];
   bool _isLoading = false;
   String _selectedLinea = 'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
   bool _streamInitialized = false;
+  bool _isTestMode = false;
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
-    // Siempre retornar una nueva lista para que la comparación funcione correctamente
+    
+    // Si el simulador está activo, aplicar estados simulados a las estaciones
+    List<StationModel> stationsToReturn;
     if (_selectedLinea == 'all') {
-      // "Todas las líneas" - retornar todas las estaciones (Línea 1 + Línea 2)
-      final allStations = List<StationModel>.from(_stations);
-      print('🔍 MetroDataProvider: stations getter - selectedLinea=all, retornando ${allStations.length} estaciones (todas)');
-      print('🔍 MetroDataProvider: L1=${allStations.where((s) => s.linea == 'linea1').length}, L2=${allStations.where((s) => s.linea == 'linea2').length}');
-      return allStations;
+      stationsToReturn = List<StationModel>.from(_stations);
     } else {
-      // Filtrar por línea específica
-      final filtered = _stations.where((s) => s.linea == _selectedLinea).toList();
-      print('🔍 MetroDataProvider: stations getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} estaciones');
-      return filtered;
+      stationsToReturn = _stations.where((s) => s.linea == _selectedLinea).toList();
     }
+    
+    // Aplicar estados simulados si el simulador está activo
+    if (_simulator.isActive) {
+      stationsToReturn = stationsToReturn.map((station) {
+        // Obtener estado simulado para esta estación
+        final simulatedStatus = _simulator.getSimulatedStationStatus(station.id);
+        final simulatedAglomeracion = _simulator.getSimulatedAglomeracion(station.id);
+        
+        if (simulatedStatus != null || simulatedAglomeracion != null) {
+          // Crear una copia de la estación con el estado simulado
+          return StationModel(
+            id: station.id,
+            nombre: station.nombre,
+            linea: station.linea,
+            ubicacion: station.ubicacion,
+            estadoActual: simulatedStatus ?? station.estadoActual,
+            aglomeracion: simulatedAglomeracion ?? station.aglomeracion,
+            ultimaActualizacion: DateTime.now(),
+          );
+        }
+        return station;
+      }).toList();
+    }
+    
+    // Aplicar coordenadas editadas si existen
+    stationsToReturn = stationsToReturn.map((station) {
+      final editedPosition = _positionEditor.getPosition(station.id);
+      if (editedPosition != null) {
+        return StationModel(
+          id: station.id,
+          nombre: station.nombre,
+          linea: station.linea,
+          ubicacion: editedPosition,
+          estadoActual: station.estadoActual,
+          aglomeracion: station.aglomeracion,
+          ultimaActualizacion: DateTime.now(),
+        );
+      }
+      return station;
+    }).toList();
+    
+    return stationsToReturn;
   }
   
   List<TrainModel> get trains {
@@ -63,37 +108,83 @@ class MetroDataProvider with ChangeNotifier {
     _init();
   }
 
-  void _init() {
-    // Listen to stations stream
-    _firebaseService.getStationsStream().listen(
-      (stations) {
-        _stations = stations.isNotEmpty ? stations : MetroData.getAllStations();
-        notifyListeners();
-      },
-      onError: (error) {
-        print('Error en stream de estaciones: $error');
-        // Usar datos estáticos como fallback
-        _stations = MetroData.getAllStations();
-        notifyListeners();
-      },
-    );
+  void _init() async {
+    // En modo test, no escuchar streams de Firestore para trenes
+    if (!_isTestMode) {
+      // Listen to stations stream
+      _firebaseService.getStationsStream().listen(
+        (stations) {
+          _stations = stations.isNotEmpty ? stations : MetroData.getAllStations();
+          notifyListeners();
+        },
+        onError: (error) {
+          print('Error en stream de estaciones: $error');
+          // Usar datos estáticos como fallback
+          _stations = MetroData.getAllStations();
+          notifyListeners();
+        },
+      );
 
-    // Listen to trains stream
-    _firebaseService.getTrainsStream().listen(
-      (trains) {
-        _trains =
-            trains.isNotEmpty ? trains : MetroData.getSampleTrains();
-        notifyListeners();
-      },
-      onError: (error) {
-        print('Error en stream de trenes: $error');
-        _trains = MetroData.getSampleTrains();
-        notifyListeners();
-      },
-    );
+      // Listen to trains stream
+      _firebaseService.getTrainsStream().listen(
+        (trains) {
+          _trains =
+              trains.isNotEmpty ? trains : MetroData.getSampleTrains();
+          notifyListeners();
+        },
+        onError: (error) {
+          print('Error en stream de trenes: $error');
+          _trains = MetroData.getSampleTrains();
+          notifyListeners();
+        },
+      );
+    } else {
+      // En modo test, usar solo datos estáticos
+      print('🧪 Modo Test: Usando datos estáticos sin streams de Firestore');
+      _stations = MetroData.getAllStations();
+      _trains = MetroData.getSampleTrains();
+      notifyListeners();
+    }
 
     // Load initial data
     loadData();
+  }
+
+  /// Establece el modo test
+  void setTestMode(bool isTestMode) {
+    if (_isTestMode == isTestMode) return; // Ya está en ese modo
+    
+    _isTestMode = isTestMode;
+    print('🧪 MetroDataProvider: Modo Test ${isTestMode ? "activado" : "desactivado"}');
+    
+    if (isTestMode) {
+      // En modo test, usar solo datos estáticos sin streams
+      _stations = MetroData.getAllStations();
+      _trains = MetroData.getSampleTrains();
+      notifyListeners();
+    } else {
+      // Al salir de modo test, reinicializar streams
+      _streamInitialized = false;
+      _ensureStreamInitialized();
+    }
+  }
+
+  /// Verifica y actualiza el modo test basado en el userId
+  Future<void> checkTestMode(String? userId) async {
+    if (userId == null) {
+      _isTestMode = false;
+      return;
+    }
+    
+    try {
+      final isTest = await _appModeService.isTestMode(userId);
+      if (_isTestMode != isTest) {
+        setTestMode(isTest);
+      }
+    } catch (e) {
+      print('Error verificando modo test: $e');
+      _isTestMode = false;
+    }
   }
 
   Future<void> loadData() async {
@@ -101,16 +192,23 @@ class MetroDataProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _stations = await _firebaseService.getStations();
-      _trains = await _firebaseService.getTrains();
-      if (_trains.isEmpty) {
-        _trains = MetroData.getSampleTrains();
-      }
-      
-      // Si no hay estaciones en Firestore, usar datos estáticos como fallback
-      if (_stations.isEmpty) {
-        print('No hay estaciones en Firestore, usando datos estáticos...');
+      // En modo test, usar solo datos estáticos
+      if (_isTestMode) {
+        print('🧪 Modo Test: Cargando datos estáticos de prueba');
         _stations = MetroData.getAllStations();
+        _trains = MetroData.getSampleTrains();
+      } else {
+        _stations = await _firebaseService.getStations();
+        _trains = await _firebaseService.getTrains();
+        if (_trains.isEmpty) {
+          _trains = MetroData.getSampleTrains();
+        }
+        
+        // Si no hay estaciones en Firestore, usar datos estáticos como fallback
+        if (_stations.isEmpty) {
+          print('No hay estaciones en Firestore, usando datos estáticos...');
+          _stations = MetroData.getAllStations();
+        }
       }
     } catch (e) {
       print('Error loading metro data: $e');

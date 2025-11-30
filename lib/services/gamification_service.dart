@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/gamification_model.dart';
+import '../models/learning_report_model.dart';
+import '../models/user_model.dart';
 import 'accuracy_service.dart';
 import 'level_service.dart';
+import 'schedule_service.dart';
+import 'firebase_service.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -335,6 +339,14 @@ class GamificationService {
           icono: '🎭',
           desbloqueadoEn: DateTime.now(),
         );
+      case BadgeType.profesorDelMetro:
+        return Badge(
+          type: type,
+          nombre: 'Profesor del Metro',
+          descripcion: 'Realizaste 10+ reportes de enseñanza',
+          icono: '🎓',
+          desbloqueadoEn: DateTime.now(),
+        );
     }
   }
 
@@ -469,6 +481,75 @@ class GamificationService {
     } catch (e) {
       print('Error updating rankings: $e');
     }
+  }
+
+  /// Otorga recompensas por reportes de enseñanza
+  /// Puntos base: 15
+  /// Bonus por precisión histórica >80%: +10 puntos
+  /// Bonus por horas críticas: +5 puntos
+  Future<void> rewardTeachingReport(
+      String userId, LearningReportModel report) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+
+      if (!userDoc.exists) return;
+
+      final currentData = userDoc.data()!;
+      final gamification =
+          currentData['gamification'] as Map<String, dynamic>?;
+
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final currentTeachingReportsCount =
+          gamification?['teaching_reports_count'] ?? 0;
+      final currentTeachingScore =
+          gamification?['teaching_score'] ?? 0;
+
+      // Calcular puntos
+      int puntosBase = 15;
+
+      // Bonus por precisión histórica >80%
+      final user = await FirebaseService().getUser(userId);
+      int bonusPrecision = 0;
+      if (user != null && user.precision > 80.0) {
+        bonusPrecision = 10;
+      }
+
+      // Bonus por horas críticas
+      int bonusHoraCritica = 0;
+      if (ScheduleService.isCriticalHour(report.horaLlegadaReal)) {
+        bonusHoraCritica = 5;
+      }
+
+      final totalPuntos =
+          puntosBase + bonusPrecision + bonusHoraCritica;
+      final newPuntos = currentPuntos + totalPuntos;
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+
+      // Incrementar contadores
+      final newTeachingReportsCount = currentTeachingReportsCount + 1;
+      // Teaching score = puntos ganados por reportes de enseñanza
+      final newTeachingScore = currentTeachingScore + totalPuntos;
+
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.teaching_reports_count': newTeachingReportsCount,
+        'gamification.teaching_score': newTeachingScore,
+      });
+
+      // Verificar si otorgar badge "Profesor del Metro"
+      if (newTeachingReportsCount >= 10) {
+        await _awardTeachingBadge(userId);
+      }
+    } catch (e) {
+      print('Error rewarding teaching report: $e');
+    }
+  }
+
+  /// Otorga el badge "Profesor del Metro"
+  Future<void> _awardTeachingBadge(String userId) async {
+    await _awardBadge(userId, BadgeType.profesorDelMetro);
   }
 }
 

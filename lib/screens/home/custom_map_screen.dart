@@ -4,6 +4,7 @@ import '../../providers/metro_data_provider.dart';
 import '../../widgets/custom_metro_map.dart';
 import '../../widgets/enhanced_report_modal.dart';
 import '../../widgets/station_report_sheet.dart';
+import '../../widgets/station_coordinates_log.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 
@@ -45,6 +46,8 @@ class CustomMapScreen extends StatelessWidget {
                   },
                 ),
               ),
+              // Log de coordenadas (solo en modo test)
+              const StationCoordinatesLog(),
               // Leyenda
               _buildLegend(context),
             ],
