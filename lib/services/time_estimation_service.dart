@@ -21,6 +21,7 @@ class TimeEstimationService {
   /// Calcula el tiempo estimado de llegada de un tren a una estación
   /// Combina horario base con cálculo de distancia (promedio ponderado)
   /// Retorna el tiempo en minutos
+  /// Versión síncrona que usa tiempo base sin aprendizaje (para compatibilidad)
   int calculateEstimatedArrivalTime(
     TrainModel train,
     StationModel station, {
@@ -28,12 +29,11 @@ class TimeEstimationService {
   }) {
     final currentTime = DateTime.now();
     
-    // Obtener tiempo base del horario según la hora del día
-    final scheduleBaseTime = ScheduleService.getEstimatedArrivalTime(
+    // Obtener tiempo base del horario según la hora del día (versión síncrona)
+    final scheduleBaseTime = ScheduleService.getEstimatedArrivalTimeSync(
       station.id,
       station.linea,
       currentTime,
-      mlAdjustment: mlAdjustment,
     );
 
     // Calcular tiempo basado en distancia entre tren y estación
@@ -55,6 +55,50 @@ class TimeEstimationService {
     final travelTimeHours = distanceKm / speedKmh;
     
     // Convertir a minutos y agregar tiempo de parada
+    final distanceBasedMinutes = (travelTimeHours * 60).round() + averageStopTimeMinutes.round();
+
+    // Aplicar ajuste ML si se proporciona
+    final adjustedBaseTime = mlAdjustment != null
+        ? (scheduleBaseTime + mlAdjustment).round()
+        : scheduleBaseTime;
+
+    // Combinar horario base (70%) con cálculo de distancia (30%)
+    final combinedTime = (adjustedBaseTime * scheduleWeight + 
+                         distanceBasedMinutes * distanceWeight).round();
+
+    // Asegurar que el tiempo mínimo sea 1 minuto
+    return combinedTime < 1 ? 1 : combinedTime;
+  }
+  
+  /// Versión asíncrona que usa aprendizaje (para uso futuro)
+  Future<int> calculateEstimatedArrivalTimeAsync(
+    TrainModel train,
+    StationModel station, {
+    double? mlAdjustment,
+  }) async {
+    final currentTime = DateTime.now();
+    
+    // Obtener tiempo base con aprendizaje
+    final scheduleBaseTime = await ScheduleService.getEstimatedArrivalTime(
+      station.id,
+      station.linea,
+      currentTime,
+    );
+
+    // Calcular tiempo basado en distancia entre tren y estación
+    final distance = Geolocator.distanceBetween(
+      train.ubicacionActual.latitude,
+      train.ubicacionActual.longitude,
+      station.ubicacion.latitude,
+      station.ubicacion.longitude,
+    );
+
+    // Convertir distancia de metros a kilómetros
+    final distanceKm = distance / 1000.0;
+
+    // Calcular tiempo de viaje basado en velocidad
+    final speedKmh = train.velocidad > 0 ? train.velocidad : averageSpeedKmh;
+    final travelTimeHours = distanceKm / speedKmh;
     final distanceBasedMinutes = (travelTimeHours * 60).round() + averageStopTimeMinutes.round();
 
     // Combinar horario base (70%) con cálculo de distancia (30%)

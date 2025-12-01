@@ -13,6 +13,8 @@ import '../services/storage_service.dart';
 import '../services/ad_session_service.dart';
 import '../services/ad_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/station_learning_service.dart';
+import '../models/learning_data_model.dart';
 import '../theme/metro_theme.dart';
 
 class EnhancedReportModal extends StatefulWidget {
@@ -265,6 +267,33 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
     });
 
     if (reportId != null) {
+      // Si es un reporte de estación con tiempo estimado, procesar aprendizaje
+      if (widget.station != null && tiempoEstimadoReportado != null) {
+        try {
+          final learningService = StationLearningService();
+          final now = DateTime.now();
+          
+          // Crear LearningData para el aprendizaje
+          // Nota: En un caso real, necesitaríamos el tiempo real de llegada del usuario
+          // Por ahora, usamos el tiempo estimado reportado como aproximación
+          final learningData = LearningData(
+            stationId: widget.station!.id,
+            expectedArrival: tiempoEstimadoReportado!,
+            actualArrival: now, // En producción, esto vendría del usuario
+            delayMinutes: 0, // Por ahora 0, se actualizará cuando el usuario reporte llegada real
+            timeContext: TimeContext.fromDateTime(now),
+            confidence: 1.0,
+          );
+          
+          // Procesar aprendizaje (solo si hay datos suficientes)
+          // Por ahora comentado hasta que tengamos datos reales de llegada
+          // await learningService.learnFromReport(learningData);
+        } catch (e) {
+          print('Error procesando aprendizaje: $e');
+          // No bloquear el flujo si falla el aprendizaje
+        }
+      }
+      
       // Incrementar contador de reportes en la sesión
       await AdSessionService.instance.incrementReportCount();
       

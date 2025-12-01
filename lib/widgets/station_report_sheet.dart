@@ -590,90 +590,102 @@ class _ArrivalConfirmationSection extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // Calcular tiempo estimado para mostrar
-        final tiempoEstimado = ScheduleService.getEstimatedArrivalTime(
-          station.id,
-          station.linea,
-          DateTime.now(),
-        );
+        // Calcular tiempo estimado para mostrar (con aprendizaje)
+        return FutureBuilder<int>(
+          future: ScheduleService.getEstimatedArrivalTime(
+            station.id,
+            station.linea,
+            DateTime.now(),
+          ),
+          builder: (context, snapshot) {
+            // Mientras carga, usar tiempo base síncrono
+            final tiempoEstimado = snapshot.hasData
+                ? snapshot.data!
+                : ScheduleService.getEstimatedArrivalTimeSync(
+                    station.id,
+                    station.linea,
+                    DateTime.now(),
+                  );
 
-        final theme = Theme.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Confirmar Llegada',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: MetroColors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: MetroColors.blue.withOpacity(0.3),
-                  width: 1,
+            final theme = Theme.of(context);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Confirmar Llegada',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: MetroColors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: MetroColors.blue.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        color: MetroColors.blue,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Estás cerca de esta estación',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
                             color: MetroColors.blue,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Estás cerca de esta estación',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: MetroColors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '¿Ya llegaste? Confirma tu llegada para ayudar a mejorar las predicciones del sistema.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: MetroColors.grayDark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (dialogContext) =>
+                                  ArrivalConfirmationDialog(
+                                station: station,
+                                tiempoEstimadoMostrado: tiempoEstimado,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Confirmar Llegada'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MetroColors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '¿Ya llegaste? Confirma tu llegada para ayudar a mejorar las predicciones del sistema.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayDark,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (dialogContext) =>
-                              ArrivalConfirmationDialog(
-                            station: station,
-                            tiempoEstimadoMostrado: tiempoEstimado,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Confirmar Llegada'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: MetroColors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         );
       },
     );

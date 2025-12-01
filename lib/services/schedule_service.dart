@@ -1,3 +1,5 @@
+import 'station_learning_service.dart';
+
 /// Enum para identificar el tipo de franja horaria
 enum TimeSlot {
   peak,    // Hora pico
@@ -69,22 +71,45 @@ class ScheduleService {
     return _getBaseTimeForSlot(slot);
   }
 
-  /// Obtiene el tiempo estimado de llegada combinando horario base con ajustes futuros
-  /// Por ahora, solo retorna el horario base
-  /// En futuras fases, se combinará con ajustes de ML
-  static int getEstimatedArrivalTime(
+  /// Obtiene el tiempo estimado de llegada combinando horario base con ajustes de aprendizaje
+  static Future<int> getEstimatedArrivalTime(
     String stationId,
     String linea,
     DateTime currentTime, {
-    double? mlAdjustment, // Ajuste futuro del algoritmo de ML (opcional)
-  }) {
+    double? mlAdjustment, // Ajuste manual del algoritmo de ML (opcional)
+  }) async {
     final baseTime = getBaseScheduleTime(stationId, linea, currentTime);
     
-    // Por ahora, solo retornamos el tiempo base
-    // En futuras fases, se aplicará el ajuste de ML:
-    // return (baseTime + (mlAdjustment ?? 0.0)).round();
+    // Intentar obtener ajuste aprendido si no se proporciona uno manual
+    double learnedAdjustment = mlAdjustment ?? 0.0;
     
-    return baseTime;
+    if (mlAdjustment == null) {
+      try {
+        final learningService = StationLearningService();
+        learnedAdjustment = await learningService.calculateLearnedAdjustment(
+          stationId,
+          currentTime,
+        );
+      } catch (e) {
+        // Si falla el aprendizaje, usar tiempo base sin ajuste
+        print('Error obteniendo ajuste aprendido: $e');
+      }
+    }
+    
+    // Combinar tiempo base con ajuste aprendido
+    final finalTime = (baseTime + learnedAdjustment).round();
+    
+    // Asegurar que el tiempo sea positivo y razonable (mínimo 1 minuto)
+    return finalTime.clamp(1, 30);
+  }
+  
+  /// Versión síncrona para compatibilidad (usa tiempo base sin aprendizaje)
+  static int getEstimatedArrivalTimeSync(
+    String stationId,
+    String linea,
+    DateTime currentTime,
+  ) {
+    return getBaseScheduleTime(stationId, linea, currentTime);
   }
 
   /// Verifica si es hora pico (útil para bonus en gamificación)

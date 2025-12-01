@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/app_mode_service.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import 'station_report_sheet.dart';
@@ -141,59 +139,34 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de estación (1 toque)
   Future<void> _handleStationReport() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.currentUser;
-    if (user == null) return;
-
-    // Verificar si está en modo Test
-    final appModeService = AppModeService();
-    final isTestMode = await appModeService.isTestMode(user.uid);
-
     final userPosition = await _getUserLocation();
-    
-    // En modo Test, permitir reportar sin ubicación válida
-    if (!isTestMode && userPosition == null) {
-      return;
-    }
+    if (userPosition == null) return;
 
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
-    StationModel? nearestStation;
-    
-    if (userPosition != null) {
-      // Buscar estación más cercana
-      nearestStation = _findNearestStation(
-        metroProvider.stations,
-        userPosition.latitude,
-        userPosition.longitude,
-      );
-    }
+    // Buscar estación más cercana
+    final nearestStation = _findNearestStation(
+      metroProvider.stations,
+      userPosition.latitude,
+      userPosition.longitude,
+    );
 
-    // En modo Test, si no hay estación cercana, usar la primera estación disponible
     if (nearestStation == null) {
-      if (isTestMode && metroProvider.stations.isNotEmpty) {
-        nearestStation = metroProvider.stations.first;
-        print('🧪 Modo Test: Usando primera estación disponible: ${nearestStation.nombre}');
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay estaciones cercanas para reportar'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No hay estaciones cercanas para reportar'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
+      return;
     }
-
-    // Verificar que nearestStation no sea null antes de usarlo
-    if (nearestStation == null) return;
 
     // Obtener trenes de la misma línea
     final trains = metroProvider.trains
-        .where((t) => t.linea == nearestStation!.linea)
+        .where((t) => t.linea == nearestStation.linea)
         .toList();
 
     // Abrir StationReportSheet directamente en la página de reporte (página 1) y ampliado al máximo
@@ -203,7 +176,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (sheetContext) => StationReportSheet(
-          station: nearestStation!,
+          station: nearestStation,
           trains: trains.isNotEmpty ? trains : null,
           initialPage: 1, // Empezar directamente en la página de reporte
           initialChildSize: 0.85, // Ampliado al máximo (85% de la pantalla)
@@ -214,51 +187,29 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de tren (2 toques)
   Future<void> _handleTrainReport() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.currentUser;
-    if (user == null) return;
-
-    // Verificar si está en modo Test
-    final appModeService = AppModeService();
-    final isTestMode = await appModeService.isTestMode(user.uid);
-
     final userPosition = await _getUserLocation();
-    
-    // En modo Test, permitir reportar sin ubicación válida
-    if (!isTestMode && userPosition == null) {
-      return;
-    }
+    if (userPosition == null) return;
 
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
-    TrainModel? nearestTrain;
-    
-    if (userPosition != null) {
-      // Buscar tren más cercano
-      nearestTrain = _findNearestTrain(
-        metroProvider.trains,
-        userPosition.latitude,
-        userPosition.longitude,
-      );
-    }
+    // Buscar tren más cercano
+    final nearestTrain = _findNearestTrain(
+      metroProvider.trains,
+      userPosition.latitude,
+      userPosition.longitude,
+    );
 
-    // En modo Test, si no hay tren cercano, usar el primer tren disponible
     if (nearestTrain == null) {
-      if (isTestMode && metroProvider.trains.isNotEmpty) {
-        nearestTrain = metroProvider.trains.first;
-        print('🧪 Modo Test: Usando primer tren disponible: ${nearestTrain.id}');
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay trenes cercanos para reportar'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No hay trenes cercanos para reportar'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
+      return;
     }
 
     // Abrir EnhancedReportModal directamente

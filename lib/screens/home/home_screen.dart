@@ -14,6 +14,7 @@ import '../../services/ad_service.dart';
 import '../../services/ad_session_service.dart';
 import '../reports/report_history_screen.dart';
 import '../admin/learning_admin_panel.dart';
+import '../admin/learning_demo_panel.dart';
 import '../../services/station_edit_mode_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -279,6 +280,42 @@ class _HomeScreenState extends State<HomeScreen> {
                                   SizedBox(width: 4),
                                   Text(
                                     'ADMIN',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LearningDemoPanel(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '📊',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'LEARNING',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
