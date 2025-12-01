@@ -17,6 +17,7 @@ import '../../services/app_mode_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/station_position_editor_service.dart';
 import '../../services/station_edit_mode_service.dart';
+import '../../utils/metro_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
@@ -514,60 +515,199 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Set<Polyline> _createLinePolylines(List<StationModel> stations) {
-    final grouped = <String, List<StationModel>>{};
-    for (final station in stations) {
-      grouped.putIfAbsent(station.linea, () => []).add(station);
+    final connections = <Polyline>{};
+
+    // Obtener estaciones ordenadas según el orden estático
+    final linea1StaticStations = MetroData.getLinea1Stations();
+    final linea2StaticStations = MetroData.getLinea2Stations();
+
+    // Crear mapas de orden para cada línea
+    final linea1OrderMap = <String, int>{};
+    for (int i = 0; i < linea1StaticStations.length; i++) {
+      linea1OrderMap[linea1StaticStations[i].id] = i;
     }
 
-    final connections = <Polyline>{};
-    const double maxDistanceDegrees = 0.03; // ~3km aprox. en Panamá
-    final processedPairs = <String>{};
+    final linea2OrderMap = <String, int>{};
+    for (int i = 0; i < linea2StaticStations.length; i++) {
+      linea2OrderMap[linea2StaticStations[i].id] = i;
+    }
 
-    grouped.forEach((linea, lineStations) {
-      for (final station in lineStations) {
-        StationModel? nearest;
-        double nearestDistance = double.infinity;
+    // Separar estaciones por línea y ordenarlas
+    final linea1Stations = stations.where((s) => s.linea == 'linea1').toList();
+    linea1Stations.sort((a, b) {
+      final orderA = linea1OrderMap[a.id] ?? 999;
+      final orderB = linea1OrderMap[b.id] ?? 999;
+      return orderA.compareTo(orderB);
+    });
 
-        for (final candidate in lineStations) {
-          if (candidate.id == station.id) continue;
-          final distance = _distanceBetween(station, candidate);
-          if (distance < nearestDistance && distance <= maxDistanceDegrees) {
-            nearestDistance = distance;
-            nearest = candidate;
-          }
-        }
+    final linea2MainStations = stations.where((s) => 
+      s.linea == 'linea2' && s.id != 'l2_aeropuerto' && s.id != 'l2_itse'
+    ).toList();
+    linea2MainStations.sort((a, b) {
+      final orderA = linea2OrderMap[a.id] ?? 999;
+      final orderB = linea2OrderMap[b.id] ?? 999;
+      return orderA.compareTo(orderB);
+    });
 
-        if (nearest == null) continue;
+    // Rama del aeropuerto: ITSE y Aeropuerto (Corredor Sur está en la línea principal)
+    // Orden: ITSE → Aeropuerto
+    final linea2AirportStations = [
+      ...stations.where((s) => s.id == 'l2_itse'),
+      ...stations.where((s) => s.id == 'l2_aeropuerto'),
+    ];
 
-        final pairKey = [station.id, nearest.id]..sort();
-        final pairId = pairKey.join('_');
-        if (processedPairs.contains(pairId)) continue;
-        processedPairs.add(pairId);
-
-        // Usar coordenadas editadas si existen
-        final stationEdited = _positionEditor.getPosition(station.id);
-        final nearestEdited = _positionEditor.getPosition(nearest.id);
+    // Dibujar Línea 1 en ROJO
+    if (linea1Stations.length >= 2) {
+      for (int i = 0; i < linea1Stations.length - 1; i++) {
+        final start = linea1Stations[i];
+        final end = linea1Stations[i + 1];
         
-        final stationPoint = stationEdited != null
-            ? LatLng(stationEdited.latitude, stationEdited.longitude)
-            : LatLng(station.ubicacion.latitude, station.ubicacion.longitude);
-        final nearestPoint = nearestEdited != null
-            ? LatLng(nearestEdited.latitude, nearestEdited.longitude)
-            : LatLng(nearest.ubicacion.latitude, nearest.ubicacion.longitude);
+        final startEdited = _positionEditor.getPosition(start.id);
+        final endEdited = _positionEditor.getPosition(end.id);
+        
+        final startPoint = startEdited != null
+            ? LatLng(startEdited.latitude, startEdited.longitude)
+            : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
+        final endPoint = endEdited != null
+            ? LatLng(endEdited.latitude, endEdited.longitude)
+            : LatLng(end.ubicacion.latitude, end.ubicacion.longitude);
 
         connections.add(
           Polyline(
-            polylineId: PolylineId('segment_${station.id}_${nearest.id}'),
-            color: MetroColors.grayMedium,
-            width: 4,
-            points: [
-              stationPoint,
-              nearestPoint,
-            ],
+            polylineId: PolylineId('l1_segment_${start.id}_${end.id}'),
+            color: Colors.red,
+            width: 5,
+            points: [startPoint, endPoint],
           ),
         );
       }
-    });
+    }
+
+    // Dibujar Línea 2 principal en VERDE
+    if (linea2MainStations.length >= 2) {
+      for (int i = 0; i < linea2MainStations.length - 1; i++) {
+        final start = linea2MainStations[i];
+        final end = linea2MainStations[i + 1];
+        
+        final startEdited = _positionEditor.getPosition(start.id);
+        final endEdited = _positionEditor.getPosition(end.id);
+        
+        final startPoint = startEdited != null
+            ? LatLng(startEdited.latitude, startEdited.longitude)
+            : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
+        final endPoint = endEdited != null
+            ? LatLng(endEdited.latitude, endEdited.longitude)
+            : LatLng(end.ubicacion.latitude, end.ubicacion.longitude);
+
+        connections.add(
+          Polyline(
+            polylineId: PolylineId('l2_segment_${start.id}_${end.id}'),
+            color: Colors.green,
+            width: 5,
+            points: [startPoint, endPoint],
+          ),
+        );
+      }
+    }
+
+    // Dibujar rama del aeropuerto: ITSE → Aeropuerto
+    if (linea2AirportStations.length >= 2) {
+      for (int i = 0; i < linea2AirportStations.length - 1; i++) {
+        final start = linea2AirportStations[i];
+        final end = linea2AirportStations[i + 1];
+        
+        final startEdited = _positionEditor.getPosition(start.id);
+        final endEdited = _positionEditor.getPosition(end.id);
+        
+        final startPoint = startEdited != null
+            ? LatLng(startEdited.latitude, startEdited.longitude)
+            : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
+        final endPoint = endEdited != null
+            ? LatLng(endEdited.latitude, endEdited.longitude)
+            : LatLng(end.ubicacion.latitude, end.ubicacion.longitude);
+
+        connections.add(
+          Polyline(
+            polylineId: PolylineId('l2_airport_segment_${start.id}_${end.id}'),
+            color: Colors.green,
+            width: 5,
+            points: [startPoint, endPoint],
+          ),
+        );
+      }
+    }
+    
+    // Dibujar conexión desde Corredor Sur a ITSE
+    StationModel? corredorSur;
+    StationModel? itse;
+    
+    try {
+      corredorSur = linea2MainStations.firstWhere((s) => s.id == 'l2_corredor_sur');
+    } catch (e) {
+      // No encontrado
+    }
+    
+    try {
+      itse = linea2AirportStations.firstWhere((s) => s.id == 'l2_itse');
+    } catch (e) {
+      // No encontrado
+    }
+    
+    if (corredorSur != null && itse != null) {
+      final corredorSurEdited = _positionEditor.getPosition(corredorSur.id);
+      final itseEdited = _positionEditor.getPosition(itse.id);
+      
+      final corredorSurPoint = corredorSurEdited != null
+          ? LatLng(corredorSurEdited.latitude, corredorSurEdited.longitude)
+          : LatLng(corredorSur.ubicacion.latitude, corredorSur.ubicacion.longitude);
+      final itsePoint = itseEdited != null
+          ? LatLng(itseEdited.latitude, itseEdited.longitude)
+          : LatLng(itse.ubicacion.latitude, itse.ubicacion.longitude);
+
+      connections.add(
+        Polyline(
+          polylineId: const PolylineId('l2_corredor_sur_itse'),
+          color: Colors.green,
+          width: 5,
+          points: [corredorSurPoint, itsePoint],
+        ),
+      );
+    }
+
+    // Dibujar interconexión entre L1 y L2 en San Miguelito
+    StationModel? l1SanMiguelito;
+    StationModel? l2SanMiguelito;
+    
+    try {
+      l1SanMiguelito = linea1Stations.firstWhere((s) => s.id == 'l1_san_miguelito');
+    } catch (e) {
+      // Estación no encontrada
+    }
+    
+    // l2_san_miguelito fue eliminado - no hay interconexión en San Miguelito
+    l2SanMiguelito = null;
+
+    // No dibujar interconexión ya que l2_san_miguelito fue eliminado
+    if (false && l1SanMiguelito != null && l2SanMiguelito != null) {
+      final l1Edited = _positionEditor.getPosition(l1SanMiguelito.id);
+      final l2Edited = _positionEditor.getPosition(l2SanMiguelito.id);
+      
+      final l1Point = l1Edited != null
+          ? LatLng(l1Edited.latitude, l1Edited.longitude)
+          : LatLng(l1SanMiguelito.ubicacion.latitude, l1SanMiguelito.ubicacion.longitude);
+      final l2Point = l2Edited != null
+          ? LatLng(l2Edited.latitude, l2Edited.longitude)
+          : LatLng(l2SanMiguelito.ubicacion.latitude, l2SanMiguelito.ubicacion.longitude);
+
+      connections.add(
+        Polyline(
+          polylineId: const PolylineId('interconnection_l1_l2'),
+          color: Colors.orange,
+          width: 4,
+          points: [l1Point, l2Point],
+        ),
+      );
+    }
 
     return connections;
   }

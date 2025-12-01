@@ -114,7 +114,12 @@ class MetroDataProvider with ChangeNotifier {
       // Listen to stations stream
       _firebaseService.getStationsStream().listen(
         (stations) {
-          _stations = stations.isNotEmpty ? stations : MetroData.getAllStations();
+          // Filtrar estaciones duplicadas o incorrectas de San Miguelito
+          final filteredStations = stations.where((s) => 
+            s.id != 'l2_san_miguelito' && 
+            s.id != 'l2_san_miguelito_l1'
+          ).toList();
+          _stations = filteredStations.isNotEmpty ? filteredStations : MetroData.getAllStations();
           notifyListeners();
         },
         onError: (error) {
@@ -203,6 +208,12 @@ class MetroDataProvider with ChangeNotifier {
         if (_trains.isEmpty) {
           _trains = MetroData.getSampleTrains();
         }
+        
+        // Filtrar estaciones duplicadas o incorrectas de San Miguelito
+        _stations = _stations.where((s) => 
+          s.id != 'l2_san_miguelito' && 
+          s.id != 'l2_san_miguelito_l1'
+        ).toList();
         
         // Si no hay estaciones en Firestore, usar datos estáticos como fallback
         if (_stations.isEmpty) {

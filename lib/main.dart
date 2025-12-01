@@ -20,6 +20,7 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
 import 'screens/leaderboards/leaderboard_screen.dart';
 import 'services/firebase_service.dart';
+import 'services/station_update_service.dart';
 import 'utils/metro_data.dart';
 import 'models/station_model.dart';
 import 'theme/metro_theme.dart';
@@ -109,44 +110,26 @@ Future<void> _ensureFirebaseInitialized() async {
 
 Future<void> _initializeStations() async {
   try {
-    print('🚀 Iniciando inicialización de estaciones...');
+    print('🚀 Iniciando inicialización/actualización de estaciones...');
     final firebaseService = FirebaseService();
+    final stationUpdateService = StationUpdateService();
     
-    // Intentar leer estaciones existentes
-    List<StationModel> existingStations = [];
-    try {
-      existingStations = await firebaseService.getStations();
-      print('✅ Estaciones leídas: ${existingStations.length}');
-    } catch (readError) {
-      print('⚠️ Error leyendo estaciones (esto es normal si no existen): $readError');
-      // Si falla la lectura, continuamos para intentar crear
-    }
+    // Usar el servicio de actualización que maneja todo
+    final results = await stationUpdateService.updateAllStations();
     
-    // Solo inicializar si no hay estaciones
-    if (existingStations.isEmpty) {
-      print('📝 No hay estaciones, creando estaciones...');
-      final allStations = MetroData.getAllStations();
-      print('📦 Total de estaciones a crear: ${allStations.length}');
-      
-      final batch = firebaseService.firestore.batch();
-      
-      for (var station in allStations) {
-        final docRef = firebaseService.firestore
-            .collection('stations')
-            .doc(station.id);
-        // Usar set() sin merge para crear el documento (equivalente a create)
-        // Como ya verificamos que no hay estaciones, esto creará nuevos documentos
-        batch.set(docRef, station.toFirestore());
+    print('✅ Actualización completada:');
+    print('   - Actualizadas: ${results['updated']} estaciones');
+    print('   - Creadas: ${results['created']} estaciones');
+    print('   - Eliminadas: ${results['deleted']} estaciones duplicadas');
+    
+    if ((results['errors'] as List).isNotEmpty) {
+      print('⚠️  Errores encontrados:');
+      for (final error in results['errors'] as List) {
+        print('   - $error');
       }
-      
-      print('💾 Guardando estaciones en Firestore...');
-      await batch.commit();
-      print('✅ ¡Estaciones inicializadas en Firestore! Total: ${allStations.length}');
-    } else {
-      print('✅ Ya existen ${existingStations.length} estaciones en Firestore');
     }
   } catch (e, stackTrace) {
-    print('❌ Error inicializando estaciones: $e');
+    print('❌ Error inicializando/actualizando estaciones: $e');
     print('📍 Stack trace: $stackTrace');
   }
 }

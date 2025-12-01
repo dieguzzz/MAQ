@@ -319,9 +319,22 @@ class _CustomMetroMapState extends State<CustomMetroMap>
         final bounds = _GeoBounds.fromStations(stationsWithEditedPositions);
         _currentBounds = bounds;
         
+        // Separar estaciones de la línea principal y la rama del aeropuerto
+        // Corredor Sur está en la línea principal y se conecta con Las Mañanitas e ITSE
+        // La rama del aeropuerto: ITSE y Aeropuerto (Corredor Sur está en la línea principal)
+        final linea2MainStations = linea2Stations.where((s) => 
+          s.id != 'l2_aeropuerto' && s.id != 'l2_itse'
+        ).toList();
+        // La rama del aeropuerto: ITSE y Aeropuerto (se conectan desde Corredor Sur)
+        final linea2AirportBranchStations = [
+          ...linea2Stations.where((s) => s.id == 'l2_itse'),
+          ...linea2Stations.where((s) => s.id == 'l2_aeropuerto'),
+        ];
+        
         // Calcular puntos para las líneas
         var line1Points = _projectStations(linea1Stations, size, bounds);
-        var line2Points = _projectStations(linea2Stations, size, bounds);
+        var line2Points = _projectStations(linea2MainStations, size, bounds);
+        var line2AirportPoints = _projectStations(linea2AirportBranchStations, size, bounds);
         
         // Si hay una estación siendo arrastrada, ajustar su punto en las listas
         if (_draggingStationId != null && _dragOffset != null) {
@@ -353,9 +366,11 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                   size: size,
                   painter: MetroMapPainter(
                     linea1Stations: linea1Stations,
-                    linea2Stations: linea2Stations,
+                    linea2Stations: linea2MainStations,
+                    linea2AirportStations: linea2AirportBranchStations,
                     line1Points: line1Points,
                     line2Points: line2Points,
+                    line2AirportPoints: line2AirportPoints,
                     stationStatus: _stationStatus,
                     nextTrainMinutes: _nextTrainMinutes,
                     getStationColor: _getStationColor,
@@ -373,6 +388,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
               ..._buildTrainWidgets(
                 line1Points: line1Points,
                 line2Points: line2Points,
+                line2AirportPoints: line2AirportPoints,
               ),
               // Overlay invisible para detectar taps en estaciones
               ..._buildStationTapOverlays(
@@ -380,6 +396,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 linea2Stations: linea2Stations,
                 line1Points: line1Points,
                 line2Points: line2Points,
+                line2AirportPoints: line2AirportPoints,
                 size: size,
               ),
             ],
@@ -392,11 +409,13 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   List<Widget> _buildTrainWidgets({
     required List<Offset> line1Points,
     required List<Offset> line2Points,
+    required List<Offset> line2AirportPoints,
   }) {
     final widgets = <Widget>[];
     final pointsByLine = {
       'linea1': line1Points,
       'linea2': line2Points,
+      'linea2_airport': line2AirportPoints,
     };
 
     // Usar trenes simulados si están disponibles, sino usar los originales
@@ -452,6 +471,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     required List<StationModel> linea2Stations,
     required List<Offset> line1Points,
     required List<Offset> line2Points,
+    required List<Offset> line2AirportPoints,
     required Size size,
   }) {
     final widgets = <Widget>[];
@@ -701,10 +721,115 @@ class _CustomMetroMapState extends State<CustomMetroMap>
       );
     }
 
+    // Agregar overlays para estaciones de la rama del aeropuerto (ITSE y Aeropuerto)
+    final linea2AirportStations = linea2Stations.where((s) => 
+      s.id == 'l2_aeropuerto' || s.id == 'l2_itse'
+    ).toList();
+    
+    // Ordenar la rama del aeropuerto: ITSE → Aeropuerto
+    linea2AirportStations.sort((a, b) {
+      final order = {'l2_itse': 0, 'l2_aeropuerto': 1};
+      return (order[a.id] ?? 999).compareTo(order[b.id] ?? 999);
+    });
+    
+    for (int i = 0; i < linea2AirportStations.length && i < line2AirportPoints.length; i++) {
+      final station = linea2AirportStations[i];
+      final basePoint = line2AirportPoints[i];
+      final editedPosition = _positionEditor.getPosition(station.id);
+      
+      final point = editedPosition != null && _currentBounds != null
+          ? _geoPointToCanvas(editedPosition, size, _currentBounds!)
+          : basePoint;
+      
+      final finalPoint = _draggingStationId == station.id && _dragOffset != null
+          ? point + _dragOffset!
+          : point;
+      
+      widgets.add(
+        Positioned(
+          left: finalPoint.dx - tapRadius,
+          top: finalPoint.dy - tapRadius,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: (_draggingStationId == station.id || _hasDragged)
+                ? null
+                : () {
+                    _tapTimer?.cancel();
+                    if (_isTestMode && !_hasDragged) {
+                      _showPositionEditorModal(context, station);
+                    } else if (!_isTestMode && !_hasDragged) {
+                      widget.onStationTap?.call(station);
+                    }
+                  },
+            onPanStart: _isTestMode
+                ? (details) {
+                    _tapTimer?.cancel();
+                    setState(() {
+                      _draggingStationId = station.id;
+                      _dragOffset = Offset.zero;
+                      _hasDragged = false;
+                    });
+                  }
+                : null,
+            onPanUpdate: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id) {
+                      if (details.delta.distance > 5.0) {
+                        _hasDragged = true;
+                      }
+                      setState(() {
+                        _dragOffset = _dragOffset! + details.delta;
+                      });
+                    }
+                  }
+                : null,
+            onPanEnd: _isTestMode
+                ? (details) {
+                    if (_draggingStationId == station.id && _currentBounds != null && _dragOffset != null) {
+                      final newCanvasPoint = point + _dragOffset!;
+                      const padding = 48.0;
+                      final clampedX = newCanvasPoint.dx.clamp(padding, size.width - padding);
+                      final clampedY = newCanvasPoint.dy.clamp(padding, size.height - padding);
+                      final clampedPoint = Offset(clampedX, clampedY);
+                      final newGeoPoint = _canvasToGeoPoint(clampedPoint, size, _currentBounds!);
+                      _positionEditor.updatePosition(station.id, newGeoPoint);
+                      Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+                    }
+                    setState(() {
+                      _draggingStationId = null;
+                      _dragOffset = null;
+                      _hasDragged = false;
+                    });
+                  }
+                : null,
+            child: Consumer<StationEditModeService>(
+              builder: (context, editModeService, child) {
+                final isEditModeActive = editModeService.isEditModeActive;
+                return Container(
+                  width: tapRadius * 2,
+                  height: tapRadius * 2,
+                  decoration: BoxDecoration(
+                    color: isEditModeActive && _draggingStationId == station.id
+                        ? Colors.blue.withOpacity(0.3)
+                        : (isEditModeActive ? Colors.blue.withOpacity(0.1) : Colors.transparent),
+                    shape: BoxShape.circle,
+                    border: isEditModeActive 
+                        ? Border.all(color: Colors.blue.withOpacity(0.5), width: 2)
+                        : null,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
     // Agregar overlays para trenes
     final pointsByLine = {
       'linea1': line1Points,
       'linea2': line2Points,
+      'linea2_airport': line2AirportPoints,
     };
     final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : widget.trains;
     
@@ -850,8 +975,10 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 class MetroMapPainter extends CustomPainter {
   final List<StationModel> linea1Stations;
   final List<StationModel> linea2Stations;
+  final List<StationModel> linea2AirportStations;
   final List<Offset> line1Points;
   final List<Offset> line2Points;
+  final List<Offset> line2AirportPoints;
   final Map<String, StationStatus> stationStatus;
   final Map<String, int> nextTrainMinutes;
   final Color Function(StationStatus) getStationColor;
@@ -867,8 +994,10 @@ class MetroMapPainter extends CustomPainter {
   MetroMapPainter({
     required this.linea1Stations,
     required this.linea2Stations,
+    required this.linea2AirportStations,
     required this.line1Points,
     required this.line2Points,
+    required this.line2AirportPoints,
     required this.stationStatus,
     required this.nextTrainMinutes,
     required this.getStationColor,
@@ -888,18 +1017,20 @@ class MetroMapPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
 
+    // Dibujar Línea 1 en ROJO
     if (linea1Stations.isNotEmpty) {
-      paint.color = Colors.blue;
+      paint.color = Colors.red;
       _drawLine(canvas, paint, line1Points);
       _drawStations(
         canvas,
         paint,
         linea1Stations,
         line1Points,
-        'LÍNEA 1 AZUL',
+        'LÍNEA 1',
       );
     }
 
+    // Dibujar Línea 2 principal en VERDE
     if (linea2Stations.isNotEmpty) {
       paint.color = Colors.green;
       _drawLine(canvas, paint, line2Points);
@@ -908,13 +1039,110 @@ class MetroMapPainter extends CustomPainter {
         paint,
         linea2Stations,
         line2Points,
-        'LÍNEA 2 VERDE',
+        'LÍNEA 2',
       );
     }
+
+    // Dibujar rama del aeropuerto (ITSE → Aeropuerto, desde Corredor Sur)
+    if (linea2AirportStations.isNotEmpty && line2AirportPoints.length >= 2) {
+      paint.color = Colors.green;
+      _drawLine(canvas, paint, line2AirportPoints);
+      _drawStations(
+        canvas,
+        paint,
+        linea2AirportStations,
+        line2AirportPoints,
+        '',
+      );
+      
+      // Dibujar conexión desde Corredor Sur (en línea principal) a ITSE
+      Offset? corredorSurPoint;
+      Offset? itsePoint;
+      
+      // Buscar Corredor Sur en la línea principal (linea2Stations incluye todas las estaciones)
+      for (int i = 0; i < linea2Stations.length; i++) {
+        if (linea2Stations[i].id == 'l2_corredor_sur') {
+          // Buscar el punto correspondiente en line2Points
+          for (int j = 0; j < linea2Stations.length && j < line2Points.length; j++) {
+            if (linea2Stations[j].id == 'l2_corredor_sur') {
+              corredorSurPoint = line2Points[j];
+              break;
+            }
+          }
+          break;
+        }
+      }
+      
+      // Buscar ITSE en la rama del aeropuerto
+      if (linea2AirportStations.isNotEmpty && line2AirportPoints.isNotEmpty) {
+        for (int i = 0; i < linea2AirportStations.length && i < line2AirportPoints.length; i++) {
+          if (linea2AirportStations[i].id == 'l2_itse') {
+            itsePoint = line2AirportPoints[i];
+            break;
+          }
+        }
+      }
+      
+      // Dibujar conexión Corredor Sur → ITSE
+      if (corredorSurPoint != null && itsePoint != null) {
+        paint.color = Colors.green;
+        paint.strokeWidth = 5;
+        final path = Path()
+          ..moveTo(corredorSurPoint.dx, corredorSurPoint.dy)
+          ..lineTo(itsePoint.dx, itsePoint.dy);
+        canvas.drawPath(path, paint);
+      }
+    }
+
+    // Dibujar interconexión entre L1 y L2 en San Miguelito
+    _drawInterconnection(canvas, paint);
 
     // Dibujar ruta resaltada si existe
     if (highlightedRoute != null && highlightedRoute!.isNotEmpty) {
       _drawHighlightedRoute(canvas, paint);
+    }
+  }
+
+  void _drawInterconnection(Canvas canvas, Paint paint) {
+    // Buscar estación San Miguelito en L1
+    Offset? l1SanMiguelitoPoint;
+    for (int i = 0; i < linea1Stations.length && i < line1Points.length; i++) {
+      if (linea1Stations[i].id == 'l1_san_miguelito') {
+        l1SanMiguelitoPoint = line1Points[i];
+        break;
+      }
+    }
+
+    // Buscar estación San Miguelito en L2 (ya no existe, se eliminó)
+    Offset? l2SanMiguelitoPoint;
+    // l2_san_miguelito fue eliminado - no hay interconexión en San Miguelito
+
+    // No dibujar interconexión ya que l2_san_miguelito fue eliminado
+    if (false && l1SanMiguelitoPoint != null && l2SanMiguelitoPoint != null) {
+      paint
+        ..color = Colors.orange
+        ..strokeWidth = 3
+        ..style = PaintingStyle.stroke;
+      
+      final path = Path()
+        ..moveTo(l1SanMiguelitoPoint.dx, l1SanMiguelitoPoint.dy)
+        ..lineTo(l2SanMiguelitoPoint.dx, l2SanMiguelitoPoint.dy);
+      
+      canvas.drawPath(path, paint);
+
+      // Dibujar círculo de interconexión en cada estación
+      paint
+        ..style = PaintingStyle.fill
+        ..color = Colors.orange.withOpacity(0.3);
+      canvas.drawCircle(l1SanMiguelitoPoint, 12, paint);
+      canvas.drawCircle(l2SanMiguelitoPoint, 12, paint);
+
+      paint
+        ..style = PaintingStyle.stroke
+        ..color = Colors.orange
+        ..strokeWidth = 2;
+      canvas.drawCircle(l1SanMiguelitoPoint, 12, paint);
+      canvas.drawCircle(l2SanMiguelitoPoint, 12, paint);
     }
   }
 
@@ -932,6 +1160,11 @@ class MetroMapPainter extends CustomPainter {
     // Mapear estaciones de línea 2
     for (int i = 0; i < linea2Stations.length && i < line2Points.length; i++) {
       stationToPoint[linea2Stations[i].id] = line2Points[i];
+    }
+    
+    // Mapear estaciones de la rama del aeropuerto
+    for (int i = 0; i < linea2AirportStations.length && i < line2AirportPoints.length; i++) {
+      stationToPoint[linea2AirportStations[i].id] = line2AirportPoints[i];
     }
 
     // Dibujar la ruta resaltada
@@ -1147,6 +1380,7 @@ class MetroMapPainter extends CustomPainter {
         oldDelegate.nextTrainMinutes != nextTrainMinutes ||
         oldDelegate.line1Points != line1Points ||
         oldDelegate.line2Points != line2Points ||
+        oldDelegate.line2AirportPoints != line2AirportPoints ||
         oldDelegate.draggingStationId != draggingStationId ||
         oldDelegate.dragOffset != dragOffset;
   }
