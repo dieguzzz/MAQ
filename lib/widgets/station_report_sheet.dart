@@ -7,10 +7,14 @@ import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/report_provider.dart';
 import '../services/learning_report_service.dart';
 import '../services/time_estimation_service.dart';
 import '../services/schedule_service.dart';
+import '../services/firebase_service.dart';
 import '../models/learning_report_model.dart';
+import '../models/report_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'enhanced_report_modal.dart';
 import 'arrival_confirmation_dialog.dart';
 
@@ -374,6 +378,8 @@ class _StatusSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final firebaseService = FirebaseService();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -384,52 +390,167 @@ class _StatusSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Aglomeración',
-                    style: TextStyle(
-                      color: MetroColors.grayDark,
-                      fontWeight: FontWeight.w600,
+        // Mostrar reportes activos de la estación
+        StreamBuilder<List<ReportModel>>(
+          stream: firebaseService.getActiveReportsStream(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
+            
+            // Filtrar reportes de esta estación
+            final stationReports = snapshot.data?.where((report) => 
+              report.tipo == TipoReporte.estacion && 
+              report.objetivoId == station.id
+            ).toList() ?? [];
+            
+            // Obtener el estado más reciente y problemas
+            String estadoPrincipal = 'Normal';
+            List<String> problemas = [];
+            
+            if (stationReports.isNotEmpty) {
+              // Ordenar por fecha (más reciente primero)
+              stationReports.sort((a, b) => b.creadoEn.compareTo(a.creadoEn));
+              final latestReport = stationReports.first;
+              
+              if (latestReport.estadoPrincipal != null && latestReport.estadoPrincipal!.isNotEmpty) {
+                estadoPrincipal = latestReport.estadoPrincipal!;
+              }
+              
+              if (latestReport.problemasEspecificos.isNotEmpty) {
+                problemas = latestReport.problemasEspecificos;
+              }
+            }
+            
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Aglomeración',
+                            style: TextStyle(
+                              color: MetroColors.grayDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          _buildStars(station.aglomeracion),
+                          const SizedBox(height: 4),
+                          Text(
+                            station.getAglomeracionTexto(),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Estado reportado',
+                            style: TextStyle(
+                              color: MetroColors.grayDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            estadoPrincipal,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: _getEstadoColor(estadoPrincipal),
+                            ),
+                          ),
+                          if (stationReports.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '${stationReports.length} reporte${stationReports.length > 1 ? 's' : ''}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: MetroColors.grayMedium,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (problemas.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Problemas activos',
+                        style: TextStyle(
+                          color: MetroColors.grayDark,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: problemas.map((problema) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: MetroColors.energyOrange.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              problema,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ] else if (stationReports.isEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Sin problemas reportados',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: MetroColors.grayMedium,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  _buildStars(station.aglomeracion),
-                  const SizedBox(height: 4),
-                  Text(
-                    station.getAglomeracionTexto(),
-                    style: theme.textTheme.bodySmall,
-                  ),
                 ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Problemas activos',
-                    style: TextStyle(
-                      color: MetroColors.grayDark,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'A/C estable • Sonido OK',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ],
     );
+  }
+
+  Color _getEstadoColor(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'normal':
+        return MetroColors.stateNormal;
+      case 'moderado':
+        return MetroColors.stateModerate;
+      case 'lleno':
+        return MetroColors.stateCritical;
+      case 'retraso':
+        return MetroColors.energyOrange;
+      case 'cerrado':
+        return MetroColors.stateInactive;
+      default:
+        return MetroColors.grayDark;
+    }
   }
 
   Widget _buildStars(int value) {
@@ -741,18 +862,19 @@ class _ArrivalConfirmationSection extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
+        // Validación de distancia deshabilitada - se puede reportar desde cualquier ubicación
         // Calcular distancia a la estación
-        final distance = Geolocator.distanceBetween(
-          locationProvider.currentPosition!.latitude,
-          locationProvider.currentPosition!.longitude,
-          station.ubicacion.latitude,
-          station.ubicacion.longitude,
-        );
+        // final distance = Geolocator.distanceBetween(
+        //   locationProvider.currentPosition!.latitude,
+        //   locationProvider.currentPosition!.longitude,
+        //   station.ubicacion.latitude,
+        //   station.ubicacion.longitude,
+        // );
 
-        // Mostrar botón solo si está dentro de 500m
-        if (distance > 500) {
-          return const SizedBox.shrink();
-        }
+        // Mostrar botón siempre (validación de distancia deshabilitada)
+        // if (distance > 500) {
+        //   return const SizedBox.shrink();
+        // }
 
         // Calcular tiempo estimado para mostrar (con aprendizaje)
         return FutureBuilder<int>(

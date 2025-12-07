@@ -27,6 +27,8 @@ import 'theme/metro_theme.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'services/ad_service.dart';
 import 'services/ad_session_service.dart';
+import 'widgets/dev/floating_dev_window.dart';
+import 'services/dev_service.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -319,7 +321,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         }
       },
       child: Scaffold(
-        body: _screens[_currentIndex],
+        body: Stack(
+          children: [
+            _screens[_currentIndex],
+            // Ventana flotante de desarrollador
+            ValueListenableBuilder<bool>(
+              valueListenable: DevService.devModeNotifier,
+              builder: (context, devModeEnabled, child) {
+                return devModeEnabled ? const FloatingDevWindow() : const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) {

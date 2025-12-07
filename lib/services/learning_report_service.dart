@@ -33,20 +33,20 @@ class LearningReportService {
         orElse: () => throw Exception('Estación no encontrada'),
       );
 
-      // Validar proximidad (si el usuario tiene ubicación)
-      if (user.ultimaUbicacion != null) {
-        final distanceMeters = Geolocator.distanceBetween(
-          user.ultimaUbicacion!.latitude,
-          user.ultimaUbicacion!.longitude,
-          station.ubicacion.latitude,
-          station.ubicacion.longitude,
-        );
+      // Validación de proximidad deshabilitada - se puede reportar desde cualquier ubicación
+      // if (user.ultimaUbicacion != null) {
+      //   final distanceMeters = Geolocator.distanceBetween(
+      //     user.ultimaUbicacion!.latitude,
+      //     user.ultimaUbicacion!.longitude,
+      //     station.ubicacion.latitude,
+      //     station.ubicacion.longitude,
+      //   );
 
-        if (distanceMeters > proximityRadiusMeters) {
-          throw Exception(
-              'Debes estar a menos de ${proximityRadiusMeters}m de la estación para reportar');
-        }
-      }
+      //   if (distanceMeters > proximityRadiusMeters) {
+      //     throw Exception(
+      //         'Debes estar a menos de ${proximityRadiusMeters}m de la estación para reportar');
+      //   }
+      // }
 
       // Calcular calidad del reporte basado en precisión histórica del usuario
       final calidadReporte = _calculateReportQuality(user);
@@ -155,14 +155,16 @@ class LearningReportService {
         return false;
       }
 
-      final distanceMeters = Geolocator.distanceBetween(
-        user.ultimaUbicacion!.latitude,
-        user.ultimaUbicacion!.longitude,
-        station.ubicacion.latitude,
-        station.ubicacion.longitude,
-      );
+      // Validación de proximidad deshabilitada - siempre retorna true
+      // final distanceMeters = Geolocator.distanceBetween(
+      //   user.ultimaUbicacion!.latitude,
+      //   user.ultimaUbicacion!.longitude,
+      //   station.ubicacion.latitude,
+      //   station.ubicacion.longitude,
+      // );
 
-      return distanceMeters <= proximityRadiusMeters;
+      // return distanceMeters <= proximityRadiusMeters;
+      return true; // Siempre permitir reportes sin validar distancia
     } catch (e) {
       print('Error checking proximity: $e');
       return false;

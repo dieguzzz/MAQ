@@ -114,14 +114,20 @@ class _CustomMetroMapState extends State<CustomMetroMap>
         }
       }
       
-      // Iniciar actualizaciones en ambos modos
-      // En modo test, se usará tiempo acelerado
-      _trainSimulation.start();
-      if (isTestMode) {
-        // En modo test, actualizar cada 3 segundos reales (equivalente a 1 minuto simulado)
-        _startTrainUpdates(widget.trains, isTestMode: true);
-      } else {
-        _startTrainUpdates(widget.trains, isTestMode: false);
+      // Animación de trenes deshabilitada - los trenes no se moverán
+      // _trainSimulation.start();
+      // if (isTestMode) {
+      //   // En modo test, actualizar cada 3 segundos reales (equivalente a 1 minuto simulado)
+      //   _startTrainUpdates(widget.trains, isTestMode: true);
+      // } else {
+      //   _startTrainUpdates(widget.trains, isTestMode: false);
+      // }
+      
+      // Usar los trenes originales sin simulación
+      if (mounted) {
+        setState(() {
+          _simulatedTrains = widget.trains;
+        });
       }
     }
   }

@@ -106,19 +106,19 @@ class ReportProvider with ChangeNotifier {
         throw Exception(errorMessage ?? 'No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
       }
 
-      // Validación de ubicación (omitida en modo Test)
-      if (appMode != AppMode.test && userLocation != null) {
-        final isValidLocation = _validationService.isValidReportLocation(
-          userLocation,
-          ubicacion,
-          appMode: appMode,
-        );
-        if (!isValidLocation) {
-          _isLoading = false;
-          notifyListeners();
-          throw Exception('Debes estar a menos de 1 km de la estación/tren para reportar.');
-        }
-      }
+      // Validación de ubicación deshabilitada - se puede reportar desde cualquier ubicación
+      // if (appMode != AppMode.test && userLocation != null) {
+      //   final isValidLocation = _validationService.isValidReportLocation(
+      //     userLocation,
+      //     ubicacion,
+      //     appMode: appMode,
+      //   );
+      //   if (!isValidLocation) {
+      //     _isLoading = false;
+      //     notifyListeners();
+      //     throw Exception('Debes estar a menos de 1 km de la estación/tren para reportar.');
+      //   }
+      // }
 
       final createdAt = DateTime.now();
       

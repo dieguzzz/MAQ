@@ -52,13 +52,21 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void initState() {
     super.initState();
-    // Inicializar simulación cuando el widget se monta
+    // Animación de trenes deshabilitada - los trenes no se moverán
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final metroProvider = context.read<MetroDataProvider>();
       if (metroProvider.stations.isNotEmpty) {
-        _trainSimulation.initialize(metroProvider.stations);
-        _trainSimulation.start();
-        _startTrainUpdates(metroProvider.trains);
+        // _trainSimulation.initialize(metroProvider.stations);
+        // _trainSimulation.start();
+        // _startTrainUpdates(metroProvider.trains);
+        
+        // Usar los trenes originales sin simulación
+        if (mounted) {
+          setState(() {
+            _simulatedTrains = metroProvider.trains;
+          });
+          _updateTrainMarkers(metroProvider.trains);
+        }
       }
     });
     
@@ -79,23 +87,23 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   void _startTrainUpdates(List<TrainModel> originalTrains) {
-    // Actualizar trenes cada 500ms para movimiento más fluido
-    _updateTimer?.cancel();
-    _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
-      if (mounted) {
-        setState(() {
-          _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
-        });
-        // Actualizar marcadores
-        _updateTrainMarkers(_simulatedTrains);
-      }
-    });
-    // Actualización inicial
+    // Animación de trenes deshabilitada - los trenes no se moverán
+    // _updateTimer?.cancel();
+    // _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
+    //   if (mounted) {
+    //     setState(() {
+    //       _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
+    //     });
+    //     // Actualizar marcadores
+    //     _updateTrainMarkers(_simulatedTrains);
+    //   }
+    // });
+    // Actualización inicial - usar trenes originales sin simulación
     if (mounted) {
       setState(() {
-        _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
+        _simulatedTrains = originalTrains;
       });
-      _updateTrainMarkers(_simulatedTrains);
+      _updateTrainMarkers(originalTrains);
     }
   }
 
@@ -283,15 +291,21 @@ class _MapWidgetState extends State<MapWidget> {
             _previousTrains!.length != trains.length ||
             !_listsEqualTrains(_previousTrains!, trains);
 
-        // Inicializar o reinicializar simulación si las estaciones cambiaron
+        // Animación de trenes deshabilitada - los trenes no se moverán
         if (stations.isNotEmpty) {
           if (_simulatedTrains.isEmpty || stationsChanged) {
             // Usar addPostFrameCallback para evitar setState durante build
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                _trainSimulation.initialize(stations);
-                _trainSimulation.start();
-                _startTrainUpdates(trains);
+                // _trainSimulation.initialize(stations);
+                // _trainSimulation.start();
+                // _startTrainUpdates(trains);
+                
+                // Usar los trenes originales sin simulación
+                setState(() {
+                  _simulatedTrains = trains;
+                });
+                _updateTrainMarkers(trains);
               }
             });
           }
@@ -316,14 +330,20 @@ class _MapWidgetState extends State<MapWidget> {
             _previousStations = null;
             _previousTrains = null;
             
-            // Reinicializar simulación con todas las estaciones
+            // Animación de trenes deshabilitada - usar trenes originales sin simulación
             if (stations.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  print('🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
-                  _trainSimulation.initialize(stations);
-                  _trainSimulation.start();
-                  _startTrainUpdates(trains);
+                  print('🔍 MapWidget: Usando trenes originales sin simulación');
+                  // _trainSimulation.initialize(stations);
+                  // _trainSimulation.start();
+                  // _startTrainUpdates(trains);
+                  
+                  // Usar los trenes originales sin simulación
+                  setState(() {
+                    _simulatedTrains = trains;
+                  });
+                  _updateTrainMarkers(trains);
                 }
               });
             }

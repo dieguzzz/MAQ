@@ -16,6 +16,7 @@ import '../reports/report_history_screen.dart';
 import '../admin/learning_admin_panel.dart';
 import '../admin/learning_demo_panel.dart';
 import '../../services/station_edit_mode_service.dart';
+import '../../widgets/dev/secret_dev_activation.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -255,15 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LearningAdminPanel(),
-                                ),
-                              );
-                            },
+                          SecretDevActivation(
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
@@ -273,13 +266,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    '🧪',
-                                    style: TextStyle(fontSize: 16),
+                                  Icon(
+                                    Icons.bug_report,
+                                    size: 16,
+                                    color: Colors.white,
                                   ),
                                   SizedBox(width: 4),
                                   Text(
-                                    'ADMIN',
+                                    'DEV',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
