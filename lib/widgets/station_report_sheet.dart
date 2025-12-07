@@ -6,9 +6,11 @@ import '../models/train_model.dart';
 import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/learning_report_service.dart';
 import '../services/time_estimation_service.dart';
 import '../services/schedule_service.dart';
+import '../models/learning_report_model.dart';
 import 'enhanced_report_modal.dart';
 import 'arrival_confirmation_dialog.dart';
 
@@ -53,7 +55,7 @@ class _StationReportSheetState extends State<StationReportSheet> {
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: widget.initialChildSize ?? 0.45,
+      initialChildSize: widget.initialChildSize ?? 0.75, // Ampliado por defecto
       minChildSize: 0.35,
       maxChildSize: 0.85,
       builder: (context, scrollController) {
@@ -161,18 +163,20 @@ class StationInfoView extends StatelessWidget {
         children: [
           _HeaderSection(station: station),
           const SizedBox(height: 24),
-          _EtaSection(station: station),
-          const SizedBox(height: 24),
-          _StatusSection(station: station),
-          const SizedBox(height: 24),
-          _ArrivalConfirmationSection(station: station),
-          const SizedBox(height: 24),
+          // Acciones rápidas primero
           _QuickActions(
             station: station,
             trains: trains,
             onReportStation: onReportPressed,
             onReportTrain: onReportTrain,
+            scrollController: scrollController,
           ),
+          const SizedBox(height: 24),
+          _EtaSection(station: station),
+          const SizedBox(height: 24),
+          _StatusSection(station: station),
+          const SizedBox(height: 24),
+          _ArrivalConfirmationSection(station: station),
         ],
       ),
     );
@@ -442,69 +446,188 @@ class _StatusSection extends StatelessWidget {
   }
 }
 
-/// Acciones rápidas con botón de reportar (solo icono)
+/// Acciones rápidas con dos botones: tiempo de pantalla y reporte de estación
 class _QuickActions extends StatefulWidget {
   const _QuickActions({
     required this.station,
     this.trains,
     this.onReportStation,
     this.onReportTrain,
+    this.scrollController,
   });
 
   final StationModel station;
   final List<TrainModel>? trains;
   final VoidCallback? onReportStation;
   final Function(TrainModel)? onReportTrain;
+  final ScrollController? scrollController;
 
   @override
   State<_QuickActions> createState() => _QuickActionsState();
 }
 
 class _QuickActionsState extends State<_QuickActions> {
-  DateTime? _lastTap;
-  static const Duration _doubleTapDelay = Duration(milliseconds: 400);
-
-  void _handleTap() {
-    final now = DateTime.now();
+  Future<void> _showTimeReportDialog() async {
+    final timeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final learningService = LearningReportService();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    if (_lastTap == null) {
-      // Primer tap
-      _lastTap = now;
-      Future.delayed(_doubleTapDelay, () {
-        if (mounted && _lastTap != null && DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
-          // Solo un tap - reporte de estación
-          _lastTap = null;
-          widget.onReportStation?.call();
-        }
-      });
-    } else {
-      // Segundo tap dentro del delay
-      if (now.difference(_lastTap!) < _doubleTapDelay) {
-        // Doble tap - reporte de tren
-        _lastTap = null;
-        // Buscar el tren más cercano de la misma línea
-        if (widget.trains != null && widget.trains!.isNotEmpty) {
-          final nearestTrain = widget.trains!.first;
-          widget.onReportTrain?.call(nearestTrain);
-        } else {
-          // Si no hay trenes, mostrar mensaje
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay trenes disponibles para reportar'),
-              duration: Duration(seconds: 2),
+    if (authProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes iniciar sesión para reportar'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.schedule, color: MetroColors.blue),
+            SizedBox(width: 8),
+            Text('Reportar Tiempo de Pantalla'),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '¿Cuántos minutos muestra la pantalla de la estación?',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: timeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Minutos',
+                  hintText: 'Ej: 5',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.timer),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingresa el tiempo';
+                  }
+                  final time = int.tryParse(value);
+                  if (time == null) {
+                    return 'Debe ser un número';
+                  }
+                  if (time < 1 || time > 30) {
+                    return 'Debe estar entre 1 y 30 minutos';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(dialogContext).pop(true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetroColors.blue,
+              foregroundColor: Colors.white,
             ),
-          );
-        }
-      } else {
-        // Taps muy separados, tratar como tap simple
-        _lastTap = now;
-        Future.delayed(_doubleTapDelay, () {
-          if (mounted && _lastTap != null && DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
-            _lastTap = null;
-            widget.onReportStation?.call();
-          }
-        });
+            child: const Text('Reportar'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != true) {
+      timeController.dispose();
+      return;
+    }
+
+    final timeValue = int.tryParse(timeController.text);
+    if (timeValue == null || timeValue < 1 || timeValue > 30) {
+      timeController.dispose();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tiempo inválido'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+      return;
+    }
+
+    // Mostrar indicador de carga
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (loadingContext) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      final now = DateTime.now();
+      final report = LearningReportModel(
+        id: '', // Se generará al guardar
+        usuarioId: authProvider.currentUser!.uid,
+        estacionId: widget.station.id,
+        linea: widget.station.linea,
+        horaLlegadaReal: now,
+        tiempoEstimadoMostrado: timeValue,
+        retrasoMinutos: 0, // Se actualizará cuando el usuario confirme llegada real
+        llegadaATiempo: true, // Inicial
+        creadoEn: now,
+        calidadReporte: 1.0, // Reportes de pantalla tienen calidad máxima
+      );
+
+      await learningService.createLearningReport(report);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Cerrar diálogo de carga
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('¡Tiempo reportado exitosamente!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Cerrar diálogo de carga
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al reportar: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      timeController.dispose();
     }
   }
 
@@ -519,45 +642,86 @@ class _QuickActionsState extends State<_QuickActions> {
                 fontWeight: FontWeight.w600,
               ),
         ),
-        const SizedBox(height: 12),
-        // Botón de reportar solo con icono
-        Center(
-          child: GestureDetector(
-            onTap: _handleTap,
+        const SizedBox(height: 16),
+        // Dos botones: tiempo de pantalla y reporte de estación
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Botón 1: Reportar tiempo de pantalla (PRIMERO)
+            _buildActionButton(
+              icon: Icons.schedule,
+              label: 'Reportar tiempo',
+              subtitle: 'Tiempo de pantalla',
+              color: MetroColors.blue,
+              onTap: _showTimeReportDialog,
+            ),
+            // Botón 2: Reportar estación
+            _buildActionButton(
+              icon: Icons.campaign_outlined,
+              label: 'Reportar estación',
+              subtitle: 'Estado y problemas',
+              color: MetroColors.blue,
+              onTap: () => widget.onReportStation?.call(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: onTap,
             child: Container(
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: MetroColors.blue,
+                color: color,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: MetroColors.blue.withValues(alpha: 0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.campaign_outlined,
+              child: Icon(
+                icon,
                 color: Colors.white,
                 size: 32,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        // Texto de ayuda
-        Center(
-          child: Text(
-            'Toca para reportar estación\nToca dos veces para reportar tren',
+          const SizedBox(height: 8),
+          Text(
+            label,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: MetroColors.grayDark,
+                  fontWeight: FontWeight.w600,
                 ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: MetroColors.grayDark,
+                  fontSize: 11,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

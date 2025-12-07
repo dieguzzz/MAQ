@@ -14,7 +14,9 @@ import '../services/ad_session_service.dart';
 import '../services/ad_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/station_learning_service.dart';
+import '../services/learning_report_service.dart';
 import '../models/learning_data_model.dart';
+import '../models/learning_report_model.dart';
 import '../theme/metro_theme.dart';
 
 class EnhancedReportModal extends StatefulWidget {
@@ -395,6 +397,9 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
                       // Problemas específicos
                       _buildProblemasEspecificos(),
                       const SizedBox(height: 16),
+                      // Reportar tiempo de pantalla
+                      _buildTimeReportSection(),
+                      const SizedBox(height: 16),
                       // Prioridad
                       _buildPrioridadOption(),
                       const SizedBox(height: 16),
@@ -569,6 +574,241 @@ class _EnhancedReportModalState extends State<EnhancedReportModal>
         ),
       ],
     );
+  }
+
+  Widget _buildTimeReportSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MetroColors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: MetroColors.blue.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.schedule,
+                color: MetroColors.blue,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Reportar Tiempo de Pantalla',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: MetroColors.grayDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '¿Cuántos minutos muestra la pantalla de la estación? Esto ayuda a mejorar las predicciones.',
+            style: TextStyle(
+              fontSize: 13,
+              color: MetroColors.grayDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _showTimeReportDialog,
+              icon: const Icon(Icons.timer_outlined),
+              label: const Text('Reportar Tiempo'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: MetroColors.blue,
+                side: BorderSide(color: MetroColors.blue),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showTimeReportDialog() async {
+    final timeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final learningService = LearningReportService();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    if (authProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes iniciar sesión para reportar'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (widget.station == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Solo se puede reportar tiempo para estaciones'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.schedule, color: MetroColors.blue),
+            SizedBox(width: 8),
+            Text('Reportar Tiempo de Pantalla'),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '¿Cuántos minutos muestra la pantalla de la estación?',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: timeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Minutos',
+                  hintText: 'Ej: 5',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.timer),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingresa el tiempo';
+                  }
+                  final time = int.tryParse(value);
+                  if (time == null) {
+                    return 'Debe ser un número';
+                  }
+                  if (time < 1 || time > 30) {
+                    return 'Debe estar entre 1 y 30 minutos';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(dialogContext).pop(true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetroColors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reportar'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != true) {
+      timeController.dispose();
+      return;
+    }
+
+    final timeValue = int.tryParse(timeController.text);
+    if (timeValue == null || timeValue < 1 || timeValue > 30) {
+      timeController.dispose();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tiempo inválido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Mostrar indicador de carga
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (loadingContext) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      final now = DateTime.now();
+      final report = LearningReportModel(
+        id: '', // Se generará al guardar
+        usuarioId: authProvider.currentUser!.uid,
+        estacionId: widget.station!.id,
+        linea: widget.station!.linea,
+        horaLlegadaReal: now,
+        tiempoEstimadoMostrado: timeValue,
+        retrasoMinutos: 0, // Se actualizará cuando el usuario confirme llegada real
+        llegadaATiempo: true, // Inicial
+        creadoEn: now,
+        calidadReporte: 1.0, // Reportes de pantalla tienen calidad máxima
+      );
+
+      await learningService.createLearningReport(report);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Cerrar diálogo de carga
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('¡Tiempo reportado exitosamente!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Cerrar diálogo de carga
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al reportar: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      timeController.dispose();
+    }
   }
 
   Widget _buildPrioridadOption() {
