@@ -72,35 +72,30 @@ firebase deploy --only firestore:rules
 
 ## 🔐 Solución de Producción (Segura)
 
-### Opción 3: Autenticación con Email/Password en Dashboard
+### Opción 3: Autenticación con Email/Password en Dashboard ✅ IMPLEMENTADO
 
-1. **Habilitar Email/Password en Firebase Console**
-2. **Agregar login al dashboard:**
+**El dashboard ya incluye autenticación con Email/Password.**
 
-```javascript
-// En index.html, agregar antes de cargar datos:
-async function loginDashboard() {
-    const email = prompt('Email de administrador:');
-    const password = prompt('Contraseña:');
-    
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        console.log('Login exitoso');
-        return true;
-    } catch (error) {
-        alert('Error de autenticación: ' + error.message);
-        return false;
-    }
-}
+1. **Habilitar Email/Password en Firebase Console:**
+   - Ve a Firebase Console → Authentication
+   - Habilita "Email/Password" como método de autenticación
 
-// Llamar antes de refreshAll()
-await loginDashboard();
-```
-
-3. **Crear usuario administrador:**
+2. **Crear usuario administrador:**
    - Firebase Console → Authentication → Agregar usuario
-   - Email: admin@metropty.com
-   - Password: [tu contraseña]
+   - Email: admin@metropty.com (o el que prefieras)
+   - Password: [tu contraseña segura]
+
+3. **Usar el login en el dashboard:**
+   - El dashboard intentará autenticación anónima automáticamente
+   - Si necesitas más permisos, haz clic en el botón "Login Admin" en el header
+   - Ingresa tu email y contraseña de administrador
+   - El estado de autenticación se muestra en el header del dashboard
+
+**Funciones implementadas:**
+- ✅ `loginDashboard()`: Login con email/password
+- ✅ `logoutDashboard()`: Cerrar sesión
+- ✅ Indicador visual de estado de autenticación
+- ✅ Botones de login/logout en el header
 
 ---
 
