@@ -1,0 +1,466 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../models/station_model.dart';
+import '../../services/enhanced_report_service.dart';
+import '../../providers/location_provider.dart';
+import '../../services/gamification_service.dart';
+
+/// Flujo de reporte de estación (2 pasos)
+class StationReportFlowScreen extends StatefulWidget {
+  final StationModel station;
+
+  const StationReportFlowScreen({
+    super.key,
+    required this.station,
+  });
+
+  @override
+  State<StationReportFlowScreen> createState() => _StationReportFlowScreenState();
+}
+
+class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
+  int _currentStep = 0;
+  
+  // Paso 1: Información básica
+  String? _operational; // 'yes' | 'partial' | 'no'
+  int? _crowdLevel; // 1-5
+  
+  // Paso 2: Problemas específicos
+  final Set<String> _selectedIssues = {};
+  
+  final EnhancedReportService _reportService = EnhancedReportService();
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('REPORTAR: ${widget.station.nombre}'),
+        subtitle: Text('${_currentStep + 1} de 2'),
+      ),
+      body: _currentStep == 0 ? _buildStep1() : _buildStep2(),
+    );
+  }
+
+  Widget _buildStep1() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '1. ¿La estación está operativa?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildOptionCard(
+            value: 'yes',
+            icon: Icons.check_circle,
+            iconColor: Colors.green,
+            title: '✅ SÍ - Todo funciona',
+            isSelected: _operational == 'yes',
+            onTap: () => setState(() => _operational = 'yes'),
+          ),
+          const SizedBox(height: 12),
+          _buildOptionCard(
+            value: 'partial',
+            icon: Icons.warning,
+            iconColor: Colors.orange,
+            title: '⚠️ PARCIAL - Algo falla',
+            isSelected: _operational == 'partial',
+            onTap: () => setState(() => _operational = 'partial'),
+          ),
+          const SizedBox(height: 12),
+          _buildOptionCard(
+            value: 'no',
+            icon: Icons.cancel,
+            iconColor: Colors.red,
+            title: '🚫 NO - Cerrada / grave',
+            isSelected: _operational == 'no',
+            onTap: () => setState(() => _operational = 'no'),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          const Text(
+            '2. ¿Qué tan llena está?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildCrowdOption(1, '🟢 BAJA', 'Cómodo moverse', Colors.green),
+          const SizedBox(height: 12),
+          _buildCrowdOption(2, '🟡 MODERADA', 'Algo llena', Colors.orange),
+          const SizedBox(height: 12),
+          _buildCrowdOption(3, '🟠 LLENA', 'Difícil moverse', Colors.deepOrange),
+          const SizedBox(height: 12),
+          _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
+          const SizedBox(height: 12),
+          _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
+          
+          const SizedBox(height: 32),
+          
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _canContinueStep1() ? _goToStep2 : null,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.blue,
+              ),
+              child: const Text(
+                'CONTINUAR',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.stars, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Ganas: +15 puntos'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep2() {
+    final issues = [
+      {'id': 'recharge', 'icon': '🎫', 'title': 'MÁQUINA RECARGA'},
+      {'id': 'atm', 'icon': '💵', 'title': 'CAJERO / EFECTIVO'},
+      {'id': 'ac', 'icon': '❄️', 'title': 'AIRE ACONDICIONADO'},
+      {'id': 'escalator', 'icon': '⬆️', 'title': 'ESCALERAS ELÉCTRICAS'},
+      {'id': 'elevator', 'icon': '♿', 'title': 'ELEVADOR / ACCESIBILIDAD'},
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'DETALLES (OPCIONAL)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Selecciona problemas visibles:',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          
+          ...issues.map((issue) => _buildIssueCheckbox(
+            issue['id']!,
+            issue['icon']!,
+            issue['title']!,
+          )),
+          
+          const SizedBox(height: 32),
+          
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _goToStep1,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('OMITIR'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitReport,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('ENVIAR'),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          if (_selectedIssues.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '+${_selectedIssues.length * 5} puntos por problemas reportados',
+                style: const TextStyle(color: Colors.blue),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionCard({
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: isSelected ? 4 : 1,
+      color: isSelected ? iconColor.withOpacity(0.1) : null,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 32),
+              const SizedBox(width: 16),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+    final isSelected = _crowdLevel == level;
+    return Card(
+      elevation: isSelected ? 4 : 1,
+      color: isSelected ? color.withOpacity(0.1) : null,
+      child: InkWell(
+        onTap: () => setState(() => _crowdLevel = level),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$emoji $subtitle',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIssueCheckbox(String id, String icon, String title) {
+    final isSelected = _selectedIssues.contains(id);
+    return CheckboxListTile(
+      value: isSelected,
+      onChanged: (value) {
+        setState(() {
+          if (value == true) {
+            _selectedIssues.add(id);
+          } else {
+            _selectedIssues.remove(id);
+          }
+        });
+      },
+      title: Text('$icon $title'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    );
+  }
+
+  bool _canContinueStep1() {
+    return _operational != null && _crowdLevel != null;
+  }
+
+  void _goToStep1() {
+    setState(() => _currentStep = 0);
+  }
+
+  void _goToStep2() {
+    setState(() => _currentStep = 1);
+  }
+
+  Future<void> _submitReport() async {
+    if (!_canContinueStep1()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final position = locationProvider.currentPosition;
+      
+      if (position == null) {
+        throw Exception('Ubicación no disponible');
+      }
+
+      final geoPoint = GeoPoint(position.latitude, position.longitude);
+      final accuracy = position.accuracy;
+
+      final reportId = await _reportService.createStationReport(
+        stationId: widget.station.id,
+        operational: _operational!,
+        crowdLevel: _crowdLevel!,
+        issues: _selectedIssues.toList(),
+        userLocation: geoPoint,
+        accuracy: accuracy,
+      );
+
+      if (!mounted) return;
+
+      // Mostrar pantalla de éxito
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReportSuccessScreen(
+            reportId: reportId,
+            station: widget.station,
+            points: 15 + (_selectedIssues.length * 5),
+            issuesCount: _selectedIssues.length,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+}
+
+/// Pantalla de éxito después de enviar reporte
+class ReportSuccessScreen extends StatelessWidget {
+  final String reportId;
+  final StationModel station;
+  final int points;
+  final int issuesCount;
+
+  const ReportSuccessScreen({
+    super.key,
+    required this.reportId,
+    required this.station,
+    required this.points,
+    required this.issuesCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle, size: 80, color: Colors.green),
+              const SizedBox(height: 24),
+              const Text(
+                '🎉 ¡REPORTE ENVIADO!',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Has mejorado la información de\n${station.nombre} para:',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              _buildInfoRow('👥', '47 usuarios cercanos'),
+              _buildInfoRow('📊', 'Subió confianza de MEDIA a ALTA'),
+              _buildInfoRow('⏰', 'Próxima actualización: 2 min'),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Puntos ganados:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('✅ Reporte básico: +15'),
+                    if (issuesCount > 0)
+                      Text('✅ $issuesCount problemas: +${issuesCount * 5}'),
+                    const SizedBox(height: 8),
+                    Text(
+                      '🏆 Total: +$points puntos',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  child: const Text('VER EN MAPA'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 8),
+          Text(text),
+        ],
+      ),
+    );
+  }
+}
