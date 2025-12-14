@@ -111,29 +111,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _lastGpsStatus = status.isGpsEnabled;
     _lastPermissionStatus = status.hasPermission;
     
-    // Verificar si ya se mostró el diálogo antes
     final prefs = await SharedPreferences.getInstance();
-    final hasShownDialog = prefs.getBool(_locationDialogShownKey) ?? false;
+    final hasShownNotification = prefs.getBool(_locationDialogShownKey) ?? false;
     
-    // Mostrar diálogo si:
-    // 1. Es la primera vez (no se ha mostrado antes) O
-    // 2. El GPS está desactivado O
-    // 3. No hay permisos
-    if (!hasShownDialog || !status.isGpsEnabled || !status.hasPermission) {
+    // Solo mostrar notificación si YA rechazó los permisos permanentemente
+    // NO pedir permisos aquí - eso se hace en el onboarding
+    if (status.permission == LocationPermission.deniedForever && !hasShownNotification) {
       if (mounted) {
-        final result = await LocationPermissionDialog.show(
-          context,
-          isGpsEnabled: status.isGpsEnabled,
-          hasPermission: status.hasPermission,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('💡 La ubicación ayuda a mejorar los reportes'),
+            action: SnackBarAction(
+              label: 'Configurar',
+              onPressed: () {
+                // TODO: Abrir configuración del sistema
+                // Geolocator.openLocationSettings();
+              },
+            ),
+            duration: const Duration(seconds: 4),
+          ),
         );
-        
-        // Guardar que se mostró el diálogo
         await prefs.setBool(_locationDialogShownKey, true);
-        
-        // Si el usuario acepta, intentar obtener la ubicación
-        if (result == true && mounted) {
-          await locationProvider.getCurrentLocation();
-        }
       }
     }
     
