@@ -673,10 +673,10 @@ exports.onReportCreated = functions.firestore
       
       if (report.scope === 'station') {
         basePoints = 15; // Reporte de estación básico
-        bonusPoints = (report.stationData?.issues?.length || 0) * 5;
+        bonusPoints = (report.stationIssues?.length || 0) * 5;
       } else if (report.scope === 'train') {
         basePoints = 20; // Reporte de tren básico
-        bonusPoints = report.trainData?.etaBucket !== 'unknown' ? 10 : 0;
+        bonusPoints = report.etaBucket && report.etaBucket !== 'unknown' ? 10 : 0;
       }
       
       // 2. Actualizar reporte con puntos
@@ -688,7 +688,7 @@ exports.onReportCreated = functions.firestore
       });
       
       // 3. Si es reporte de tren con ETA, programar validación
-      if (report.scope === 'train' && report.trainData?.etaBucket !== 'unknown') {
+      if (report.scope === 'train' && report.etaBucket && report.etaBucket !== 'unknown') {
         await scheduleETAValidation(reportId, report);
       }
       
@@ -719,7 +719,7 @@ async function scheduleETAValidation(reportId, report) {
     '10+': { waitMinutes: 8, windowMinutes: 15 }
   };
   
-  const config = timingConfig[report.trainData.etaBucket];
+  const config = timingConfig[report.etaBucket];
   if (!config) return;
   
   // Calcular hora esperada de llegada
@@ -728,12 +728,12 @@ async function scheduleETAValidation(reportId, report) {
   const expectedArrival = new Date(now.toDate().getTime() + (waitSeconds * 1000));
   const windowEnd = new Date(expectedArrival.getTime() + (config.windowMinutes * 60000));
   
-  // Actualizar reporte con información de validación
+  // Actualizar reporte con información de validación (modelo simplificado)
   await db.collection('reports').doc(reportId).update({
-    'trainData.etaExpectedAt': admin.firestore.Timestamp.fromDate(expectedArrival),
-    'trainData.needsValidation': true,
-    'trainData.validationStatus': 'pending',
-    'trainData.validationWindowEnd': admin.firestore.Timestamp.fromDate(windowEnd)
+    'etaExpectedAt': admin.firestore.Timestamp.fromDate(expectedArrival),
+    'validationWindowEnd': admin.firestore.Timestamp.fromDate(windowEnd),
+    'needsValidation': true,
+    'validationStatus': 'pending'
   });
   
   console.log(`Validation scheduled for report ${reportId} at ${expectedArrival}`);
@@ -772,7 +772,7 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
     let accuracyBucket = 'wrong';
     
     if (result === 'arrived' && actualArrivalTime) {
-      const expectedArrival = report.trainData.etaExpectedAt.toDate();
+      const expectedArrival = report.etaExpectedAt.toDate();
       const actualArrival = new Date(actualArrivalTime);
       
       timeErrorSeconds = Math.abs((actualArrival - expectedArrival) / 1000);
@@ -804,30 +804,27 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
     
     const reportRef = db.collection('reports').doc(reportId);
     batch.update(reportRef, {
-      'trainData.validationStatus': result === 'cant_confirm' ? 'expired' : 'validated',
-      'trainData.actualArrivalTime': actualArrivalTime ? 
+      'validationStatus': result === 'cant_confirm' ? 'expired' : 'validated',
+      'actualArrivalTime': actualArrivalTime ? 
         admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      'trainData.timeErrorSeconds': timeErrorSeconds,
-      'trainData.accuracyBucket': accuracyBucket,
-      'trainData.validationPoints': validationPoints,
+      'timeErrorSeconds': timeErrorSeconds,
+      'accuracyBucket': accuracyBucket,
+      'validationPoints': validationPoints,
       totalPoints: admin.firestore.FieldValue.increment(validationPoints),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
-    // Crear registro en subcolección de validaciones
-    const validationRef = reportRef.collection('validations').doc(userId);
+    // Crear registro en subcolección de validaciones ETA
+    const validationRef = reportRef.collection('eta_validations').doc(userId);
     batch.set(validationRef, {
       userId: userId,
-      validationType: 'arrival_confirmation',
       result: result,
       answeredAt: admin.firestore.FieldValue.serverTimestamp(),
       actualArrival: actualArrivalTime ? 
         admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      expectedArrival: report.trainData.etaExpectedAt,
+      expectedArrival: report.etaExpectedAt,
       deltaSeconds: timeErrorSeconds,
-      accuracyBucket: accuracyBucket,
-      pointsAwarded: validationPoints,
-      wasAccurate: accuracyBucket === 'exact' || accuracyBucket === 'close'
+      pointsAwarded: validationPoints
     });
     
     // 4. Actualizar estadísticas del usuario
@@ -854,11 +851,11 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
 function calculateInitialConfidence(report) {
   let confidence = 0.5; // Base
   
-  if (report.scope === 'station' && report.stationData?.issues?.length > 0) {
+  if (report.scope === 'station' && report.stationIssues?.length > 0) {
     confidence += 0.1;
   }
   
-  if (report.scope === 'train' && report.trainData?.etaBucket !== 'unknown') {
+  if (report.scope === 'train' && report.etaBucket && report.etaBucket !== 'unknown') {
     confidence += 0.1;
   }
   
@@ -883,12 +880,12 @@ async function updateStationStatus(stationId, newReport) {
     const stationRef = db.collection('stations').doc(stationId);
     const now = admin.firestore.Timestamp.now();
     
-    if (!newReport.stationData) return;
+    if (!newReport.stationOperational || !newReport.stationCrowd) return;
     
     await stationRef.update({
-      'estado_actual': newReport.stationData.operational === 'yes' ? 'normal' : 
-                      newReport.stationData.operational === 'partial' ? 'moderado' : 'cerrado',
-      'aglomeracion': newReport.stationData.crowdLevel,
+      'estado_actual': newReport.stationOperational === 'yes' ? 'normal' : 
+                      newReport.stationOperational === 'partial' ? 'moderado' : 'cerrado',
+      'aglomeracion': newReport.stationCrowd,
       'confidence': 'medium',
       'ultima_actualizacion': now,
     });
