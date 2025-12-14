@@ -29,6 +29,7 @@ class StationReportSheet extends StatefulWidget {
   final List<TrainModel>? trains; // Trenes cercanos para reporte de tren
   final int initialPage; // Página inicial (0 = info estación, 1 = reporte)
   final double? initialChildSize; // Tamaño inicial del sheet (null = usar default)
+  final String? initialReportType; // 'station' | 'train' | null - para abrir directamente el formulario
 
   const StationReportSheet({
     super.key,
@@ -36,6 +37,7 @@ class StationReportSheet extends StatefulWidget {
     this.trains,
     this.initialPage = 0, // Por defecto empieza en la primera página
     this.initialChildSize, // Por defecto usa 0.45
+    this.initialReportType, // Para abrir directamente el formulario desde el botón rápido
   });
 
   @override
@@ -113,8 +115,7 @@ class _StationReportSheetState extends State<StationReportSheet> {
                     StationReportView(
                       station: widget.station,
                       scrollController: scrollController,
-                      // Si se abre desde el botón rápido, ir directo al selector de tipo
-                      // (el usuario puede elegir estación o tren)
+                      initialReportType: widget.initialReportType,
                     ),
                   ],
                 ),
@@ -1003,7 +1004,6 @@ class _StationReportViewState extends State<StationReportView>
   String? _operational; // 'yes' | 'partial' | 'no'
   int? _crowdLevel; // 1-5 (para estación y tren)
   final Set<String> _selectedIssues = {};
-  bool _showOptionalDetails = false;
   // Estado específico de tren
   String? _trainStatus; // 'normal' | 'slow' | 'stopped' | null
   String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
@@ -1013,6 +1013,10 @@ class _StationReportViewState extends State<StationReportView>
   int _pointsEarned = 0;
 
   final SimplifiedReportService _reportService = SimplifiedReportService();
+  
+  // PageView para formularios multi-paso
+  late PageController _formPageController;
+  int _currentFormPage = 0;
   
   // Animaciones
   late AnimationController _fadeController;
@@ -1070,10 +1074,21 @@ class _StationReportViewState extends State<StationReportView>
 
   @override
   void dispose() {
+    _formPageController.dispose();
     _fadeController.dispose();
     _scaleController.dispose();
     _successController.dispose();
     super.dispose();
+  }
+  
+  // Obtener número total de páginas según el tipo de reporte
+  int get _totalPages {
+    if (_reportType == 'station') {
+      return 3; // Operativa, Llena, Problemas opcionales
+    } else if (_reportType == 'train') {
+      return 3; // Ocupación, Estado, ETA
+    }
+    return 0;
   }
 
   @override
@@ -1304,14 +1319,12 @@ class _StationReportViewState extends State<StationReportView>
   }
 
   Widget _buildStationReportForm() {
-    return SingleChildScrollView(
-      controller: widget.scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header con botón de volver
-          Row(
+    return Column(
+      children: [
+        // Header con indicador de página
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -1320,9 +1333,9 @@ class _StationReportViewState extends State<StationReportView>
                   _operational = null;
                   _crowdLevel = null;
                   _selectedIssues.clear();
-                  _showOptionalDetails = false;
                   _trainStatus = null;
                   _etaBucket = null;
+                  _currentFormPage = 0;
                 }),
               ),
               Expanded(
@@ -1336,30 +1349,63 @@ class _StationReportViewState extends State<StationReportView>
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Text(
-                      '1 de 2',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      '${_currentFormPage + 1} de $_totalPages',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          
-          // Pregunta 1: ¿La estación está operativa?
+        ),
+        // Indicadores de página
+        _buildPageIndicators(),
+        // PageView con las preguntas
+        Expanded(
+          child: PageView(
+            controller: _formPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentFormPage = index;
+              });
+            },
+            children: [
+              // Página 1: ¿La estación está operativa?
+              _buildStationPage1(),
+              // Página 2: ¿Qué tan llena está?
+              _buildStationPage2(),
+              // Página 3: Problemas opcionales
+              _buildStationPage3(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildStationPage1() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             '1. ¿La estación está operativa?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildOptionCard(
             value: 'yes',
             icon: Icons.check_circle,
             iconColor: Colors.green,
             title: '✅ SÍ - Todo funciona',
             isSelected: _operational == 'yes',
-            onTap: () => setState(() => _operational = 'yes'),
+            onTap: () {
+              setState(() => _operational = 'yes');
+              _goToNextPage();
+            },
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -1368,7 +1414,10 @@ class _StationReportViewState extends State<StationReportView>
             iconColor: Colors.orange,
             title: '⚠️ PARCIAL - Algo falla',
             isSelected: _operational == 'partial',
-            onTap: () => setState(() => _operational = 'partial'),
+            onTap: () {
+              setState(() => _operational = 'partial');
+              _goToNextPage();
+            },
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -1377,17 +1426,28 @@ class _StationReportViewState extends State<StationReportView>
             iconColor: Colors.red,
             title: '🚫 NO - Cerrada / grave',
             isSelected: _operational == 'no',
-            onTap: () => setState(() => _operational = 'no'),
+            onTap: () {
+              setState(() => _operational = 'no');
+              _goToNextPage();
+            },
           ),
-          
-          const SizedBox(height: 32),
-          
-          // Pregunta 2: ¿Qué tan llena está?
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildStationPage2() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             '2. ¿Qué tan llena está?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildCrowdOption(1, '🟢 BAJA', 'Cómodo moverse', Colors.green),
           const SizedBox(height: 12),
           _buildCrowdOption(2, '🟡 MODERADA', 'Algo llena', Colors.orange),
@@ -1397,31 +1457,86 @@ class _StationReportViewState extends State<StationReportView>
           _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
           const SizedBox(height: 12),
           _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
-          
-          const SizedBox(height: 24),
-          
-          // Botón para agregar detalles opcionales
-          if (_canSubmit())
-            OutlinedButton.icon(
-              onPressed: () => setState(() => _showOptionalDetails = true),
-              icon: const Icon(Icons.add),
-              label: const Text('Agregar detalles (opcional)'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+          const SizedBox(height: 32),
+          // Botón para continuar o enviar
+          if (_crowdLevel != null)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _goToNextPage(),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 8,
+                ),
+                child: const Text(
+                  'CONTINUAR',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
               ),
             ),
-          
-          // Mostrar detalles opcionales si el usuario los quiere
-          if (_showOptionalDetails) ...[
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            _buildOptionalDetails(),
-          ],
-          
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildStationPage3() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '3. Problemas específicos (opcional)',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Marca los problemas que observes',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
           const SizedBox(height: 24),
-          
-          // Botón de confirmar con animación
+          _buildOptionalDetails(),
+          const SizedBox(height: 32),
+          // Info de puntos
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green[50]!,
+                  Colors.green[100]!.withOpacity(0.5),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  'Ganas: +${15 + (_selectedIssues.length * 5)} puntos',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Botón de confirmar
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: _canSubmit() ? 1.0 : 0.0),
             duration: const Duration(milliseconds: 300),
@@ -1460,7 +1575,7 @@ class _StationReportViewState extends State<StationReportView>
                               ),
                             )
                           : const Text(
-                              'CONFIRMAR',
+                              'ENVIAR REPORTE',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -1473,38 +1588,50 @@ class _StationReportViewState extends State<StationReportView>
               );
             },
           ),
-          
-          const SizedBox(height: 16),
-          
-          // Info de puntos
-          Container(
-            padding: const EdgeInsets.all(12),
+        ],
+      ),
+    );
+  }
+  
+  void _goToNextPage() {
+    if (_currentFormPage < _totalPages - 1) {
+      _formPageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+  
+  Widget _buildPageIndicators() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          _totalPages,
+          (index) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: _currentFormPage == index ? 24 : 8,
+            height: 8,
             decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.stars, color: Colors.green),
-                const SizedBox(width: 8),
-                Text('Ganas: +${15 + (_selectedIssues.length * 5)} puntos'),
-              ],
+              color: _currentFormPage == index
+                  ? Colors.blue
+                  : Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildTrainReportForm() {
-    return SingleChildScrollView(
-      controller: widget.scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header con botón de volver
-          Row(
+    return Column(
+      children: [
+        // Header con indicador de página
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -1513,6 +1640,7 @@ class _StationReportViewState extends State<StationReportView>
                   _crowdLevel = null;
                   _trainStatus = null;
                   _etaBucket = null;
+                  _currentFormPage = 0;
                 }),
               ),
               Expanded(
@@ -1527,7 +1655,7 @@ class _StationReportViewState extends State<StationReportView>
                       ),
                     ),
                     Text(
-                      'Estación: ${widget.station.nombre}',
+                      '${_currentFormPage + 1} de $_totalPages',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -1535,14 +1663,44 @@ class _StationReportViewState extends State<StationReportView>
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          
-          // Pregunta 1: ¿Cómo venía el tren? (obligatorio)
+        ),
+        // Indicadores de página
+        _buildPageIndicators(),
+        // PageView con las preguntas
+        Expanded(
+          child: PageView(
+            controller: _formPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentFormPage = index;
+              });
+            },
+            children: [
+              // Página 1: ¿Cómo venía el tren?
+              _buildTrainPage1(),
+              // Página 2: Estado del tren (opcional)
+              _buildTrainPage2(),
+              // Página 3: ETA (opcional)
+              _buildTrainPage3(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildTrainPage1() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             '1. ¿Cómo venía el tren?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildCrowdOption(1, '🟢 VACÍO', 'Asientos libres', Colors.green),
           const SizedBox(height: 12),
           _buildCrowdOption(2, '🟡 MODERADO', 'De pie cómodo', Colors.orange),
@@ -1550,39 +1708,120 @@ class _StationReportViewState extends State<StationReportView>
           _buildCrowdOption(3, '🔴 LLENO', 'Apretado', Colors.red),
           const SizedBox(height: 12),
           _buildCrowdOption(4, '💀 SARDINA', 'Extremo', Colors.purple),
-          
           const SizedBox(height: 32),
-          
-          // Pregunta 2: Estado del tren (opcional)
+          // Botón para continuar o saltar
+          if (_crowdLevel != null)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _goToNextPage(),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 8,
+                ),
+                child: const Text(
+                  'CONTINUAR',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTrainPage2() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             '2. Estado del tren (opcional)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
             'Si notaste algo especial',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildTrainStatusOption('normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
           const SizedBox(height: 12),
           _buildTrainStatusOption('slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
           const SizedBox(height: 12),
           _buildTrainStatusOption('stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
-          
           const SizedBox(height: 32),
-          
-          // Pregunta 3: ETA (opcional pero recomendado)
+          // Botones de navegación
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    _formPageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text('ATRÁS'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _goToNextPage(),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 8,
+                  ),
+                  child: const Text('CONTINUAR'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTrainPage3() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             '3. ¿Cuánto falta para el próximo tren? (recomendado)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
             'Esto ayuda a calibrar el sistema',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildEtaOption('1-2', '🕐 1-2 MINUTOS', Colors.blue),
           const SizedBox(height: 12),
           _buildEtaOption('3-5', '🕑 3-5 MINUTOS', Colors.blue),
@@ -1623,64 +1862,9 @@ class _StationReportViewState extends State<StationReportView>
           
           const SizedBox(height: 32),
           
-          // Botón de confirmar con animación
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: _canSubmitTrain() ? 1.0 : 0.0),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.95 + (0.05 * value),
-                child: Opacity(
-                  opacity: 0.7 + (0.3 * value),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _canSubmitTrain() && !_isSubmitting
-                          ? () {
-                              HapticFeedback.mediumImpact();
-                              _submitTrainReport();
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey[300],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: _canSubmitTrain() ? 8 : 0,
-                        shadowColor: Colors.green.withOpacity(0.5),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'ENVIAR REPORTE',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          
-          const SizedBox(height: 16),
-          
           // Info de puntos
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -1701,7 +1885,7 @@ class _StationReportViewState extends State<StationReportView>
                     const SizedBox(width: 8),
                     Text(
                       'Ganas: +${20 + ((_etaBucket != null && _etaBucket != 'unknown') ? 10 : 0)} puntos',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
@@ -1720,6 +1904,83 @@ class _StationReportViewState extends State<StationReportView>
                 ],
               ],
             ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Botones de navegación y envío
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    _formPageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text('ATRÁS'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: _canSubmitTrain() ? 1.0 : 0.0),
+                  duration: const Duration(milliseconds: 300),
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.95 + (0.05 * value),
+                      child: Opacity(
+                        opacity: 0.7 + (0.3 * value),
+                        child: ElevatedButton(
+                          onPressed: _canSubmitTrain() && !_isSubmitting
+                              ? () {
+                                  HapticFeedback.mediumImpact();
+                                  _submitTrainReport();
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.grey[300],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: _canSubmitTrain() ? 8 : 0,
+                            shadowColor: Colors.green.withOpacity(0.5),
+                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'ENVIAR',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1781,7 +2042,15 @@ class _StationReportViewState extends State<StationReportView>
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: onTap,
+                onTap: () {
+                  onTap();
+                  // Si es la primera página del formulario de estación, avanzar automáticamente
+                  if (_reportType == 'station' && _currentFormPage == 0) {
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      if (mounted) _goToNextPage();
+                    });
+                  }
+                },
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
@@ -1885,6 +2154,12 @@ class _StationReportViewState extends State<StationReportView>
                 onTap: () {
                   HapticFeedback.lightImpact();
                   setState(() => _crowdLevel = level);
+                  // Si es la primera página, avanzar automáticamente después de un breve delay
+                  if (_currentFormPage == 0) {
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      if (mounted) _goToNextPage();
+                    });
+                  }
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(

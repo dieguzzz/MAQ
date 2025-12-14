@@ -4,8 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../models/station_model.dart';
-import '../screens/reports/station_report_flow.dart';
-import '../screens/reports/train_report_flow.dart';
+import 'station_report_sheet.dart';
 
 class QuickReportButton extends StatefulWidget {
   const QuickReportButton({super.key});
@@ -83,30 +82,6 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     }
   }
 
-  /// Obtiene la ubicación del usuario
-  Future<Position?> _getUserLocation() async {
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-
-    // Obtener ubicación actual del usuario
-    var userPosition = locationProvider.currentPosition;
-    if (userPosition == null) {
-      // Si no hay ubicación, pedir permisos
-      await locationProvider.getCurrentLocation();
-      userPosition = locationProvider.currentPosition;
-      if (userPosition == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Se necesita acceso a la ubicación para reportar'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return null;
-      }
-    }
-    return userPosition;
-  }
 
   /// Maneja el reporte de estación (1 toque) - Abre directamente el formulario
   Future<void> _handleStationReport() async {
@@ -127,8 +102,8 @@ class _QuickReportButtonState extends State<QuickReportButton> {
       // Si hay ubicación, buscar la más cercana
       nearestStation = _findNearestStation(
         metroProvider.stations,
-        userPosition!.latitude,
-        userPosition!.longitude,
+        userPosition.latitude,
+        userPosition.longitude,
       );
     }
 
@@ -163,6 +138,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         builder: (sheetContext) => StationReportSheet(
           station: nearestStation!,
           initialPage: 1, // Abrir directamente en la vista de reporte
+          initialReportType: 'station', // Abrir directamente en formulario de estación
         ),
       );
     }
@@ -187,8 +163,8 @@ class _QuickReportButtonState extends State<QuickReportButton> {
       // Si hay ubicación, buscar la estación más cercana
       nearestStation = _findNearestStation(
         metroProvider.stations,
-        userPosition!.latitude,
-        userPosition!.longitude,
+        userPosition.latitude,
+        userPosition.longitude,
       );
     }
 
@@ -223,6 +199,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         builder: (sheetContext) => StationReportSheet(
           station: nearestStation!,
           initialPage: 1, // Abrir directamente en la vista de reporte
+          initialReportType: 'train', // Abrir directamente en formulario de tren
         ),
       );
     }
