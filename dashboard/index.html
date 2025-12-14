@@ -309,8 +309,29 @@
                 
                 return true;
             } catch (error) {
-                alert('Error de autenticación: ' + error.message);
-                console.error('Error de login:', error);
+                let errorMessage = 'Error de autenticación: ';
+                
+                // Mensajes de error más claros
+                if (error.code === 'auth/invalid-login-credentials') {
+                    errorMessage += 'Email o contraseña incorrectos.\n\n';
+                    errorMessage += 'Verifica que:\n';
+                    errorMessage += '1. El usuario existe en Firebase Authentication\n';
+                    errorMessage += '2. Email/Password esté habilitado en Firebase Console\n';
+                    errorMessage += '3. La contraseña sea correcta';
+                } else if (error.code === 'auth/user-not-found') {
+                    errorMessage += 'Usuario no encontrado. Crea el usuario en Firebase Console → Authentication';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage += 'Contraseña incorrecta';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage += 'Email inválido';
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    errorMessage += 'Email/Password no está habilitado. Habilítalo en Firebase Console → Authentication';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                alert(errorMessage);
+                console.error('Error de login:', error.code, error.message);
                 return false;
             }
         }
@@ -773,6 +794,12 @@
         // Cargar estadísticas comunitarias
         async function loadCommunityStats() {
             try {
+                // Verificar autenticación antes de intentar leer
+                const currentAuth = auth.currentUser;
+                if (!currentAuth) {
+                    throw new Error('No autenticado. Por favor, inicia sesión.');
+                }
+                
                 const statsDoc = await db.collection('community_stats').doc('founder_week').get();
                 
                 if (statsDoc.exists) {
@@ -833,9 +860,22 @@
             } catch (error) {
                 console.error('Error loading community stats:', error);
                 const loadingElement = document.querySelector('#community .loading');
-                const errorMsg = error.message.includes('permissions') 
-                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore para community_stats.'
-                    : 'Error al cargar estadísticas: ' + error.message;
+                let errorMsg = '';
+                
+                if (error.message.includes('permissions') || error.code === 'permission-denied') {
+                    errorMsg = '⚠️ Error de permisos. ';
+                    const currentAuth = auth.currentUser;
+                    if (!currentAuth) {
+                        errorMsg += 'No estás autenticado. Haz clic en "Login" para iniciar sesión.';
+                    } else {
+                        errorMsg += 'Verifica las reglas de Firestore para community_stats.';
+                    }
+                } else if (error.message.includes('No autenticado')) {
+                    errorMsg = '⚠️ ' + error.message + ' Haz clic en "Login" en el header.';
+                } else {
+                    errorMsg = 'Error al cargar estadísticas: ' + error.message;
+                }
+                
                 if (loadingElement) {
                     loadingElement.textContent = errorMsg;
                 } else {
