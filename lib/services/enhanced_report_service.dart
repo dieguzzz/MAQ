@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/enhanced_report_model.dart';
@@ -130,14 +131,14 @@ class EnhancedReportService {
 
     // Llamar a Cloud Function
     try {
-      final callable = _firestore.app.functions('processValidationResponse');
-      final result = await callable.call({
+      final callable = FirebaseFunctions.instance.httpsCallable('processValidationResponse');
+      final callResult = await callable.call({
         'reportId': reportId,
-        'result': result,
+        'result': validationResult,
         'actualArrivalTime': actualArrivalTime?.toIso8601String(),
       });
 
-      return result.data as Map<String, dynamic>;
+      return callResult.data as Map<String, dynamic>;
     } catch (e) {
       print('Error submitting validation: $e');
       rethrow;

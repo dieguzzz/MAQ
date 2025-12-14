@@ -32,6 +32,10 @@ class SimplifiedReportModel {
   final int basePoints;
   final int bonusPoints;
   final int totalPoints;
+  
+  // Ubicación (opcional)
+  final GeoPoint? userLocation;
+  final double? accuracy;
 
   SimplifiedReportModel({
     required this.id,
@@ -54,6 +58,8 @@ class SimplifiedReportModel {
     this.basePoints = 0,
     this.bonusPoints = 0,
     this.totalPoints = 0,
+    this.userLocation,
+    this.accuracy,
   });
 
   factory SimplifiedReportModel.fromFirestore(DocumentSnapshot doc) {

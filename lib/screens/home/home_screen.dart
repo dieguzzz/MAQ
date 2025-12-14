@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/auth_provider.dart';

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/simplified_report_model.dart';
@@ -122,7 +123,7 @@ class SimplifiedReportService {
   /// Enviar validación ETA
   Future<Map<String, dynamic>> submitETAValidation({
     required String reportId,
-    required String result, // 'arrived' | 'not_arrived' | 'cant_confirm'
+    required String validationResult, // 'arrived' | 'not_arrived' | 'cant_confirm'
     DateTime? actualArrivalTime,
   }) async {
     final userId = _auth.currentUser?.uid;
@@ -130,14 +131,14 @@ class SimplifiedReportService {
 
     try {
       // Llamar a Cloud Function
-      final callable = _firestore.app.functions('processValidationResponse');
-      final result = await callable.call({
+      final callable = FirebaseFunctions.instance.httpsCallable('processValidationResponse');
+      final callResult = await callable.call({
         'reportId': reportId,
-        'result': result,
+        'result': validationResult,
         'actualArrivalTime': actualArrivalTime?.toIso8601String(),
       });
 
-      return result.data as Map<String, dynamic>;
+      return callResult.data as Map<String, dynamic>;
     } catch (e) {
       print('Error submitting validation: $e');
       rethrow;

@@ -149,7 +149,7 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
                     const SizedBox(height: 8),
                     Text(
                       widget.stationName,
-                      style: Theme.of(context).textTheme.headline6,
+                      style: Theme.of(context).textTheme.titleLarge,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
