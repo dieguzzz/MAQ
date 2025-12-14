@@ -1494,44 +1494,45 @@ class _StationReportViewState extends State<StationReportView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Botón de enviar reporte primero (con icono)
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: _canSubmit() ? 1.0 : 0.0),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.95 + (0.05 * value),
-                child: Opacity(
-                  opacity: 0.7 + (0.3 * value),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _canSubmit() && !_isSubmitting
-                          ? () {
-                              HapticFeedback.mediumImpact();
-                              _submitStationReport();
-                            }
-                          : null,
-                      icon: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
+          // Botón de enviar reporte primero (con icono) - SOLO en página 3
+          if (_currentFormPage == 2)
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: _canSubmit() ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 300),
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: 0.95 + (0.05 * value),
+                  child: Opacity(
+                    opacity: 0.7 + (0.3 * value),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _canSubmit() && !_isSubmitting
+                            ? () {
+                                HapticFeedback.mediumImpact();
+                                _submitStationReport();
+                              }
+                            : null,
+                        icon: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.send, size: 24),
+                        label: _isSubmitting
+                            ? const SizedBox.shrink()
+                            : const Text(
+                                'ENVIAR REPORTE',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
                               ),
-                            )
-                          : const Icon(Icons.send, size: 24),
-                      label: _isSubmitting
-                          ? const SizedBox.shrink()
-                          : const Text(
-                              'ENVIAR REPORTE',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
-                            ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         backgroundColor: Colors.blue,
@@ -1602,14 +1603,18 @@ class _StationReportViewState extends State<StationReportView>
   void _goToNextPage() {
     if (_currentFormPage < _totalPages - 1) {
       final nextPage = _currentFormPage + 1;
-      setState(() {
-        _currentFormPage = nextPage;
-      });
       _formPageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-      );
+      ).then((_) {
+        // Actualizar estado después de que la animación complete
+        if (mounted) {
+          setState(() {
+            _currentFormPage = nextPage;
+          });
+        }
+      });
     }
   }
   
@@ -1620,9 +1625,13 @@ class _StationReportViewState extends State<StationReportView>
         prevPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-      );
-      setState(() {
-        _currentFormPage = prevPage;
+      ).then((_) {
+        // Actualizar estado después de que la animación complete
+        if (mounted) {
+          setState(() {
+            _currentFormPage = prevPage;
+          });
+        }
       });
     }
   }
@@ -1887,126 +1896,145 @@ class _StationReportViewState extends State<StationReportView>
           
           const SizedBox(height: 32),
           
-          // Info de puntos
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green[50]!,
-                  Colors.green[100]!.withOpacity(0.5),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Info de puntos y botón ENVIAR juntos (solo cuando se puede enviar)
+          if (_canSubmitTrain()) ...[
+            // Info de puntos
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.green[50]!,
+                    Colors.green[100]!.withOpacity(0.5),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.stars, color: Colors.green),
-                    const SizedBox(width: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.stars, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ganas: +${20 + ((_etaBucket != null && _etaBucket != 'unknown') ? 10 : 0)} puntos',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_etaBucket != null && _etaBucket != 'unknown') ...[
+                    const SizedBox(height: 4),
                     Text(
-                      'Ganas: +${20 + ((_etaBucket != null && _etaBucket != 'unknown') ? 10 : 0)} puntos',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                      '+10 puntos por estimar tiempo',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green[800],
                       ),
                     ),
                   ],
-                ),
-                if (_etaBucket != null && _etaBucket != 'unknown') ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '+10 puntos por estimar tiempo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green[800],
-                    ),
-                  ),
                 ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Botones de navegación y envío
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _goToPreviousPage();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('ATRÁS'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 300),
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: 0.95 + (0.05 * value),
+                        child: Opacity(
+                          opacity: 0.7 + (0.3 * value),
+                          child: ElevatedButton(
+                            onPressed: !_isSubmitting
+                                ? () {
+                                    HapticFeedback.mediumImpact();
+                                    _submitTrainReport();
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey[300],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 8,
+                              shadowColor: Colors.green.withOpacity(0.5),
+                            ),
+                            child: _isSubmitting
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'ENVIAR',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Botones de navegación y envío
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    _formPageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+          ] else ...[
+            // Si no se puede enviar, mostrar solo botón ATRÁS
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _goToPreviousPage();
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Text('ATRÁS'),
                 ),
+                child: const Text('ATRÁS'),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: _canSubmitTrain() ? 1.0 : 0.0),
-                  duration: const Duration(milliseconds: 300),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.95 + (0.05 * value),
-                      child: Opacity(
-                        opacity: 0.7 + (0.3 * value),
-                        child: ElevatedButton(
-                          onPressed: _canSubmitTrain() && !_isSubmitting
-                              ? () {
-                                  HapticFeedback.mediumImpact();
-                                  _submitTrainReport();
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey[300],
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: _canSubmitTrain() ? 8 : 0,
-                            shadowColor: Colors.green.withOpacity(0.5),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'ENVIAR',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
