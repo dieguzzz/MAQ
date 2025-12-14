@@ -113,6 +113,8 @@ class _StationReportSheetState extends State<StationReportSheet> {
                     StationReportView(
                       station: widget.station,
                       scrollController: scrollController,
+                      // Si se abre desde el botón rápido, ir directo al selector de tipo
+                      // (el usuario puede elegir estación o tren)
                     ),
                   ],
                 ),
@@ -981,11 +983,13 @@ class _InfoChip extends StatelessWidget {
 class StationReportView extends StatefulWidget {
   final StationModel station;
   final ScrollController? scrollController;
+  final String? initialReportType; // 'station' | 'train' | null - para abrir directamente
 
   const StationReportView({
     super.key,
     required this.station,
     this.scrollController,
+    this.initialReportType,
   });
 
   @override
@@ -1019,6 +1023,11 @@ class _StationReportViewState extends State<StationReportView>
   @override
   void initState() {
     super.initState();
+    // Si hay un tipo inicial, establecerlo directamente
+    if (widget.initialReportType != null) {
+      _reportType = widget.initialReportType;
+    }
+    
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),

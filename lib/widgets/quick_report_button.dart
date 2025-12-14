@@ -108,7 +108,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     return userPosition;
   }
 
-  /// Maneja el reporte de estación (1 toque)
+  /// Maneja el reporte de estación (1 toque) - Abre directamente el formulario
   Future<void> _handleStationReport() async {
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
@@ -154,20 +154,21 @@ class _QuickReportButtonState extends State<QuickReportButton> {
       }
     }
 
-    // Abrir nuevo flujo simplificado de reporte de estación
+    // Abrir bottom sheet directamente en el formulario de reporte de estación
     if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StationReportFlowScreen(
-            station: nearestStation!,
-          ),
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => StationReportSheet(
+          station: nearestStation!,
+          initialPage: 1, // Abrir directamente en la vista de reporte
         ),
       );
     }
   }
 
-  /// Maneja el reporte de tren (2 toques)
+  /// Maneja el reporte de tren (2 toques) - Abre directamente el formulario
   Future<void> _handleTrainReport() async {
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
@@ -213,14 +214,15 @@ class _QuickReportButtonState extends State<QuickReportButton> {
       }
     }
 
-    // Abrir nuevo flujo simplificado de reporte de tren
+    // Abrir bottom sheet directamente en el formulario de reporte de tren
     if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TrainReportFlowScreen(
-            station: nearestStation!,
-          ),
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => StationReportSheet(
+          station: nearestStation!,
+          initialPage: 1, // Abrir directamente en la vista de reporte
         ),
       );
     }
