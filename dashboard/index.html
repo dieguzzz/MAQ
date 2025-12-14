@@ -378,7 +378,18 @@
         // Autenticación anónima para el dashboard
         async function authenticateDashboard() {
             try {
+                // Verificar si ya hay un usuario autenticado
+                const existingUser = auth.currentUser;
+                if (existingUser) {
+                    console.log('Ya hay un usuario autenticado:', existingUser.uid);
+                    isAuthenticated = true;
+                    currentUser = existingUser;
+                    updateAuthUI();
+                    return true;
+                }
+                
                 // Intentar autenticación anónima
+                console.log('Iniciando autenticación anónima...');
                 const userCredential = await auth.signInAnonymously();
                 isAuthenticated = true;
                 currentUser = userCredential.user;
@@ -410,8 +421,8 @@
             }
         }
         
-        // Autenticar al cargar
-        authenticateDashboard();
+        // NO autenticar automáticamente al cargar - esperar a onAuthStateChanged
+        // authenticateDashboard();
         
         let statsCache = {
             users: 0,
@@ -928,31 +939,50 @@
         
         // Esperar autenticación antes de cargar datos
         let refreshInterval = null;
+        let authInitialized = false;
         
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => {
+            console.log('Auth state changed:', user ? (user.email || 'anónimo (' + user.uid + ')') : 'null');
             currentUser = user;
             isAuthenticated = !!user;
             updateAuthUI();
             
-            if (user || isAuthenticated) {
-                console.log('Usuario autenticado, cargando datos...', user ? user.email : 'anónimo');
+            if (user) {
+                console.log('Usuario autenticado, cargando datos...', user.email || 'anónimo', 'UID:', user.uid);
                 
                 // Limpiar intervalo anterior si existe
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                 }
                 
-                // Cargar datos inmediatamente
-                refreshAll();
+                // Esperar un momento para asegurar que el token esté listo
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Auto-refresh cada 30 segundos
-                refreshInterval = setInterval(refreshAll, 30000);
+                // Verificar nuevamente que el usuario sigue autenticado
+                const finalUser = auth.currentUser;
+                if (finalUser) {
+                    console.log('Token verificado, cargando datos...');
+                    // Cargar datos inmediatamente
+                    refreshAll();
+                    
+                    // Auto-refresh cada 30 segundos
+                    refreshInterval = setInterval(refreshAll, 30000);
+                } else {
+                    console.warn('Usuario perdió autenticación después del delay');
+                }
             } else {
                 console.log('Esperando autenticación...');
                 // Limpiar intervalo si existe
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                     refreshInterval = null;
+                }
+                
+                // Si no hay usuario y no hemos intentado autenticación anónima aún
+                if (!authInitialized) {
+                    authInitialized = true;
+                    console.log('Intentando autenticación anónima inicial...');
+                    authenticateDashboard();
                 }
             }
         });
