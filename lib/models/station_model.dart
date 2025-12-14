@@ -40,6 +40,8 @@ class StationModel {
       estadoActual: _parseEstadoEstacion(data['estado_actual'] ?? 'normal'),
       aglomeracion: data['aglomeracion'] ?? 1,
       ultimaActualizacion: (data['ultima_actualizacion'] as Timestamp).toDate(),
+      confidence: data['confidence'] as String?,
+      isEstimated: data['is_estimated'] as bool? ?? false,
     );
   }
 

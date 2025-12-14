@@ -32,6 +32,8 @@ class TrainModel {
     this.estado = EstadoTren.normal,
     this.aglomeracion = 1,
     required this.ultimaActualizacion,
+    this.confidence,
+    this.isEstimated,
   });
 
   factory TrainModel.fromFirestore(DocumentSnapshot doc) {
