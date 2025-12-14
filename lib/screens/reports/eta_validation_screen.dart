@@ -82,7 +82,7 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
     try {
       final response = await _reportService.submitETAValidation(
         reportId: widget.reportId,
-        result: result,
+        validationResult: result,
         actualArrivalTime: actualArrival ?? _selectedArrivalTime,
       );
 
