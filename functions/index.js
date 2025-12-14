@@ -655,3 +655,247 @@ exports.updateCommunityStats = functions.pubsub
     }
   });
 
+// ============================================
+// SISTEMA DE VALIDACIONES ETA MEJORADO
+// ============================================
+
+// Cloud Function: Procesar creación de reporte mejorado
+exports.onReportCreated = functions.firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snapshot, context) => {
+    try {
+      const report = snapshot.data();
+      const reportId = context.params.reportId;
+      
+      // 1. Calcular puntos base
+      let basePoints = 0;
+      let bonusPoints = 0;
+      
+      if (report.scope === 'station') {
+        basePoints = 15; // Reporte de estación básico
+        bonusPoints = (report.stationData?.issues?.length || 0) * 5;
+      } else if (report.scope === 'train') {
+        basePoints = 20; // Reporte de tren básico
+        bonusPoints = report.trainData?.etaBucket !== 'unknown' ? 10 : 0;
+      }
+      
+      // 2. Actualizar reporte con puntos
+      await snapshot.ref.update({
+        basePoints: basePoints,
+        bonusPoints: bonusPoints,
+        totalPoints: basePoints + bonusPoints,
+        confidence: calculateInitialConfidence(report)
+      });
+      
+      // 3. Si es reporte de tren con ETA, programar validación
+      if (report.scope === 'train' && report.trainData?.etaBucket !== 'unknown') {
+        await scheduleETAValidation(reportId, report);
+      }
+      
+      // 4. Actualizar estadísticas de usuario
+      await updateUserStats(report.userId, basePoints + bonusPoints);
+      
+      // 5. Actualizar estado de estación si aplica
+      if (report.scope === 'station') {
+        await updateStationStatus(report.stationId, report);
+      }
+      
+      console.log(`Report ${reportId} processed: ${basePoints + bonusPoints} points`);
+      return { success: true, points: basePoints + bonusPoints };
+    } catch (error) {
+      console.error('Error processing report:', error);
+      return null;
+    }
+  });
+
+// Función auxiliar: Programar validación ETA
+async function scheduleETAValidation(reportId, report) {
+  // Configurar tiempos según bucket
+  const timingConfig = {
+    '<1': { waitMinutes: 1, windowMinutes: 2 },
+    '1-2': { waitMinutes: 2, windowMinutes: 4 },
+    '3-5': { waitMinutes: 3, windowMinutes: 6 },
+    '6-10': { waitMinutes: 5, windowMinutes: 10 },
+    '10+': { waitMinutes: 8, windowMinutes: 15 }
+  };
+  
+  const config = timingConfig[report.trainData.etaBucket];
+  if (!config) return;
+  
+  // Calcular hora esperada de llegada
+  const now = admin.firestore.Timestamp.now();
+  const waitSeconds = config.waitMinutes * 60;
+  const expectedArrival = new Date(now.toDate().getTime() + (waitSeconds * 1000));
+  const windowEnd = new Date(expectedArrival.getTime() + (config.windowMinutes * 60000));
+  
+  // Actualizar reporte con información de validación
+  await db.collection('reports').doc(reportId).update({
+    'trainData.etaExpectedAt': admin.firestore.Timestamp.fromDate(expectedArrival),
+    'trainData.needsValidation': true,
+    'trainData.validationStatus': 'pending',
+    'trainData.validationWindowEnd': admin.firestore.Timestamp.fromDate(windowEnd)
+  });
+  
+  console.log(`Validation scheduled for report ${reportId} at ${expectedArrival}`);
+}
+
+// Cloud Function: Procesar respuesta de validación ETA
+exports.processValidationResponse = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión');
+  }
+  
+  const userId = context.auth.uid;
+  const { reportId, result, actualArrivalTime } = data;
+  
+  try {
+    // 1. Verificar que el usuario puede validar este reporte
+    const reportDoc = await db.collection('reports').doc(reportId).get();
+    if (!reportDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Reporte no encontrado');
+    }
+    
+    const report = reportDoc.data();
+    
+    if (report.userId !== userId) {
+      throw new functions.https.HttpsError('permission-denied', 'No puedes validar este reporte');
+    }
+    
+    if (report.trainData?.validationStatus !== 'pending') {
+      throw new functions.https.HttpsError('failed-precondition', 'Validación ya procesada');
+    }
+    
+    // 2. Calcular puntos por validación
+    let validationPoints = 0;
+    let timeErrorSeconds = null;
+    let accuracyBucket = 'wrong';
+    
+    if (result === 'arrived' && actualArrivalTime) {
+      const expectedArrival = report.trainData.etaExpectedAt.toDate();
+      const actualArrival = new Date(actualArrivalTime);
+      
+      timeErrorSeconds = Math.abs((actualArrival - expectedArrival) / 1000);
+      
+      // Determinar precisión
+      if (timeErrorSeconds <= 60) { // ±1 minuto
+        accuracyBucket = 'exact';
+        validationPoints = 40; // 10 base + 30 extra
+      } else if (timeErrorSeconds <= 120) { // ±2 minutos
+        accuracyBucket = 'close';
+        validationPoints = 35;
+      } else if (timeErrorSeconds <= 300) { // ±5 minutos
+        accuracyBucket = 'far';
+        validationPoints = 25;
+      } else {
+        accuracyBucket = 'wrong';
+        validationPoints = 10; // Solo puntos base
+      }
+    } else if (result === 'not_arrived') {
+      validationPoints = 15;
+      accuracyBucket = 'corrected';
+    } else if (result === 'cant_confirm') {
+      validationPoints = 0;
+      accuracyBucket = 'unconfirmed';
+    }
+    
+    // 3. Actualizar reporte
+    const batch = db.batch();
+    
+    const reportRef = db.collection('reports').doc(reportId);
+    batch.update(reportRef, {
+      'trainData.validationStatus': result === 'cant_confirm' ? 'expired' : 'validated',
+      'trainData.actualArrivalTime': actualArrivalTime ? 
+        admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
+      'trainData.timeErrorSeconds': timeErrorSeconds,
+      'trainData.accuracyBucket': accuracyBucket,
+      'trainData.validationPoints': validationPoints,
+      totalPoints: admin.firestore.FieldValue.increment(validationPoints),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Crear registro en subcolección de validaciones
+    const validationRef = reportRef.collection('validations').doc(userId);
+    batch.set(validationRef, {
+      userId: userId,
+      validationType: 'arrival_confirmation',
+      result: result,
+      answeredAt: admin.firestore.FieldValue.serverTimestamp(),
+      actualArrival: actualArrivalTime ? 
+        admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
+      expectedArrival: report.trainData.etaExpectedAt,
+      deltaSeconds: timeErrorSeconds,
+      accuracyBucket: accuracyBucket,
+      pointsAwarded: validationPoints,
+      wasAccurate: accuracyBucket === 'exact' || accuracyBucket === 'close'
+    });
+    
+    // 4. Actualizar estadísticas del usuario
+    const userRef = db.collection('users').doc(userId);
+    batch.update(userRef, {
+      'gamification.puntos': admin.firestore.FieldValue.increment(validationPoints),
+    });
+    
+    await batch.commit();
+    
+    return {
+      success: true,
+      pointsAwarded: validationPoints,
+      accuracy: accuracyBucket,
+      totalPoints: report.totalPoints + validationPoints
+    };
+  } catch (error) {
+    console.error('Error processing validation:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+// Función auxiliar: Calcular confianza inicial
+function calculateInitialConfidence(report) {
+  let confidence = 0.5; // Base
+  
+  if (report.scope === 'station' && report.stationData?.issues?.length > 0) {
+    confidence += 0.1;
+  }
+  
+  if (report.scope === 'train' && report.trainData?.etaBucket !== 'unknown') {
+    confidence += 0.1;
+  }
+  
+  return Math.min(1.0, confidence);
+}
+
+// Función auxiliar: Actualizar estadísticas de usuario
+async function updateUserStats(userId, points) {
+  try {
+    await db.collection('users').doc(userId).update({
+      'gamification.puntos': admin.firestore.FieldValue.increment(points),
+      'gamification.reportes_count': admin.firestore.FieldValue.increment(1),
+    });
+  } catch (error) {
+    console.error(`Error updating user stats for ${userId}:`, error);
+  }
+}
+
+// Función auxiliar: Actualizar estado de estación
+async function updateStationStatus(stationId, newReport) {
+  try {
+    const stationRef = db.collection('stations').doc(stationId);
+    const now = admin.firestore.Timestamp.now();
+    
+    if (!newReport.stationData) return;
+    
+    await stationRef.update({
+      'estado_actual': newReport.stationData.operational === 'yes' ? 'normal' : 
+                      newReport.stationData.operational === 'partial' ? 'moderado' : 'cerrado',
+      'aglomeracion': newReport.stationData.crowdLevel,
+      'confidence': 'medium',
+      'ultima_actualizacion': now,
+    });
+    
+    console.log(`Station ${stationId} status updated`);
+  } catch (error) {
+    console.error(`Error updating station status for ${stationId}:`, error);
+  }
+}
+
