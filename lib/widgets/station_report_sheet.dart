@@ -15,7 +15,8 @@ import '../services/firebase_service.dart';
 import '../models/learning_report_model.dart';
 import '../models/report_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'enhanced_report_modal.dart';
+import '../screens/reports/station_report_flow.dart';
+import '../screens/reports/train_report_flow.dart';
 import 'arrival_confirmation_dialog.dart';
 
 /// Widget que combina la información de la estación y el modal de reporte
@@ -127,8 +128,11 @@ class _StationReportSheetState extends State<StationReportSheet> {
                         });
                       },
                     ),
-                    // Página 2: Modal de reporte
-                    EnhancedReportModal(station: widget.station),
+                    // Página 2: Botones de reporte
+                    StationReportView(
+                      station: widget.station,
+                      scrollController: scrollController,
+                    ),
                   ],
                 ),
               ),
@@ -166,15 +170,6 @@ class StationInfoView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _HeaderSection(station: station),
-          const SizedBox(height: 24),
-          // Acciones rápidas primero
-          _QuickActions(
-            station: station,
-            trains: trains,
-            onReportStation: onReportPressed,
-            onReportTrain: onReportTrain,
-            scrollController: scrollController,
-          ),
           const SizedBox(height: 24),
           _EtaSection(station: station),
           const SizedBox(height: 24),
@@ -1000,6 +995,143 @@ class _InfoChip extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
+      ),
+    );
+  }
+}
+
+/// Vista de reporte (segunda página)
+class StationReportView extends StatelessWidget {
+  final StationModel station;
+  final ScrollController? scrollController;
+
+  const StationReportView({
+    super.key,
+    required this.station,
+    this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Reportar',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Ayuda a mejorar la información para todos',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          // Botón A: Reportar ESTACIÓN (grande, destacado)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context); // Cerrar bottom sheet
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StationReportFlowScreen(
+                      station: station,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_alert, size: 28),
+              label: const Text(
+                'REPORTAR ESTACIÓN',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Botón B: Reportar TREN (grande, destacado)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context); // Cerrar bottom sheet
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TrainReportFlowScreen(
+                      station: station,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.train, size: 28),
+              label: const Text(
+                'REPORTAR TREN',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Información de puntos
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.stars, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Gana puntos por reportar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Text('• Reporte de estación: +15 puntos'),
+                Text('• Reporte de tren: +20 puntos'),
+                Text('• Estimación de tiempo: +10 puntos extra'),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
