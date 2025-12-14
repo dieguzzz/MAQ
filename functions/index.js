@@ -507,6 +507,9 @@ exports.processReportConfirmation = functions.firestore
   });
 
 // Cloud Function: Generar datos iniciales de trenes basados en horarios
+// DESHABILITADO: Los datos se construirán desde los reportes de usuarios
+// Si necesitas datos iniciales, descomenta y ejecuta manualmente
+/*
 exports.generateInitialTrainData = functions.pubsub
   .schedule('every 1 minutes')
   .onRun(async (context) => {
@@ -606,6 +609,7 @@ exports.generateInitialTrainData = functions.pubsub
       return null;
     }
   });
+*/
 
 // Cloud Function: Actualizar estadísticas comunitarias
 exports.updateCommunityStats = functions.pubsub
