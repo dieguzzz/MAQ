@@ -1598,10 +1598,29 @@ class _StationReportViewState extends State<StationReportView>
   
   void _goToNextPage() {
     if (_currentFormPage < _totalPages - 1) {
-      _formPageController.nextPage(
+      final nextPage = _currentFormPage + 1;
+      _formPageController.animateToPage(
+        nextPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      setState(() {
+        _currentFormPage = nextPage;
+      });
+    }
+  }
+  
+  void _goToPreviousPage() {
+    if (_currentFormPage > 0) {
+      final prevPage = _currentFormPage - 1;
+      _formPageController.animateToPage(
+        prevPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      setState(() {
+        _currentFormPage = prevPage;
+      });
     }
   }
   
@@ -2049,8 +2068,10 @@ class _StationReportViewState extends State<StationReportView>
                   onTap();
                   // Si es la primera página del formulario de estación, avanzar automáticamente
                   if (_reportType == 'station' && _currentFormPage == 0) {
-                    Future.delayed(const Duration(milliseconds: 300), () {
-                      if (mounted) _goToNextPage();
+                    Future.delayed(const Duration(milliseconds: 400), () {
+                      if (mounted && _currentFormPage == 0) {
+                        _goToNextPage();
+                      }
                     });
                   }
                 },
@@ -2159,8 +2180,10 @@ class _StationReportViewState extends State<StationReportView>
                   setState(() => _crowdLevel = level);
                   // Si es la primera página, avanzar automáticamente después de un breve delay
                   if (_currentFormPage == 0) {
-                    Future.delayed(const Duration(milliseconds: 300), () {
-                      if (mounted) _goToNextPage();
+                    Future.delayed(const Duration(milliseconds: 400), () {
+                      if (mounted && _currentFormPage == 0) {
+                        _goToNextPage();
+                      }
                     });
                   }
                 },
