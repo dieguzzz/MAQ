@@ -1489,18 +1489,64 @@ class _StationReportViewState extends State<StationReportView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '3. Problemas específicos (opcional)',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // Botón de enviar reporte primero (con icono)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: _canSubmit() ? 1.0 : 0.0),
+            duration: const Duration(milliseconds: 300),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.95 + (0.05 * value),
+                child: Opacity(
+                  opacity: 0.7 + (0.3 * value),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _canSubmit() && !_isSubmitting
+                          ? () {
+                              HapticFeedback.mediumImpact();
+                              _submitStationReport();
+                            }
+                          : null,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send, size: 24),
+                      label: _isSubmitting
+                          ? const SizedBox.shrink()
+                          : const Text(
+                              'ENVIAR REPORTE',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: _canSubmit() ? 8 : 0,
+                        shadowColor: Colors.blue.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Marca los problemas que observes',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
+          
           const SizedBox(height: 24),
-          _buildOptionalDetails(),
-          const SizedBox(height: 32),
+          
           // Info de puntos
           Container(
             padding: const EdgeInsets.all(16),
@@ -1529,59 +1575,20 @@ class _StationReportViewState extends State<StationReportView>
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          // Botón de confirmar
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: _canSubmit() ? 1.0 : 0.0),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.95 + (0.05 * value),
-                child: Opacity(
-                  opacity: 0.7 + (0.3 * value),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _canSubmit() && !_isSubmitting
-                          ? () {
-                              HapticFeedback.mediumImpact();
-                              _submitStationReport();
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey[300],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: _canSubmit() ? 8 : 0,
-                        shadowColor: Colors.blue.withOpacity(0.5),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'ENVIAR REPORTE',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              );
-            },
+          
+          const SizedBox(height: 32),
+          
+          // Problemas rápidos (sin desplegar, directamente visibles)
+          const Text(
+            'Problemas rápidos (opcional)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
           ),
+          const SizedBox(height: 16),
+          _buildOptionalDetails(),
         ],
       ),
     );
@@ -2286,19 +2293,80 @@ class _StationReportViewState extends State<StationReportView>
 
   Widget _buildIssueCheckbox(String id, String icon, String title) {
     final isSelected = _selectedIssues.contains(id);
-    return CheckboxListTile(
-      value: isSelected,
-      onChanged: (value) {
-        setState(() {
-          if (value == true) {
-            _selectedIssues.add(id);
-          } else {
-            _selectedIssues.remove(id);
-          }
-        });
-      },
-      title: Text('$icon $title'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.blue[50] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? Colors.blue : Colors.grey[300]!,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() {
+              if (isSelected) {
+                _selectedIssues.remove(id);
+              } else {
+                _selectedIssues.add(id);
+              }
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      icon,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? Colors.blue[800] : Colors.grey[800],
+                    ),
+                  ),
+                ),
+                AnimatedScale(
+                  scale: isSelected ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.elasticOut,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
