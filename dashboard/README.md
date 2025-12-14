@@ -39,20 +39,42 @@ Dashboard web para monitorear la aplicación MetroPTY en tiempo real.
    ```
 
 3. **Abrir el dashboard:**
-   - Opción 1: Abre `index.html` directamente en el navegador
-   - Opción 2: Usa un servidor local:
-     ```bash
-     # Python
-     python -m http.server 8000
-     
-     # Node.js
-     npx http-server
-     ```
-   - Opción 3: Despliega en Firebase Hosting:
-     ```bash
-     firebase init hosting
-     firebase deploy --only hosting
-     ```
+
+   **Opción 1: Más Simple (Recomendado)**
+   - Haz doble clic en `index.html`
+   - Se abrirá directamente en tu navegador
+   - ⚠️ Nota: Algunas funciones pueden requerir servidor local
+
+   **Opción 2: Scripts Automáticos (Windows)**
+   - **PowerShell:** Ejecuta `servir.ps1` (click derecho → "Ejecutar con PowerShell")
+   - **CMD:** Ejecuta `servir.bat` (doble clic)
+   - Los scripts detectan automáticamente qué servidor usar
+   - Luego abre: `http://localhost:8000/dashboard/index.html`
+
+   **Opción 3: Manual (PowerShell/CMD)**
+   ```powershell
+   # Python (Windows PowerShell)
+   py -m http.server 8000
+   # O si tienes Python 3 instalado:
+   python3 -m http.server 8000
+   
+   # Node.js (si está instalado)
+   npx http-server
+   
+   # PHP (si está instalado)
+   php -S localhost:8000
+   ```
+   Luego abre: `http://localhost:8000/dashboard/index.html`
+
+   **Opción 4: VS Code Live Server**
+   - Instala extensión "Live Server"
+   - Click derecho en `index.html` → "Open with Live Server"
+
+   **Opción 5: Firebase Hosting (Producción)**
+   ```bash
+   firebase init hosting
+   firebase deploy --only hosting
+   ```
 
 ## 🔒 Seguridad
 
