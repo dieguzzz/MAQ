@@ -1497,17 +1497,233 @@ class _StationReportViewState extends State<StationReportView>
   }
 
   Widget _buildTrainReportForm() {
-    // Por ahora, redirigir a la pantalla de tren (se puede mejorar después)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.pop(context);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TrainReportFlowScreen(station: widget.station),
-        ),
-      );
-    });
-    return const Center(child: CircularProgressIndicator());
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con botón de volver
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => setState(() {
+                  _reportType = null;
+                  _crowdLevel = null;
+                  _trainStatus = null;
+                  _etaBucket = null;
+                }),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'REPORTAR TREN: ${widget.station.nombre}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Estación: ${widget.station.nombre}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Pregunta 1: ¿Cómo venía el tren? (obligatorio)
+          const Text(
+            '1. ¿Cómo venía el tren?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildCrowdOption(1, '🟢 VACÍO', 'Asientos libres', Colors.green),
+          const SizedBox(height: 12),
+          _buildCrowdOption(2, '🟡 MODERADO', 'De pie cómodo', Colors.orange),
+          const SizedBox(height: 12),
+          _buildCrowdOption(3, '🔴 LLENO', 'Apretado', Colors.red),
+          const SizedBox(height: 12),
+          _buildCrowdOption(4, '💀 SARDINA', 'Extremo', Colors.purple),
+          
+          const SizedBox(height: 32),
+          
+          // Pregunta 2: Estado del tren (opcional)
+          const Text(
+            '2. Estado del tren (opcional)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Si notaste algo especial',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          _buildTrainStatusOption('normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
+          const SizedBox(height: 12),
+          _buildTrainStatusOption('slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
+          const SizedBox(height: 12),
+          _buildTrainStatusOption('stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
+          
+          const SizedBox(height: 32),
+          
+          // Pregunta 3: ETA (opcional pero recomendado)
+          const Text(
+            '3. ¿Cuánto falta para el próximo tren? (recomendado)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Esto ayuda a calibrar el sistema',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          _buildEtaOption('1-2', '🕐 1-2 MINUTOS', Colors.blue),
+          const SizedBox(height: 12),
+          _buildEtaOption('3-5', '🕑 3-5 MINUTOS', Colors.blue),
+          const SizedBox(height: 12),
+          _buildEtaOption('6-8', '🕒 6-8 MINUTOS', Colors.blue),
+          const SizedBox(height: 12),
+          _buildEtaOption('9+', '🕓 9+ MINUTOS', Colors.blue),
+          const SizedBox(height: 12),
+          _buildEtaOption('unknown', '🤷 NO SÉ', Colors.grey),
+          
+          if (_etaBucket != null && _etaBucket != 'unknown') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Te preguntaremos si el tren realmente llegó',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[800],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 32),
+          
+          // Botón de confirmar con animación
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: _canSubmitTrain() ? 1.0 : 0.0),
+            duration: const Duration(milliseconds: 300),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.95 + (0.05 * value),
+                child: Opacity(
+                  opacity: 0.7 + (0.3 * value),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _canSubmitTrain() && !_isSubmitting
+                          ? () {
+                              HapticFeedback.mediumImpact();
+                              _submitTrainReport();
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: _canSubmitTrain() ? 8 : 0,
+                        shadowColor: Colors.green.withOpacity(0.5),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'ENVIAR REPORTE',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Info de puntos
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green[50]!,
+                  Colors.green[100]!.withOpacity(0.5),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.stars, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ganas: +${20 + ((_etaBucket != null && _etaBucket != 'unknown') ? 10 : 0)} puntos',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_etaBucket != null && _etaBucket != 'unknown') ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '+10 puntos por estimar tiempo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green[800],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildOptionCard({
