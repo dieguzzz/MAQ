@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/dev_service.dart';
 
-/// Widget que detecta gesto secreto (10 taps) para activar modo desarrollador
+/// Widget que detecta gesto secreto (1 tap) para activar modo desarrollador
 class SecretDevActivation extends StatefulWidget {
   final Widget child;
 
@@ -32,8 +32,8 @@ class _SecretDevActivationState extends State<SecretDevActivation> {
         tapCount++;
         lastTap = now;
 
-        // 10 taps en 2 segundos activa modo dev
-        if (tapCount >= 10) {
+        // 1 tap activa modo dev
+        if (tapCount >= 1) {
           DevService.toggleDevMode();
           
           if (mounted) {

@@ -356,5 +356,86 @@ class DevService {
       };
     }
   }
+
+  /// Limpia todos los datos de prueba generados
+  static Future<void> clearTestData() async {
+    try {
+      print('🧹 Limpiando datos de prueba...');
+
+      // 1. Eliminar reportes de aprendizaje de prueba
+      final learningReports = await _firestore
+          .collection('learning_reports')
+          .where('usuario_id', isGreaterThanOrEqualTo: 'dev_user_')
+          .where('usuario_id', isLessThan: 'dev_user_\uf8ff')
+          .get();
+
+      final learningBatch = _firestore.batch();
+      for (final doc in learningReports.docs) {
+        learningBatch.delete(doc.reference);
+      }
+      if (learningReports.docs.isNotEmpty) {
+        await learningBatch.commit();
+        print('✅ Eliminados ${learningReports.docs.length} reportes de aprendizaje');
+      }
+
+      // 2. Eliminar reportes de prueba (que empiecen con dev_user_ o tengan [DEV_TEST] en descripción)
+      // Primero buscar por usuario_id dev_user_
+      final reportsByUser = await _firestore
+          .collection('reports')
+          .where('usuario_id', isGreaterThanOrEqualTo: 'dev_user_')
+          .where('usuario_id', isLessThan: 'dev_user_\uf8ff')
+          .get();
+
+      // También buscar reportes recientes (últimas 24 horas) con [DEV_TEST] en descripción
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final recentReports = await _firestore
+          .collection('reports')
+          .where('creado_en', isGreaterThanOrEqualTo: Timestamp.fromDate(yesterday))
+          .get();
+
+      // Filtrar reportes con [DEV_TEST] en la descripción
+      final testReports = recentReports.docs.where((doc) {
+        final data = doc.data();
+        final descripcion = data['descripcion'] as String?;
+        return descripcion != null && descripcion.contains('[DEV_TEST]');
+      }).toList();
+
+      // Combinar ambos conjuntos de reportes
+      final allTestReports = <String>{};
+      for (final doc in reportsByUser.docs) {
+        allTestReports.add(doc.id);
+      }
+      for (final doc in testReports) {
+        allTestReports.add(doc.id);
+      }
+
+      // Eliminar todos los reportes de prueba
+      if (allTestReports.isNotEmpty) {
+        final reportsBatch = _firestore.batch();
+        for (final reportId in allTestReports) {
+          final docRef = _firestore.collection('reports').doc(reportId);
+          reportsBatch.delete(docRef);
+        }
+        await reportsBatch.commit();
+        print('✅ Eliminados ${allTestReports.length} reportes de prueba');
+      }
+
+      // 3. Limpiar métricas de desarrollo
+      await _firestore.collection('dev_metrics').doc('realtime').set({
+        'accuracy': 0.0,
+        'todayReports': 0,
+        'learningSpeed': 0.0,
+        'accuracyHistory': [],
+        'problemStations': [],
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      print('✅ Métricas de desarrollo limpiadas');
+      print('✅ Limpieza de datos completada');
+    } catch (e) {
+      print('❌ Error limpiando datos de prueba: $e');
+      rethrow;
+    }
+  }
 }
 

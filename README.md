@@ -20,6 +20,7 @@ flutter pub get
 
 ## 📚 Documentación
 
+- **[GUIA_PARA_COLABORADORES.md](GUIA_PARA_COLABORADORES.md)** - ⭐ **NUEVO** - Guía para colaboradores que clonan el repo
 - **[GUIA_OTRA_COMPUTADORA.md](GUIA_OTRA_COMPUTADORA.md)** - Guía para trabajar desde otra computadora
 - **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Configuración detallada de Firebase
 - **[CONFIGURACION_PASO_A_PASO.md](CONFIGURACION_PASO_A_PASO.md)** - Configuración paso a paso

@@ -4,6 +4,7 @@ import '../../services/dev_service.dart';
 import 'dev_simulation_tab.dart';
 import 'dev_metrics_tab.dart';
 import 'dev_settings_tab.dart';
+import 'dev_stations_tab.dart';
 
 /// Ventana flotante draggable para modo desarrollador
 class FloatingDevWindow extends StatefulWidget {
@@ -159,7 +160,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                   // Contenido con tabs
                   Expanded(
                     child: DefaultTabController(
-                      length: 3,
+                      length: 4,
                       child: Column(
                         children: [
                           const TabBar(
@@ -176,6 +177,10 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                                 icon: Icon(Icons.tune),
                                 text: 'Ajustes',
                               ),
+                              Tab(
+                                icon: Icon(Icons.train),
+                                text: 'Estaciones',
+                              ),
                             ],
                           ),
                           Expanded(
@@ -184,6 +189,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                                 const DevSimulationTab(),
                                 const DevMetricsTab(),
                                 const DevSettingsTab(),
+                                const DevStationsTab(),
                               ],
                             ),
                           ),
