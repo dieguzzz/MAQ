@@ -2263,27 +2263,36 @@ class _StationReportViewState extends State<StationReportView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Problemas rápidos (opcional)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        ...issues.map((issue) => _buildIssueCheckbox(
-          issue['id']!,
-          issue['icon']!,
-          issue['title']!,
+        ...issues.map((issue) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildIssueCheckbox(
+            issue['id']!,
+            issue['icon']!,
+            issue['title']!,
+          ),
         )),
         if (_selectedIssues.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[200]!),
             ),
-            child: Text(
-              '+${_selectedIssues.length * 5} puntos por problemas',
-              style: const TextStyle(color: Colors.blue, fontSize: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.blue, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '+${_selectedIssues.length * 5} puntos por problemas',
+                  style: TextStyle(
+                    color: Colors.blue[800],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
