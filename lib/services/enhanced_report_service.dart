@@ -123,7 +123,7 @@ class EnhancedReportService {
   /// Enviar validación ETA
   Future<Map<String, dynamic>> submitETAValidation({
     required String reportId,
-    required String result, // 'arrived' | 'not_arrived' | 'cant_confirm'
+    required String validationResult, // 'arrived' | 'not_arrived' | 'cant_confirm'
     DateTime? actualArrivalTime,
   }) async {
     final userId = _auth.currentUser?.uid;
