@@ -379,21 +379,34 @@
         async function authenticateDashboard() {
             try {
                 // Intentar autenticación anónima
-                await auth.signInAnonymously();
+                const userCredential = await auth.signInAnonymously();
                 isAuthenticated = true;
-                console.log('Dashboard autenticado correctamente (anónimo)');
+                currentUser = userCredential.user;
+                console.log('Dashboard autenticado correctamente (anónimo)', userCredential.user.uid);
                 updateAuthUI();
+                return true;
             } catch (error) {
-                console.error('Error de autenticación anónima:', error);
+                console.error('Error de autenticación anónima:', error.code, error.message);
                 isAuthenticated = false;
+                currentUser = null;
                 updateAuthUI();
-                // Si falla, mostrar mensaje pero continuar
+                
+                // Mensaje más específico según el error
+                let errorMessage = '⚠️ Error de autenticación anónima. ';
+                if (error.code === 'auth/operation-not-allowed') {
+                    errorMessage += 'Anonymous no está habilitado. ';
+                    errorMessage += 'Habilítalo en Firebase Console → Authentication → Sign-in method → Anonymous';
+                } else {
+                    errorMessage += 'Algunas funciones pueden no estar disponibles. ';
+                }
+                errorMessage += ' Haz clic en "Login" para autenticarte con email/password.';
+                
                 document.body.insertAdjacentHTML('afterbegin', 
-                    '<div style="background: #ffc107; padding: 1rem; text-align: center; color: #856404;">' +
-                    '⚠️ Error de autenticación anónima. Algunas funciones pueden no estar disponibles. ' +
-                    'Haz clic en "Login" para autenticarte con email/password.' +
+                    '<div style="background: #ffc107; padding: 1rem; text-align: center; color: #856404; margin-bottom: 1rem;">' +
+                    errorMessage +
                     '</div>'
                 );
+                return false;
             }
         }
         
@@ -797,8 +810,24 @@
                 // Verificar autenticación antes de intentar leer
                 const currentAuth = auth.currentUser;
                 if (!currentAuth) {
-                    throw new Error('No autenticado. Por favor, inicia sesión.');
+                    console.warn('No hay usuario autenticado, intentando autenticación anónima...');
+                    // Intentar autenticación anónima si no hay usuario
+                    try {
+                        await auth.signInAnonymously();
+                        // Esperar un momento para que la autenticación se complete
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } catch (authError) {
+                        throw new Error('No autenticado. Por favor, inicia sesión haciendo clic en "Login" en el header.');
+                    }
                 }
+                
+                // Verificar nuevamente después del intento de autenticación
+                const finalAuth = auth.currentUser;
+                if (!finalAuth) {
+                    throw new Error('No se pudo autenticar. Verifica que Anonymous esté habilitado en Firebase Authentication.');
+                }
+                
+                console.log('Leyendo community_stats con usuario:', finalAuth.uid, finalAuth.isAnonymous ? '(anónimo)' : finalAuth.email);
                 
                 const statsDoc = await db.collection('community_stats').doc('founder_week').get();
                 
@@ -863,25 +892,35 @@
                 let errorMsg = '';
                 
                 if (error.message.includes('permissions') || error.code === 'permission-denied') {
-                    errorMsg = '⚠️ Error de permisos. ';
+                    errorMsg = '⚠️ Error de permisos para community_stats.\n\n';
                     const currentAuth = auth.currentUser;
                     if (!currentAuth) {
-                        errorMsg += 'No estás autenticado. Haz clic en "Login" para iniciar sesión.';
+                        errorMsg += 'No estás autenticado.\n';
+                        errorMsg += 'Solución:\n';
+                        errorMsg += '1. Haz clic en "Login" en el header\n';
+                        errorMsg += '2. O habilita "Anonymous" en Firebase Authentication';
                     } else {
-                        errorMsg += 'Verifica las reglas de Firestore para community_stats.';
+                        errorMsg += 'Estás autenticado pero las reglas de Firestore no permiten la lectura.\n';
+                        errorMsg += 'Solución:\n';
+                        errorMsg += '1. Verifica que las reglas incluyan: allow read: if request.auth != null\n';
+                        errorMsg += '2. Despliega las reglas: firebase deploy --only firestore:rules';
                     }
-                } else if (error.message.includes('No autenticado')) {
-                    errorMsg = '⚠️ ' + error.message + ' Haz clic en "Login" en el header.';
+                } else if (error.message.includes('No autenticado') || error.message.includes('No se pudo autenticar')) {
+                    errorMsg = '⚠️ ' + error.message + '\n\n';
+                    errorMsg += 'Pasos para resolver:\n';
+                    errorMsg += '1. Firebase Console → Authentication → Sign-in method\n';
+                    errorMsg += '2. Habilita "Anonymous"\n';
+                    errorMsg += '3. O haz clic en "Login" en el header del dashboard';
                 } else {
                     errorMsg = 'Error al cargar estadísticas: ' + error.message;
                 }
                 
                 if (loadingElement) {
-                    loadingElement.textContent = errorMsg;
+                    loadingElement.innerHTML = errorMsg.replace(/\n/g, '<br>');
                 } else {
                     const section = document.getElementById('community');
                     if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg.replace(/\n/g, '<br>')}</div>`);
                     }
                 }
             }
