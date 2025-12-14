@@ -14,6 +14,7 @@ import 'services/metro_simulator_service.dart';
 import 'services/station_position_editor_service.dart';
 import 'services/station_edit_mode_service.dart';
 import 'services/notification_service.dart';
+import 'utils/navigation_helper.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -58,7 +59,9 @@ void main() async {
   }
   
   // Inicializar NotificationService DESPUÉS de Firebase (de forma asíncrona)
-  NotificationService().initialize().catchError((e) {
+  final notificationService = NotificationService();
+  notificationService.onNotificationTapped = NavigationHelper.handleNotificationNavigation;
+  notificationService.initialize().catchError((e) {
     print('❌ Error inicializando NotificationService (no crítico): $e');
   });
   print('🔔 Inicialización de NotificationService iniciada (asíncrona)');
