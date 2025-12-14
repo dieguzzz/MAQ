@@ -1405,10 +1405,7 @@ class _StationReportViewState extends State<StationReportView>
             iconColor: Colors.green,
             title: '✅ SÍ - Todo funciona',
             isSelected: _operational == 'yes',
-            onTap: () {
-              setState(() => _operational = 'yes');
-              _goToNextPage();
-            },
+            onTap: () => setState(() => _operational = 'yes'),
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -1417,10 +1414,7 @@ class _StationReportViewState extends State<StationReportView>
             iconColor: Colors.orange,
             title: '⚠️ PARCIAL - Algo falla',
             isSelected: _operational == 'partial',
-            onTap: () {
-              setState(() => _operational = 'partial');
-              _goToNextPage();
-            },
+            onTap: () => setState(() => _operational = 'partial'),
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -1429,10 +1423,7 @@ class _StationReportViewState extends State<StationReportView>
             iconColor: Colors.red,
             title: '🚫 NO - Cerrada / grave',
             isSelected: _operational == 'no',
-            onTap: () {
-              setState(() => _operational = 'no');
-              _goToNextPage();
-            },
+            onTap: () => setState(() => _operational = 'no'),
           ),
         ],
       ),
