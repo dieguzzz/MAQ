@@ -1001,9 +1001,12 @@ class _StationReportViewState extends State<StationReportView>
   // Estado del formulario
   String? _reportType; // 'station' | 'train' | null
   String? _operational; // 'yes' | 'partial' | 'no'
-  int? _crowdLevel; // 1-5
+  int? _crowdLevel; // 1-5 (para estación y tren)
   final Set<String> _selectedIssues = {};
   bool _showOptionalDetails = false;
+  // Estado específico de tren
+  String? _trainStatus; // 'normal' | 'slow' | 'stopped' | null
+  String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
   bool _isSubmitting = false;
   bool _showSuccess = false;
   String? _reportId;
@@ -1318,6 +1321,8 @@ class _StationReportViewState extends State<StationReportView>
                   _crowdLevel = null;
                   _selectedIssues.clear();
                   _showOptionalDetails = false;
+                  _trainStatus = null;
+                  _etaBucket = null;
                 }),
               ),
               Expanded(
@@ -1866,15 +1871,17 @@ class _StationReportViewState extends State<StationReportView>
             },
           ),
           const SizedBox(height: 32),
-          Text(
-            'Has mejorado la información de\n${widget.station.nombre} para:',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+              Text(
+                _reportType == 'train'
+                    ? 'Has mejorado la información del tren\nen ${widget.station.nombre} para:'
+                    : 'Has mejorado la información de\n${widget.station.nombre} para:',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
           const SizedBox(height: 32),
           // Info rows con animación escalonada
           _buildAnimatedInfoRow('👥', '47 usuarios cercanos', 0),
@@ -2082,6 +2089,310 @@ class _StationReportViewState extends State<StationReportView>
 
   bool _canSubmit() {
     return _operational != null && _crowdLevel != null;
+  }
+
+  bool _canSubmitTrain() {
+    return _crowdLevel != null && !_isSubmitting;
+  }
+
+  Widget _buildTrainStatusOption(String status, String emoji, String subtitle, Color color) {
+    final isSelected = _trainStatus == status;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 - (value * 0.02),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [
+                        color.withOpacity(0.2),
+                        color.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: !isSelected ? Colors.grey[50] : null,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? color : Colors.grey[300]!,
+                width: isSelected ? 2.5 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _trainStatus = status);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            emoji.split(' ')[0],
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              emoji,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                color: isSelected ? color : Colors.grey[800],
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedScale(
+                        scale: isSelected ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.elasticOut,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEtaOption(String bucket, String label, Color color) {
+    final isSelected = _etaBucket == bucket;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 - (value * 0.02),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [
+                        color.withOpacity(0.2),
+                        color.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: !isSelected ? Colors.grey[50] : null,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? color : Colors.grey[300]!,
+                width: isSelected ? 2.5 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _etaBucket = bucket);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            label.split(' ')[0],
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? color : Colors.grey[800],
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      AnimatedScale(
+                        scale: isSelected ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.elasticOut,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _submitTrainReport() async {
+    if (!_canSubmitTrain()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Intentar obtener ubicación (opcional)
+      Position? position;
+      try {
+        final locationService = LocationService();
+        final status = await locationService.checkLocationStatus();
+        if (status.hasPermission) {
+          position = await locationService.getCurrentPosition();
+        }
+      } catch (e) {
+        print('No se pudo obtener ubicación: $e');
+      }
+
+      final reportId = await _reportService.createTrainReport(
+        stationId: widget.station.id,
+        crowdLevel: _crowdLevel!,
+        trainStatus: _trainStatus,
+        etaBucket: _etaBucket,
+        trainLine: widget.station.linea,
+        userPosition: position,
+      );
+
+      if (!mounted) return;
+
+      // Calcular puntos
+      int basePoints = 20;
+      int bonusPoints = 0;
+      if (_etaBucket != null && _etaBucket != 'unknown') {
+        bonusPoints = 10;
+      }
+      _pointsEarned = basePoints + bonusPoints;
+
+      setState(() {
+        _isSubmitting = false;
+        _reportId = reportId;
+        _showSuccess = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Future<void> _submitStationReport() async {
