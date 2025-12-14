@@ -506,3 +506,152 @@ exports.processReportConfirmation = functions.firestore
     }
   });
 
+// Cloud Function: Generar datos iniciales de trenes basados en horarios
+exports.generateInitialTrainData = functions.pubsub
+  .schedule('every 1 minutes')
+  .onRun(async (context) => {
+    try {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      
+      // Determinar frecuencia según hora
+      let frequencyMinutes;
+      if ((hour >= 6 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+        frequencyMinutes = 5; // Hora pico
+      } else {
+        frequencyMinutes = 10; // Hora valle
+      }
+      
+      // Obtener estaciones para calcular posiciones
+      const stationsSnapshot = await db.collection('stations').get();
+      const stationsByLine = {
+        linea1: [],
+        linea2: []
+      };
+      
+      stationsSnapshot.docs.forEach(doc => {
+        const station = { id: doc.id, ...doc.data() };
+        if (station.linea === 'linea1') {
+          stationsByLine.linea1.push(station);
+        } else if (station.linea === 'linea2') {
+          stationsByLine.linea2.push(station);
+        }
+      });
+      
+      // Ordenar estaciones por nombre (asumiendo orden lógico)
+      stationsByLine.linea1.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      stationsByLine.linea2.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      
+      // Generar trenes para cada línea y dirección
+      const trains = [];
+      const lines = ['linea1', 'linea2'];
+      const directions = ['norte', 'sur'];
+      
+      for (const line of lines) {
+        const stations = stationsByLine[line];
+        if (stations.length === 0) continue;
+        
+        for (const direction of directions) {
+          const trainId = `${line}_${direction}_001`;
+          
+          // Calcular posición estimada basada en horario
+          const minutesSinceHourStart = minute;
+          const positionInCycle = (minutesSinceHourStart % frequencyMinutes) / frequencyMinutes;
+          
+          // Calcular segmento actual (simplificado)
+          const totalStations = stations.length;
+          const segmentIndex = Math.floor(positionInCycle * (totalStations - 1));
+          const segmentPosition = (positionInCycle * (totalStations - 1)) % 1;
+          
+          const fromStation = stations[Math.min(segmentIndex, totalStations - 1)];
+          const toStation = stations[Math.min(segmentIndex + 1, totalStations - 1)];
+          
+          // Interpolar posición entre estaciones
+          const fromLat = fromStation.ubicacion.latitude;
+          const fromLon = fromStation.ubicacion.longitude;
+          const toLat = toStation.ubicacion.latitude;
+          const toLon = toStation.ubicacion.longitude;
+          
+          const currentLat = fromLat + (toLat - fromLat) * segmentPosition;
+          const currentLon = fromLon + (toLon - fromLon) * segmentPosition;
+          
+          trains.push({
+            id: trainId,
+            linea: line,
+            direccion: direction,
+            ubicacion_actual: new admin.firestore.GeoPoint(currentLat, currentLon),
+            velocidad: 35, // Velocidad promedio estimada
+            estado: 'normal',
+            aglomeracion: 2, // Moderado por defecto
+            confidence: 'low', // CRÍTICO: Marcar como baja confianza
+            is_estimated: true, // Flag para indicar que es estimado
+            ultima_actualizacion: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      
+      // Guardar en Firestore
+      const batch = db.batch();
+      for (const train of trains) {
+        const trainRef = db.collection('trains').doc(train.id);
+        batch.set(trainRef, train, { merge: true });
+      }
+      await batch.commit();
+      
+      console.log(`Generated ${trains.length} estimated trains`);
+      return null;
+    } catch (error) {
+      console.error('Error generating initial train data:', error);
+      return null;
+    }
+  });
+
+// Cloud Function: Actualizar estadísticas comunitarias
+exports.updateCommunityStats = functions.pubsub
+  .schedule('every 5 minutes')
+  .onRun(async (context) => {
+    try {
+      const statsRef = db.collection('community_stats').doc('founder_week');
+      
+      // Contar reportes de últimos 7 días
+      const sevenDaysAgo = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      );
+      
+      const reportsSnapshot = await db.collection('reports')
+        .where('creado_en', '>=', sevenDaysAgo)
+        .get();
+      
+      // Contar estaciones activas (con al menos 1 reporte)
+      const activeStations = new Set();
+      reportsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.tipo === 'estacion' && data.objetivo_id) {
+          activeStations.add(data.objetivo_id);
+        }
+      });
+      
+      // Contar participantes únicos
+      const participants = new Set();
+      reportsSnapshot.docs.forEach(doc => {
+        if (doc.data().usuario_id) {
+          participants.add(doc.data().usuario_id);
+        }
+      });
+      
+      await statsRef.set({
+        total_reports: reportsSnapshot.size,
+        active_stations: activeStations.size,
+        participants: participants.size,
+        last_updated: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      
+      console.log(`Updated community stats: ${reportsSnapshot.size} reports, ${activeStations.size} stations, ${participants.size} participants`);
+      return null;
+    } catch (error) {
+      console.error('Error updating community stats:', error);
+      return null;
+    }
+  });
+

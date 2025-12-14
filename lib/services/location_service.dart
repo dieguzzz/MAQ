@@ -1,7 +1,33 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class LocationPermissionStatus {
+  final bool isGpsEnabled;
+  final LocationPermission permission;
+  final bool hasPermission;
+
+  LocationPermissionStatus({
+    required this.isGpsEnabled,
+    required this.permission,
+    required this.hasPermission,
+  });
+}
+
 class LocationService {
+  /// Verifica el estado de los permisos sin solicitarlos
+  Future<LocationPermissionStatus> checkLocationStatus() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    LocationPermission permission = await Geolocator.checkPermission();
+    
+    return LocationPermissionStatus(
+      isGpsEnabled: serviceEnabled,
+      permission: permission,
+      hasPermission: serviceEnabled && 
+          (permission == LocationPermission.whileInUse || 
+           permission == LocationPermission.always),
+    );
+  }
+
   Future<bool> checkLocationPermission() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {

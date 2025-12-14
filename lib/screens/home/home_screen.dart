@@ -17,6 +17,8 @@ import '../admin/learning_admin_panel.dart';
 import '../admin/learning_demo_panel.dart';
 import '../../services/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
+import '../../widgets/location_permission_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,18 +27,117 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showCustomMap = false; // Toggle entre Google Maps y mapa personalizado
+  static const String _locationDialogShownKey = 'location_permission_dialog_shown';
+  bool _isCheckingLocation = false;
+  bool _lastGpsStatus = true;
+  bool _lastPermissionStatus = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Verificar si se debe mostrar intersticial al reabrir la app
     _checkReopenInterstitial();
     // Verificar modo test cuando se carga la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkTestMode();
+      _checkLocationPermission();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Cuando la app vuelve a estar activa, verificar el estado de la ubicación
+    if (state == AppLifecycleState.resumed) {
+      _checkLocationPermissionOnResume();
+    }
+  }
+
+  Future<void> _checkLocationPermissionOnResume() async {
+    if (_isCheckingLocation) return;
+    
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    if (!mounted) return;
+
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final status = await locationProvider.checkLocationStatus();
+    
+    // Si el estado cambió (GPS se desactivó o permisos se revocaron), mostrar diálogo
+    if ((_lastGpsStatus != status.isGpsEnabled || _lastPermissionStatus != status.hasPermission) &&
+        (!status.isGpsEnabled || !status.hasPermission)) {
+      if (mounted) {
+        final result = await LocationPermissionDialog.show(
+          context,
+          isGpsEnabled: status.isGpsEnabled,
+          hasPermission: status.hasPermission,
+        );
+        
+        if (result == true && mounted) {
+          await locationProvider.getCurrentLocation();
+        }
+      }
+    }
+    
+    _lastGpsStatus = status.isGpsEnabled;
+    _lastPermissionStatus = status.hasPermission;
+  }
+
+  Future<void> _checkLocationPermission() async {
+    if (_isCheckingLocation) return;
+    _isCheckingLocation = true;
+    
+    // Esperar un momento para que el LocationProvider se inicialice
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (!mounted) {
+      _isCheckingLocation = false;
+      return;
+    }
+
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final status = await locationProvider.checkLocationStatus();
+    
+    // Guardar estado actual
+    _lastGpsStatus = status.isGpsEnabled;
+    _lastPermissionStatus = status.hasPermission;
+    
+    // Verificar si ya se mostró el diálogo antes
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownDialog = prefs.getBool(_locationDialogShownKey) ?? false;
+    
+    // Mostrar diálogo si:
+    // 1. Es la primera vez (no se ha mostrado antes) O
+    // 2. El GPS está desactivado O
+    // 3. No hay permisos
+    if (!hasShownDialog || !status.isGpsEnabled || !status.hasPermission) {
+      if (mounted) {
+        final result = await LocationPermissionDialog.show(
+          context,
+          isGpsEnabled: status.isGpsEnabled,
+          hasPermission: status.hasPermission,
+        );
+        
+        // Guardar que se mostró el diálogo
+        await prefs.setBool(_locationDialogShownKey, true);
+        
+        // Si el usuario acepta, intentar obtener la ubicación
+        if (result == true && mounted) {
+          await locationProvider.getCurrentLocation();
+        }
+      }
+    }
+    
+    _isCheckingLocation = false;
   }
 
   Future<void> _checkReopenInterstitial() async {
@@ -506,8 +607,27 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, locationProvider, child) {
                 return FloatingActionButton(
                   heroTag: 'locate_fab',
-                  onPressed: () {
-                    locationProvider.getCurrentLocation();
+                  onPressed: () async {
+                    // Verificar estado antes de obtener ubicación
+                    final status = await locationProvider.checkLocationStatus();
+                    
+                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
+                    if (!status.isGpsEnabled || !status.hasPermission) {
+                      if (mounted) {
+                        final result = await LocationPermissionDialog.show(
+                          context,
+                          isGpsEnabled: status.isGpsEnabled,
+                          hasPermission: status.hasPermission,
+                        );
+                        
+                        if (result == true && mounted) {
+                          await locationProvider.getCurrentLocation();
+                        }
+                      }
+                    } else {
+                      // Si todo está bien, obtener ubicación normalmente
+                      await locationProvider.getCurrentLocation();
+                    }
                   },
                   child: const Icon(Icons.my_location),
                 );

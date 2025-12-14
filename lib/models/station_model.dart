@@ -15,6 +15,8 @@ class StationModel {
   final EstadoEstacion estadoActual;
   final int aglomeracion; // 1-5
   final DateTime ultimaActualizacion;
+  final String? confidence; // 'high'|'medium'|'low'
+  final bool? isEstimated; // Si los datos son estimados
 
   StationModel({
     required this.id,
@@ -24,6 +26,8 @@ class StationModel {
     this.estadoActual = EstadoEstacion.normal,
     this.aglomeracion = 1,
     required this.ultimaActualizacion,
+    this.confidence,
+    this.isEstimated,
   });
 
   factory StationModel.fromFirestore(DocumentSnapshot doc) {
@@ -65,6 +69,8 @@ class StationModel {
       'estado_actual': _estadoToString(estadoActual),
       'aglomeracion': aglomeracion,
       'ultima_actualizacion': Timestamp.fromDate(ultimaActualizacion),
+      if (confidence != null) 'confidence': confidence,
+      if (isEstimated != null) 'is_estimated': isEstimated,
     };
   }
 

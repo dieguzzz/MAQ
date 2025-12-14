@@ -20,6 +20,8 @@ class TrainModel {
   final EstadoTren estado;
   final int aglomeracion; // 1-5
   final DateTime ultimaActualizacion;
+  final String? confidence; // 'high'|'medium'|'low'
+  final bool? isEstimated; // Si los datos son estimados
 
   TrainModel({
     required this.id,
@@ -43,6 +45,8 @@ class TrainModel {
       estado: _parseEstadoTren(data['estado'] ?? 'normal'),
       aglomeracion: data['aglomeracion'] ?? 1,
       ultimaActualizacion: (data['ultima_actualizacion'] as Timestamp).toDate(),
+      confidence: data['confidence'] as String?,
+      isEstimated: data['is_estimated'] as bool? ?? false,
     );
   }
 
@@ -56,6 +60,8 @@ class TrainModel {
       'estado': _estadoToString(estado),
       'aglomeracion': aglomeracion,
       'ultima_actualizacion': Timestamp.fromDate(ultimaActualizacion),
+      if (confidence != null) 'confidence': confidence,
+      if (isEstimated != null) 'is_estimated': isEstimated,
     };
   }
 

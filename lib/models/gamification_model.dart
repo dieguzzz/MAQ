@@ -26,6 +26,18 @@ enum BadgeType {
   reyCarnaval,        // Reportar durante carnavales
   // Badges de enseñanza
   profesorDelMetro,   // 10+ reportes de enseñanza
+  // Badges de Fundador (Semana 1)
+  fundador,              // Usuario de primera semana
+  fundadorPlatino,       // Completó todas las misiones
+  pioneroEstacion,       // Primero en reportar una estación
+  mejoradorDatos,        // Subió confianza de baja a media
+  confirmadorConfiable,  // 5 confirmaciones
+  exploradorUrbano,      // 3 estaciones diferentes
+  heroeHoraPico,         // Reportó en hora pico (7-9 AM)
+  verificadorElite,      // 10 confirmaciones
+  maestroL1,            // Todas estaciones L1
+  maestroL2,            // Todas estaciones L2
+  leyendaFundadora,     // 20 reportes en primera semana
 }
 
 class Badge {

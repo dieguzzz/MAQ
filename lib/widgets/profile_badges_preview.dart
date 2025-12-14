@@ -29,17 +29,17 @@ class ProfileBadgesPreview extends StatelessWidget {
       return Card(
         margin: const EdgeInsets.all(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             children: [
               const Text(
                 'Logros',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 'Aún no has desbloqueado ningún logro',
                 style: TextStyle(
@@ -56,7 +56,7 @@ class ProfileBadgesPreview extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.all(16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -66,7 +66,7 @@ class ProfileBadgesPreview extends StatelessWidget {
                 const Text(
                   'Logros Recientes',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -79,9 +79,9 @@ class ProfileBadgesPreview extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 100,
+              height: 85,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: recentBadges.length,
@@ -99,30 +99,30 @@ class ProfileBadgesPreview extends StatelessWidget {
 
   Widget _buildBadgeItem(gamification.Badge badge) {
     return Container(
-      width: 80,
-      margin: const EdgeInsets.only(right: 12),
+      width: 70,
+      margin: const EdgeInsets.only(right: 10),
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
               color: Colors.amber[100],
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.amber[300]!, width: 2),
+              border: Border.all(color: Colors.amber[300]!, width: 1.5),
             ),
             child: Center(
               child: Text(
                 badge.icono,
-                style: const TextStyle(fontSize: 30),
+                style: const TextStyle(fontSize: 24),
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             badge.nombre,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,

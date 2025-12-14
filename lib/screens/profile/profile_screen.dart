@@ -8,6 +8,7 @@ import '../settings/settings_screen.dart';
 import '../reports/report_history_screen.dart';
 import '../leaderboards/leaderboard_screen.dart';
 import '../profile/edit_profile_screen.dart';
+import '../profile/achievements_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -175,6 +176,25 @@ class ProfileScreen extends StatelessWidget {
                           },
                         ),
                       ),
+
+                    // Colección de Logros
+                    Card(
+                      margin: const EdgeInsets.all(16),
+                      child: ListTile(
+                        leading: const Icon(Icons.collections, color: Colors.purple),
+                        title: const Text('Colección de Logros'),
+                        subtitle: const Text('Explora tus logros y medallas'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AchievementsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
 
                     // Acciones
                     Card(

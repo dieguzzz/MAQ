@@ -347,7 +347,148 @@ class GamificationService {
           icono: '🎓',
           desbloqueadoEn: DateTime.now(),
         );
+      // Badges de Fundador
+      case BadgeType.fundador:
+        return Badge(
+          type: type,
+          nombre: 'Fundador',
+          descripcion: 'Parte de los primeros usuarios de MetroPTY',
+          icono: '🌟',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.fundadorPlatino:
+        return Badge(
+          type: type,
+          nombre: 'Fundador Platino',
+          descripcion: 'Completaste todas las misiones de la primera semana',
+          icono: '💎',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.pioneroEstacion:
+        return Badge(
+          type: type,
+          nombre: 'Pionero de Estación',
+          descripcion: 'Primero en reportar en una estación',
+          icono: '🏆',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.mejoradorDatos:
+        return Badge(
+          type: type,
+          nombre: 'Mejorador de Datos',
+          descripcion: 'Subiste la confianza de una estación',
+          icono: '📈',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.confirmadorConfiable:
+        return Badge(
+          type: type,
+          nombre: 'Confirmador Confiable',
+          descripcion: 'Confirmaste 5 reportes de otros',
+          icono: '✅',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.exploradorUrbano:
+        return Badge(
+          type: type,
+          nombre: 'Explorador Urbano',
+          descripcion: 'Reportaste en 3 estaciones diferentes',
+          icono: '🗺️',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.heroeHoraPico:
+        return Badge(
+          type: type,
+          nombre: 'Héroe de Hora Pico',
+          descripcion: 'Reportaste durante hora pico (7-9 AM)',
+          icono: '🌅',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.verificadorElite:
+        return Badge(
+          type: type,
+          nombre: 'Verificador Élite',
+          descripcion: 'Confirmaste 10 reportes',
+          icono: '🔍',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.maestroL1:
+        return Badge(
+          type: type,
+          nombre: 'Maestro de L1',
+          descripcion: 'Reportaste en todas las estaciones de Línea 1',
+          icono: '🔵',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.maestroL2:
+        return Badge(
+          type: type,
+          nombre: 'Maestro de L2',
+          descripcion: 'Reportaste en todas las estaciones de Línea 2',
+          icono: '🟢',
+          desbloqueadoEn: DateTime.now(),
+        );
+      case BadgeType.leyendaFundadora:
+        return Badge(
+          type: type,
+          nombre: 'Leyenda Fundadora',
+          descripcion: '20 reportes en la primera semana',
+          icono: '👑',
+          desbloqueadoEn: DateTime.now(),
+        );
     }
+  }
+  
+  // Verificar si usuario es fundador (primeros 7 días)
+  Future<bool> isFounder(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final createdAt = userDoc.data()?['creado_en'] as Timestamp?;
+      if (createdAt == null) return false;
+      
+      final daysSinceCreation = DateTime.now().difference(createdAt.toDate()).inDays;
+      return daysSinceCreation <= 7;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Otorgar badge de fundador al crear cuenta
+  Future<void> awardFounderBadge(String userId) async {
+    if (await isFounder(userId)) {
+      await _awardBadge(userId, BadgeType.fundador);
+    }
+  }
+  
+  // Verificar badge "Pionero de Estación"
+  Future<void> checkPioneerBadge(String userId, String stationId) async {
+    try {
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      
+      final reportsToday = await _firestore
+          .collection('reports')
+          .where('objetivo_id', isEqualTo: stationId)
+          .where('tipo', isEqualTo: 'estacion')
+          .where('creado_en', isGreaterThan: Timestamp.fromDate(startOfDay))
+          .orderBy('creado_en')
+          .limit(1)
+          .get();
+      
+      if (reportsToday.docs.isNotEmpty) {
+        final firstReport = reportsToday.docs.first;
+        if (firstReport.data()['usuario_id'] == userId) {
+          await _awardBadge(userId, BadgeType.pioneroEstacion);
+        }
+      }
+    } catch (e) {
+      print('Error checking pioneer badge: $e');
+    }
+  }
+  
+  // Verificar badge "Mejorador de Datos"
+  Future<void> checkDataImproverBadge(String userId) async {
+    await _awardBadge(userId, BadgeType.mejoradorDatos);
   }
 
   // Verificar y otorgar badges

@@ -15,6 +15,7 @@ class LocationProvider with ChangeNotifier {
   Position? _currentPosition;
   bool _isTracking = false;
   bool _hasPermission = false;
+  bool _isGpsEnabled = false;
 
   Position? get currentPosition {
     // Si hay ubicación simulada, retornar posición simulada
@@ -89,24 +90,47 @@ class LocationProvider with ChangeNotifier {
   }
   bool get isTracking => _isTracking;
   bool get hasPermission => _hasPermission;
+  bool get isGpsEnabled => _isGpsEnabled;
 
   LocationProvider() {
     _checkPermission();
   }
 
   Future<void> _checkPermission() async {
-    _hasPermission = await _locationService.checkLocationPermission();
+    final status = await _locationService.checkLocationStatus();
+    _isGpsEnabled = status.isGpsEnabled;
+    _hasPermission = status.hasPermission;
     notifyListeners();
     if (_hasPermission) {
       await getCurrentLocation();
     }
   }
 
+  Future<LocationPermissionStatus> checkLocationStatus() async {
+    final status = await _locationService.checkLocationStatus();
+    _isGpsEnabled = status.isGpsEnabled;
+    _hasPermission = status.hasPermission;
+    notifyListeners();
+    return status;
+  }
+
   Future<void> getCurrentLocation() async {
-    _hasPermission = await _locationService.checkLocationPermission();
+    final status = await _locationService.checkLocationStatus();
+    _isGpsEnabled = status.isGpsEnabled;
+    _hasPermission = status.hasPermission;
+    
     if (!_hasPermission) {
       notifyListeners();
       return;
+    }
+
+    // Si no tiene permisos pero el GPS está activado, solicitar permisos
+    if (!_hasPermission && _isGpsEnabled) {
+      _hasPermission = await _locationService.checkLocationPermission();
+      if (!_hasPermission) {
+        notifyListeners();
+        return;
+      }
     }
 
     try {

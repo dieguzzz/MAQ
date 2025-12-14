@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetroPTY - Dashboard de Administración</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-card .change {
+            font-size: 0.85rem;
+            color: #28a745;
+            margin-top: 0.5rem;
+        }
+        
+        .section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .section h2 {
+            margin-bottom: 1rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .badge-high {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-estimated {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚇 MetroPTY - Dashboard de Administración</h1>
+        <p>Monitoreo en tiempo real de la aplicación</p>
+    </div>
+    
+    <div class="container">
+        <button class="refresh-btn" onclick="refreshAll()">🔄 Actualizar Datos</button>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Usuarios</h3>
+                <div class="value" id="totalUsers">-</div>
+                <div class="change" id="usersChange">Cargando...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Reportes Hoy</h3>
+                <div class="value" id="reportsToday">-</div>
+                <div class="change" id="reportsChange">Cargando...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Estaciones Activas</h3>
+                <div class="value" id="activeStations">-</div>
+                <div class="change" id="stationsChange">Cargando...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Trenes Virtuales</h3>
+                <div class="value" id="activeTrains">-</div>
+                <div class="change" id="trainsChange">Cargando...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Confianza Promedio</h3>
+                <div class="value" id="avgConfidence">-</div>
+                <div class="change" id="confidenceChange">Cargando...</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('stations')">Estaciones</button>
+            <button class="tab" onclick="showTab('trains')">Trenes</button>
+            <button class="tab" onclick="showTab('reports')">Reportes Recientes</button>
+            <button class="tab" onclick="showTab('users')">Usuarios Top</button>
+            <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
+        </div>
+        
+        <div id="stations" class="tab-content active section">
+            <h2>📍 Estaciones</h2>
+            <div class="loading">Cargando estaciones...</div>
+        </div>
+        
+        <div id="trains" class="tab-content section">
+            <h2>🚇 Trenes Virtuales</h2>
+            <div class="loading">Cargando trenes...</div>
+        </div>
+        
+        <div id="reports" class="tab-content section">
+            <h2>📊 Reportes Recientes</h2>
+            <div class="loading">Cargando reportes...</div>
+        </div>
+        
+        <div id="users" class="tab-content section">
+            <h2>👥 Usuarios Top</h2>
+            <div class="loading">Cargando usuarios...</div>
+        </div>
+        
+        <div id="community" class="tab-content section">
+            <h2>🏗️ Estadísticas Comunitarias</h2>
+            <div class="loading">Cargando estadísticas...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuración de Firebase (REEMPLAZAR CON TUS CREDENCIALES)
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROJECT_ID.firebaseapp.com",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_PROJECT_ID.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+        
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let statsCache = {
+            users: 0,
+            reports: 0,
+            stations: 0,
+            trains: 0
+        };
+        
+        // Función para mostrar tab
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        // Función para refrescar todo
+        function refreshAll() {
+            loadStats();
+            loadStations();
+            loadTrains();
+            loadRecentReports();
+            loadTopUsers();
+            loadCommunityStats();
+        }
+        
+        // Cargar estadísticas generales
+        async function loadStats() {
+            try {
+                // Usuarios
+                const usersSnapshot = await db.collection('users').get();
+                const totalUsers = usersSnapshot.size;
+                document.getElementById('totalUsers').textContent = totalUsers;
+                document.getElementById('usersChange').textContent = 
+                    `Anterior: ${statsCache.users} | Cambio: ${totalUsers - statsCache.users >= 0 ? '+' : ''}${totalUsers - statsCache.users}`;
+                statsCache.users = totalUsers;
+                
+                // Reportes de hoy
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const reportsTodaySnapshot = await db.collection('reports')
+                    .where('creado_en', '>=', firebase.firestore.Timestamp.fromDate(today))
+                    .get();
+                const reportsToday = reportsTodaySnapshot.size;
+                document.getElementById('reportsToday').textContent = reportsToday;
+                document.getElementById('reportsChange').textContent = 
+                    `Anterior: ${statsCache.reports} | Cambio: ${reportsToday - statsCache.reports >= 0 ? '+' : ''}${reportsToday - statsCache.reports}`;
+                statsCache.reports = reportsToday;
+                
+                // Estaciones activas (con al menos 1 reporte hoy)
+                const activeStationsSet = new Set();
+                reportsTodaySnapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.tipo === 'estacion' && data.objetivo_id) {
+                        activeStationsSet.add(data.objetivo_id);
+                    }
+                });
+                const activeStations = activeStationsSet.size;
+                document.getElementById('activeStations').textContent = activeStations;
+                document.getElementById('stationsChange').textContent = 
+                    `Anterior: ${statsCache.stations} | Cambio: ${activeStations - statsCache.stations >= 0 ? '+' : ''}${activeStations - statsCache.stations}`;
+                statsCache.stations = activeStations;
+                
+                // Trenes
+                const trainsSnapshot = await db.collection('trains').get();
+                const activeTrains = trainsSnapshot.size;
+                document.getElementById('activeTrains').textContent = activeTrains;
+                document.getElementById('trainsChange').textContent = 
+                    `Anterior: ${statsCache.trains} | Cambio: ${activeTrains - statsCache.trains >= 0 ? '+' : ''}${activeTrains - statsCache.trains}`;
+                statsCache.trains = activeTrains;
+                
+                // Confianza promedio
+                const stationsSnapshot = await db.collection('stations').get();
+                let totalConfidence = 0;
+                let stationsWithConfidence = 0;
+                stationsSnapshot.docs.forEach(doc => {
+                    const confidence = doc.data().confidence;
+                    if (confidence) {
+                        stationsWithConfidence++;
+                        if (confidence === 'high') totalConfidence += 3;
+                        else if (confidence === 'medium') totalConfidence += 2;
+                        else totalConfidence += 1;
+                    }
+                });
+                const avgConfidence = stationsWithConfidence > 0 
+                    ? (totalConfidence / stationsWithConfidence).toFixed(1) 
+                    : '0';
+                document.getElementById('avgConfidence').textContent = avgConfidence;
+                document.getElementById('confidenceChange').textContent = 
+                    `${stationsWithConfidence} estaciones con datos`;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        // Cargar estaciones
+        async function loadStations() {
+            try {
+                const snapshot = await db.collection('stations')
+                    .orderBy('nombre')
+                    .get();
+                
+                const table = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Línea</th>
+                                <th>Estado</th>
+                                <th>Aglomeración</th>
+                                <th>Confianza</th>
+                                <th>Última Actualización</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                const confidence = data.confidence || 'low';
+                                const isEstimated = data.is_estimated || false;
+                                return `
+                                    <tr>
+                                        <td><strong>${data.nombre || doc.id}</strong></td>
+                                        <td>${data.linea || 'N/A'}</td>
+                                        <td>${data.estado_actual || 'normal'}</td>
+                                        <td>${data.aglomeracion || 1}/5</td>
+                                        <td>
+                                            <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
+                                                ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
+                                            </span>
+                                        </td>
+                                        <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.querySelector('#stations .loading').outerHTML = table;
+            } catch (error) {
+                console.error('Error loading stations:', error);
+                document.querySelector('#stations .loading').textContent = 'Error al cargar estaciones';
+            }
+        }
+        
+        // Cargar trenes
+        async function loadTrains() {
+            try {
+                const snapshot = await db.collection('trains').get();
+                
+                const table = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Línea</th>
+                                <th>Dirección</th>
+                                <th>Velocidad</th>
+                                <th>Estado</th>
+                                <th>Confianza</th>
+                                <th>Última Actualización</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                const confidence = data.confidence || 'low';
+                                const isEstimated = data.is_estimated || false;
+                                return `
+                                    <tr>
+                                        <td><strong>${doc.id}</strong></td>
+                                        <td>${data.linea || 'N/A'}</td>
+                                        <td>${data.direccion || 'N/A'}</td>
+                                        <td>${data.velocidad || 0} km/h</td>
+                                        <td>${data.estado || 'normal'}</td>
+                                        <td>
+                                            <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
+                                                ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
+                                            </span>
+                                        </td>
+                                        <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.querySelector('#trains .loading').outerHTML = table;
+            } catch (error) {
+                console.error('Error loading trains:', error);
+                document.querySelector('#trains .loading').textContent = 'Error al cargar trenes';
+            }
+        }
+        
+        // Cargar reportes recientes
+        async function loadRecentReports() {
+            try {
+                const snapshot = await db.collection('reports')
+                    .orderBy('creado_en', 'desc')
+                    .limit(20)
+                    .get();
+                
+                const table = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tipo</th>
+                                <th>Objetivo</th>
+                                <th>Estado</th>
+                                <th>Confirmaciones</th>
+                                <th>Confianza</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                const confidence = data.confidence || 0.5;
+                                return `
+                                    <tr>
+                                        <td>${doc.id.substring(0, 8)}...</td>
+                                        <td>${data.tipo || 'N/A'}</td>
+                                        <td>${data.objetivo_id || 'N/A'}</td>
+                                        <td>${data.estado || 'activo'}</td>
+                                        <td>${data.confirmation_count || 0}</td>
+                                        <td>
+                                            <span class="badge ${confidence >= 0.8 ? 'badge-high' : confidence >= 0.5 ? 'badge-medium' : 'badge-low'}">
+                                                ${(confidence * 100).toFixed(0)}%
+                                            </span>
+                                        </td>
+                                        <td>${data.creado_en ? new Date(data.creado_en.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.querySelector('#reports .loading').outerHTML = table;
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.querySelector('#reports .loading').textContent = 'Error al cargar reportes';
+            }
+        }
+        
+        // Cargar usuarios top
+        async function loadTopUsers() {
+            try {
+                const snapshot = await db.collection('users')
+                    .orderBy('gamification.puntos', 'desc')
+                    .limit(20)
+                    .get();
+                
+                const table = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Puntos</th>
+                                <th>Nivel</th>
+                                <th>Reportes</th>
+                                <th>Verificaciones</th>
+                                <th>Racha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                const gamification = data.gamification || {};
+                                return `
+                                    <tr>
+                                        <td><strong>${data.nombre || data.email || doc.id.substring(0, 8)}</strong></td>
+                                        <td>${gamification.puntos || 0}</td>
+                                        <td>${gamification.nivel || 1}</td>
+                                        <td>${data.reportes_count || 0}</td>
+                                        <td>${gamification.verificaciones_hechas || 0}</td>
+                                        <td>${gamification.streak || 0} días</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.querySelector('#users .loading').outerHTML = table;
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.querySelector('#users .loading').textContent = 'Error al cargar usuarios';
+            }
+        }
+        
+        // Cargar estadísticas comunitarias
+        async function loadCommunityStats() {
+            try {
+                const statsDoc = await db.collection('community_stats').doc('founder_week').get();
+                
+                if (statsDoc.exists) {
+                    const data = statsDoc.data();
+                    const progress = ((data.total_reports || 0) / 1000 * 100).toFixed(1);
+                    
+                    const html = `
+                        <div style="margin-bottom: 2rem;">
+                            <h3>Progreso Semana del Fundador</h3>
+                            <div style="background: #f0f0f0; border-radius: 8px; height: 30px; margin-top: 1rem; position: relative; overflow: hidden;">
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; color: #333;">
+                                    ${progress}%
+                                </div>
+                            </div>
+                            <p style="margin-top: 0.5rem; color: #666;">
+                                ${data.total_reports || 0} / 1,000 reportes objetivo
+                            </p>
+                        </div>
+                        
+                        <div class="stats-grid" style="margin-top: 2rem;">
+                            <div class="stat-card">
+                                <h3>Total Reportes (7 días)</h3>
+                                <div class="value">${data.total_reports || 0}</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Estaciones Activas</h3>
+                                <div class="value">${data.active_stations || 0}</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Participantes</h3>
+                                <div class="value">${data.participants || 0}</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Última Actualización</h3>
+                                <div class="value" style="font-size: 1rem;">
+                                    ${data.last_updated ? new Date(data.last_updated.toMillis()).toLocaleString('es-PA') : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.querySelector('#community .loading').outerHTML = html;
+                } else {
+                    document.querySelector('#community .loading').textContent = 'No hay estadísticas comunitarias aún';
+                }
+            } catch (error) {
+                console.error('Error loading community stats:', error);
+                document.querySelector('#community .loading').textContent = 'Error al cargar estadísticas';
+            }
+        }
+        
+        // Cargar todo al iniciar
+        refreshAll();
+        
+        // Auto-refresh cada 30 segundos
+        setInterval(refreshAll, 30000);
+    </script>
+</body>
+</html>
