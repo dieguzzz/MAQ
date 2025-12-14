@@ -18,6 +18,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../screens/reports/station_report_flow.dart';
 import '../screens/reports/train_report_flow.dart';
 import 'arrival_confirmation_dialog.dart';
+import '../services/simplified_report_service.dart';
+import '../services/location_service.dart';
 
 /// Widget que combina la información de la estación y el modal de reporte
 /// Permite deslizar entre las dos vistas
@@ -974,8 +976,8 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-/// Vista de reporte (segunda página)
-class StationReportView extends StatelessWidget {
+/// Vista de reporte (segunda página) - Ahora con formulario integrado
+class StationReportView extends StatefulWidget {
   final StationModel station;
   final ScrollController? scrollController;
 
@@ -986,9 +988,51 @@ class StationReportView extends StatelessWidget {
   });
 
   @override
+  State<StationReportView> createState() => _StationReportViewState();
+}
+
+class _StationReportViewState extends State<StationReportView> {
+  // Estado del formulario
+  String? _reportType; // 'station' | 'train' | null
+  String? _operational; // 'yes' | 'partial' | 'no'
+  int? _crowdLevel; // 1-5
+  final Set<String> _selectedIssues = {};
+  bool _showOptionalDetails = false;
+  bool _isSubmitting = false;
+  bool _showSuccess = false;
+  String? _reportId;
+  int _pointsEarned = 0;
+
+  final SimplifiedReportService _reportService = SimplifiedReportService();
+
+  @override
   Widget build(BuildContext context) {
+    // Si se completó el reporte, mostrar confirmación
+    if (_showSuccess) {
+      return _buildSuccessView();
+    }
+
+    // Si no se ha seleccionado tipo de reporte, mostrar opciones
+    if (_reportType == null) {
+      return _buildReportTypeSelector();
+    }
+
+    // Si se seleccionó reporte de estación, mostrar formulario
+    if (_reportType == 'station') {
+      return _buildStationReportForm();
+    }
+
+    // Si se seleccionó reporte de tren, mostrar formulario de tren
+    if (_reportType == 'train') {
+      return _buildTrainReportForm();
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildReportTypeSelector() {
     return SingleChildScrollView(
-      controller: scrollController,
+      controller: widget.scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,21 +1054,11 @@ class StationReportView extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           
-          // Botón A: Reportar ESTACIÓN (grande, destacado)
+          // Botón A: Reportar ESTACIÓN
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context); // Cerrar bottom sheet
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StationReportFlowScreen(
-                      station: station,
-                    ),
-                  ),
-                );
-              },
+              onPressed: () => setState(() => _reportType = 'station'),
               icon: const Icon(Icons.add_alert, size: 28),
               label: const Text(
                 'REPORTAR ESTACIÓN',
@@ -1042,21 +1076,11 @@ class StationReportView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // Botón B: Reportar TREN (grande, destacado)
+          // Botón B: Reportar TREN
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context); // Cerrar bottom sheet
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TrainReportFlowScreen(
-                      station: station,
-                    ),
-                  ),
-                );
-              },
+              onPressed: () => setState(() => _reportType = 'train'),
               icon: const Icon(Icons.train, size: 28),
               label: const Text(
                 'REPORTAR TREN',
@@ -1108,6 +1132,439 @@ class StationReportView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildStationReportForm() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con botón de volver
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => setState(() {
+                  _reportType = null;
+                  _operational = null;
+                  _crowdLevel = null;
+                  _selectedIssues.clear();
+                  _showOptionalDetails = false;
+                }),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'REPORTAR ESTACIÓN: ${widget.station.nombre}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      '1 de 2',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Pregunta 1: ¿La estación está operativa?
+          const Text(
+            '1. ¿La estación está operativa?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildOptionCard(
+            value: 'yes',
+            icon: Icons.check_circle,
+            iconColor: Colors.green,
+            title: '✅ SÍ - Todo funciona',
+            isSelected: _operational == 'yes',
+            onTap: () => setState(() => _operational = 'yes'),
+          ),
+          const SizedBox(height: 12),
+          _buildOptionCard(
+            value: 'partial',
+            icon: Icons.warning,
+            iconColor: Colors.orange,
+            title: '⚠️ PARCIAL - Algo falla',
+            isSelected: _operational == 'partial',
+            onTap: () => setState(() => _operational = 'partial'),
+          ),
+          const SizedBox(height: 12),
+          _buildOptionCard(
+            value: 'no',
+            icon: Icons.cancel,
+            iconColor: Colors.red,
+            title: '🚫 NO - Cerrada / grave',
+            isSelected: _operational == 'no',
+            onTap: () => setState(() => _operational = 'no'),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Pregunta 2: ¿Qué tan llena está?
+          const Text(
+            '2. ¿Qué tan llena está?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildCrowdOption(1, '🟢 BAJA', 'Cómodo moverse', Colors.green),
+          const SizedBox(height: 12),
+          _buildCrowdOption(2, '🟡 MODERADA', 'Algo llena', Colors.orange),
+          const SizedBox(height: 12),
+          _buildCrowdOption(3, '🟠 LLENA', 'Difícil moverse', Colors.deepOrange),
+          const SizedBox(height: 12),
+          _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
+          const SizedBox(height: 12),
+          _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
+          
+          const SizedBox(height: 24),
+          
+          // Botón para agregar detalles opcionales
+          if (_canSubmit())
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _showOptionalDetails = true),
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar detalles (opcional)'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          
+          // Mostrar detalles opcionales si el usuario los quiere
+          if (_showOptionalDetails) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildOptionalDetails(),
+          ],
+          
+          const SizedBox(height: 24),
+          
+          // Botón de confirmar
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _canSubmit() && !_isSubmitting ? _submitStationReport : null,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text(
+                      'CONFIRMAR',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Info de puntos
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.green),
+                const SizedBox(width: 8),
+                Text('Ganas: +${15 + (_selectedIssues.length * 5)} puntos'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainReportForm() {
+    // Por ahora, redirigir a la pantalla de tren (se puede mejorar después)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TrainReportFlowScreen(station: widget.station),
+        ),
+      );
+    });
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildOptionCard({
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: isSelected ? 4 : 1,
+      color: isSelected ? iconColor.withOpacity(0.1) : null,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 32),
+              const SizedBox(width: 16),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+    final isSelected = _crowdLevel == level;
+    return Card(
+      elevation: isSelected ? 4 : 1,
+      color: isSelected ? color.withOpacity(0.1) : null,
+      child: InkWell(
+        onTap: () => setState(() => _crowdLevel = level),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$emoji $subtitle',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionalDetails() {
+    final issues = [
+      {'id': 'recharge', 'icon': '🎫', 'title': 'MÁQUINA RECARGA'},
+      {'id': 'atm', 'icon': '💵', 'title': 'CAJERO / EFECTIVO'},
+      {'id': 'ac', 'icon': '❄️', 'title': 'AIRE ACONDICIONADO'},
+      {'id': 'escalator', 'icon': '⬆️', 'title': 'ESCALERAS ELÉCTRICAS'},
+      {'id': 'elevator', 'icon': '♿', 'title': 'ELEVADOR / ACCESIBILIDAD'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Problemas rápidos (opcional)',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...issues.map((issue) => _buildIssueCheckbox(
+          issue['id']!,
+          issue['icon']!,
+          issue['title']!,
+        )),
+        if (_selectedIssues.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '+${_selectedIssues.length * 5} puntos por problemas',
+              style: const TextStyle(color: Colors.blue, fontSize: 12),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildIssueCheckbox(String id, String icon, String title) {
+    final isSelected = _selectedIssues.contains(id);
+    return CheckboxListTile(
+      value: isSelected,
+      onChanged: (value) {
+        setState(() {
+          if (value == true) {
+            _selectedIssues.add(id);
+          } else {
+            _selectedIssues.remove(id);
+          }
+        });
+      },
+      title: Text('$icon $title'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    );
+  }
+
+  Widget _buildSuccessView() {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+          const Icon(Icons.check_circle, size: 80, color: Colors.green),
+          const SizedBox(height: 24),
+          const Text(
+            '🎉 ¡REPORTE ENVIADO!',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Has mejorado la información de\n${widget.station.nombre} para:',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 24),
+          _buildInfoRow('👥', '47 usuarios cercanos'),
+          _buildInfoRow('📊', 'Subió confianza de MEDIA a ALTA'),
+          _buildInfoRow('⏰', 'Próxima actualización: 2 min'),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'Puntos ganados:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text('✅ Reporte básico: +15'),
+                if (_selectedIssues.isNotEmpty)
+                  Text('✅ ${_selectedIssues.length} problemas: +${_selectedIssues.length * 5}'),
+                const SizedBox(height: 8),
+                Text(
+                  '🏆 Total: +$_pointsEarned puntos',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                // Cerrar bottom sheet y volver al mapa
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('VER EN MAPA'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 8),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
+  bool _canSubmit() {
+    return _operational != null && _crowdLevel != null;
+  }
+
+  Future<void> _submitStationReport() async {
+    if (!_canSubmit()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Intentar obtener ubicación (opcional)
+      Position? position;
+      try {
+        final locationService = LocationService();
+        final status = await locationService.checkLocationStatus();
+        if (status.hasPermission) {
+          position = await locationService.getCurrentPosition();
+        }
+      } catch (e) {
+        print('No se pudo obtener ubicación: $e');
+      }
+
+      final reportId = await _reportService.createStationReport(
+        stationId: widget.station.id,
+        operational: _operational!,
+        crowdLevel: _crowdLevel!,
+        issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
+        userPosition: position,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSubmitting = false;
+        _reportId = reportId;
+        _pointsEarned = 15 + (_selectedIssues.length * 5);
+        _showSuccess = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 }
 
