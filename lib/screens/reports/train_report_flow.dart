@@ -35,8 +35,16 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('REPORTAR TREN'),
-        subtitle: Text('Estación: ${widget.station.nombre}'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('REPORTAR TREN'),
+            Text(
+              'Estación: ${widget.station.nombre}',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
       ),
       body: _buildSingleScreen(),
     );
@@ -167,68 +175,6 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
   
   bool _canSubmit() {
     return _crowdLevel != null && !_isSubmitting;
-  }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '¿Cómo venía el tren?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          _buildCrowdOption(1, '🟢 VACÍO', 'Asientos libres', Colors.green),
-          const SizedBox(height: 12),
-          _buildCrowdOption(2, '🟡 MODERADO', 'De pie cómodo', Colors.orange),
-          const SizedBox(height: 12),
-          _buildCrowdOption(3, '🔴 LLENO', 'Apretado', Colors.red),
-          const SizedBox(height: 12),
-          _buildCrowdOption(4, '💀 SARDINA', 'Extremo', Colors.purple),
-          
-          const SizedBox(height: 32),
-          
-          const Text(
-            '¿Estado del tren?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          _buildStatusOption('normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
-          const SizedBox(height: 12),
-          _buildStatusOption('slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
-          const SizedBox(height: 12),
-          _buildStatusOption('stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
-          const SizedBox(height: 12),
-          _buildStatusOption('express', '⚡ EXPRESS', 'No para en todas', Colors.purple),
-          
-          const SizedBox(height: 32),
-          
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _canContinueStep1() ? _goToStep2 : null,
-              child: const Text('SIGUIENTE'),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.stars, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('Puntos base: +20'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
 

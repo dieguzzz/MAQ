@@ -47,34 +47,6 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     return minDistance <= 2000 ? nearest : null;
   }
 
-  /// Encuentra el tren más cercano al usuario
-  TrainModel? _findNearestTrain(
-    List<TrainModel> trains,
-    double userLat,
-    double userLon,
-  ) {
-    if (trains.isEmpty) return null;
-
-    TrainModel? nearest;
-    double minDistance = double.infinity;
-
-    for (var train in trains) {
-      final distance = Geolocator.distanceBetween(
-        userLat,
-        userLon,
-        train.ubicacionActual.latitude,
-        train.ubicacionActual.longitude,
-      );
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearest = train;
-      }
-    }
-
-    // Solo retornar si está a menos de 1 km
-    return minDistance <= 1000 ? nearest : null;
-  }
 
   /// Maneja el toque del botón con detección de doble toque
   void _handleTap() {

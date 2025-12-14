@@ -37,8 +37,16 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('REPORTAR ESTACIÓN: ${widget.station.nombre}'),
-        subtitle: Text(_currentStep == 0 ? '1 de 2' : '2 de 2 (Opcional)'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('REPORTAR ESTACIÓN: ${widget.station.nombre}'),
+            Text(
+              _currentStep == 0 ? '1 de 2' : '2 de 2 (Opcional)',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
       ),
       body: _currentStep == 0 ? _buildStep1() : _buildStep2(),
     );
