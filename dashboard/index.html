@@ -191,6 +191,107 @@
         .tab-content.active {
             display: block;
         }
+        
+        /* Filtros */
+        .filter-container {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-count {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Grupos expandibles */
+        .line-group {
+            margin-bottom: 0.5rem;
+        }
+        
+        .line-header {
+            background: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+            border-left: 4px solid #667eea;
+        }
+        
+        .line-header:hover {
+            background: #e9ecef;
+        }
+        
+        .line-header.expanded {
+            background: #e7f3ff;
+            border-left-color: #2196F3;
+        }
+        
+        .line-title {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .line-count {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        
+        .line-toggle {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+        
+        .line-header.expanded .line-toggle {
+            transform: rotate(90deg);
+        }
+        
+        .line-stations {
+            display: none;
+            margin-top: 0.5rem;
+            padding-left: 1rem;
+        }
+        
+        .line-group.expanded .line-stations {
+            display: block;
+        }
+        
+        .line-stations table {
+            margin: 0;
+        }
+        
+        .line-stations tbody tr {
+            background: white;
+        }
+        
+        .line-stations tbody tr:hover {
+            background: #f8f9fa;
+        }
     </style>
 </head>
 <body>
@@ -243,21 +344,37 @@
         
         <div id="stations" class="tab-content active section">
             <h2>📍 Estaciones</h2>
+            <div class="filter-container">
+                <input type="text" id="filterStations" class="filter-input" placeholder="🔍 Buscar por nombre, línea, estado..." onkeyup="filterTable('stations')">
+                <span class="filter-count" id="stationsCount">-</span>
+            </div>
             <div class="loading">Cargando estaciones...</div>
         </div>
         
         <div id="trains" class="tab-content section">
             <h2>🚇 Trenes Virtuales</h2>
+            <div class="filter-container">
+                <input type="text" id="filterTrains" class="filter-input" placeholder="🔍 Buscar por ID, línea, dirección, estado..." onkeyup="filterTable('trains')">
+                <span class="filter-count" id="trainsCount">-</span>
+            </div>
             <div class="loading">Cargando trenes...</div>
         </div>
         
         <div id="reports" class="tab-content section">
             <h2>📊 Reportes Recientes</h2>
+            <div class="filter-container">
+                <input type="text" id="filterReports" class="filter-input" placeholder="🔍 Buscar por usuario, estación, tipo..." onkeyup="filterTable('reports')">
+                <span class="filter-count" id="reportsCount">-</span>
+            </div>
             <div class="loading">Cargando reportes...</div>
         </div>
         
         <div id="users" class="tab-content section">
             <h2>👥 Usuarios Top</h2>
+            <div class="filter-container">
+                <input type="text" id="filterUsers" class="filter-input" placeholder="🔍 Buscar por nombre, email..." onkeyup="filterTable('users')">
+                <span class="filter-count" id="usersCount">-</span>
+            </div>
             <div class="loading">Cargando usuarios...</div>
         </div>
         
@@ -519,64 +636,97 @@
             }
         }
         
-        // Cargar estaciones
+        // Cargar estaciones agrupadas por línea
         async function loadStations() {
             try {
                 const snapshot = await db.collection('stations')
                     .orderBy('nombre')
                     .get();
                 
-                const table = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Línea</th>
-                                <th>Estado</th>
-                                <th>Aglomeración</th>
-                                <th>Confianza</th>
-                                <th>Última Actualización</th>
+                // Agrupar por línea
+                const stationsByLine = {};
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const linea = data.linea || 'L1'; // Default a L1 si no tiene línea
+                    if (!stationsByLine[linea]) {
+                        stationsByLine[linea] = [];
+                    }
+                    stationsByLine[linea].push({ id: doc.id, data });
+                });
+                
+                // Generar HTML con grupos expandibles
+                const groupsHtml = Object.keys(stationsByLine).sort().map(linea => {
+                    const stations = stationsByLine[linea];
+                    const stationsHtml = stations.map(({ id, data }) => {
+                        const confidence = data.confidence || 'low';
+                        const isEstimated = data.is_estimated || false;
+                        return `
+                            <tr data-station-name="${(data.nombre || id).toLowerCase()}" 
+                                data-station-line="${linea.toLowerCase()}" 
+                                data-station-state="${(data.estado_actual || 'normal').toLowerCase()}">
+                                <td><strong>${data.nombre || id}</strong></td>
+                                <td>${linea}</td>
+                                <td>${data.estado_actual || 'normal'}</td>
+                                <td>${data.aglomeracion || 1}/5</td>
+                                <td>
+                                    <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
+                                        ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
+                                    </span>
+                                </td>
+                                <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${snapshot.docs.map(doc => {
-                                const data = doc.data();
-                                const confidence = data.confidence || 'low';
-                                const isEstimated = data.is_estimated || false;
-                                return `
-                                    <tr>
-                                        <td><strong>${data.nombre || doc.id}</strong></td>
-                                        <td>${data.linea || 'N/A'}</td>
-                                        <td>${data.estado_actual || 'normal'}</td>
-                                        <td>${data.aglomeracion || 1}/5</td>
-                                        <td>
-                                            <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
-                                                ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
-                                            </span>
-                                        </td>
-                                        <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
+                        `;
+                    }).join('');
+                    
+                    return `
+                        <div class="line-group" data-line="${linea.toLowerCase()}">
+                            <div class="line-header" onclick="toggleLine('${linea}')">
+                                <div class="line-title">
+                                    <span class="line-toggle">▶</span>
+                                    <span>Línea ${linea}</span>
+                                    <span class="line-count">${stations.length}</span>
+                                </div>
+                            </div>
+                            <div class="line-stations">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Línea</th>
+                                            <th>Estado</th>
+                                            <th>Aglomeración</th>
+                                            <th>Confianza</th>
+                                            <th>Última Actualización</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${stationsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                const html = `<div id="stationsContainer">${groupsHtml}</div>`;
                 
                 const loadingElement = document.querySelector('#stations .loading');
                 if (loadingElement) {
-                    loadingElement.outerHTML = table;
+                    loadingElement.outerHTML = html;
                 } else {
-                    // Si no existe .loading, insertar la tabla
                     const section = document.getElementById('stations');
                     if (section) {
-                        const existingTable = section.querySelector('table');
-                        if (existingTable) {
-                            existingTable.outerHTML = table;
+                        const existingContainer = section.querySelector('#stationsContainer');
+                        if (existingContainer) {
+                            existingContainer.outerHTML = html;
                         } else {
-                            section.insertAdjacentHTML('beforeend', table);
+                            section.insertAdjacentHTML('beforeend', html);
                         }
                     }
                 }
+                
+                // Actualizar contador
+                document.getElementById('stationsCount').textContent = `${snapshot.size} estaciones`;
             } catch (error) {
                 console.error('Error loading stations:', error);
                 const loadingElement = document.querySelector('#stations .loading');
@@ -590,6 +740,88 @@
                     if (section) {
                         section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
                     }
+                }
+            }
+        }
+        
+        // Toggle expandir/colapsar línea
+        function toggleLine(linea) {
+            const group = document.querySelector(`.line-group[data-line="${linea.toLowerCase()}"]`);
+            if (group) {
+                const header = group.querySelector('.line-header');
+                group.classList.toggle('expanded');
+                header.classList.toggle('expanded');
+            }
+        }
+        
+        // Función de filtrado para todas las tablas
+        function filterTable(tableType) {
+            const filterInput = document.getElementById(`filter${tableType.charAt(0).toUpperCase() + tableType.slice(1)}`);
+            const filterValue = filterInput.value.toLowerCase();
+            let visibleCount = 0;
+            let totalCount = 0;
+            
+            if (tableType === 'stations') {
+                // Filtrar estaciones (dentro de grupos)
+                const allRows = document.querySelectorAll('#stationsContainer tr[data-station-name]');
+                totalCount = allRows.length;
+                
+                allRows.forEach(row => {
+                    const name = row.getAttribute('data-station-name') || '';
+                    const line = row.getAttribute('data-station-line') || '';
+                    const state = row.getAttribute('data-station-state') || '';
+                    const text = row.textContent.toLowerCase();
+                    
+                    const matches = name.includes(filterValue) || 
+                                   line.includes(filterValue) || 
+                                   state.includes(filterValue) ||
+                                   text.includes(filterValue);
+                    
+                    row.style.display = matches ? '' : 'none';
+                    if (matches) visibleCount++;
+                });
+                
+                // Mostrar/ocultar grupos según si tienen filas visibles
+                document.querySelectorAll('.line-group').forEach(group => {
+                    const visibleRows = group.querySelectorAll('tr[data-station-name]:not([style*="display: none"])');
+                    const header = group.querySelector('.line-header');
+                    if (visibleRows.length === 0 && filterValue) {
+                        group.style.display = 'none';
+                    } else {
+                        group.style.display = '';
+                        // Actualizar contador del grupo
+                        const countBadge = header.querySelector('.line-count');
+                        if (countBadge) {
+                            const totalInGroup = group.querySelectorAll('tr[data-station-name]').length;
+                            countBadge.textContent = filterValue ? `${visibleRows.length}/${totalInGroup}` : totalInGroup;
+                        }
+                    }
+                });
+                
+                document.getElementById('stationsCount').textContent = filterValue 
+                    ? `${visibleCount} de ${totalCount} estaciones` 
+                    : `${totalCount} estaciones`;
+                    
+            } else {
+                // Filtrar otras tablas (trenes, reportes, usuarios)
+                const table = document.querySelector(`#${tableType} table tbody`);
+                if (!table) return;
+                
+                const rows = table.querySelectorAll('tr');
+                totalCount = rows.length;
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    const matches = text.includes(filterValue);
+                    row.style.display = matches ? '' : 'none';
+                    if (matches) visibleCount++;
+                });
+                
+                const countElement = document.getElementById(`${tableType}Count`);
+                if (countElement) {
+                    countElement.textContent = filterValue 
+                        ? `${visibleCount} de ${totalCount}` 
+                        : `${totalCount}`;
                 }
             }
         }
@@ -617,8 +849,15 @@
                                 const data = doc.data();
                                 const confidence = data.confidence || 'low';
                                 const isEstimated = data.is_estimated || false;
+                                const trainId = doc.id.toLowerCase();
+                                const linea = (data.linea || 'N/A').toLowerCase();
+                                const direccion = (data.direccion || 'N/A').toLowerCase();
+                                const estado = (data.estado || 'normal').toLowerCase();
                                 return `
-                                    <tr>
+                                    <tr data-train-id="${trainId}" 
+                                        data-train-line="${linea}" 
+                                        data-train-direction="${direccion}" 
+                                        data-train-state="${estado}">
                                         <td><strong>${doc.id}</strong></td>
                                         <td>${data.linea || 'N/A'}</td>
                                         <td>${data.direccion || 'N/A'}</td>
@@ -652,6 +891,9 @@
                         }
                     }
                 }
+                
+                // Actualizar contador
+                document.getElementById('trainsCount').textContent = `${snapshot.size} trenes`;
             } catch (error) {
                 console.error('Error loading trains:', error);
                 const loadingElement = document.querySelector('#trains .loading');
@@ -694,8 +936,13 @@
                             ${snapshot.docs.map(doc => {
                                 const data = doc.data();
                                 const confidence = data.confidence || 0.5;
+                                const tipo = (data.tipo || 'N/A').toLowerCase();
+                                const objetivo = (data.objetivo_id || 'N/A').toLowerCase();
+                                const estado = (data.estado || 'activo').toLowerCase();
                                 return `
-                                    <tr>
+                                    <tr data-report-type="${tipo}" 
+                                        data-report-target="${objetivo}" 
+                                        data-report-state="${estado}">
                                         <td>${doc.id.substring(0, 8)}...</td>
                                         <td>${data.tipo || 'N/A'}</td>
                                         <td>${data.objetivo_id || 'N/A'}</td>
@@ -728,6 +975,9 @@
                         }
                     }
                 }
+                
+                // Actualizar contador
+                document.getElementById('reportsCount').textContent = `${snapshot.size} reportes`;
             } catch (error) {
                 console.error('Error loading reports:', error);
                 const loadingElement = document.querySelector('#reports .loading');
@@ -769,8 +1019,11 @@
                             ${snapshot.docs.map(doc => {
                                 const data = doc.data();
                                 const gamification = data.gamification || {};
+                                const nombre = (data.nombre || '').toLowerCase();
+                                const email = (data.email || '').toLowerCase();
                                 return `
-                                    <tr>
+                                    <tr data-user-name="${nombre}" 
+                                        data-user-email="${email}">
                                         <td><strong>${data.nombre || data.email || doc.id.substring(0, 8)}</strong></td>
                                         <td>${gamification.puntos || 0}</td>
                                         <td>${gamification.nivel || 1}</td>
@@ -798,6 +1051,9 @@
                         }
                     }
                 }
+                
+                // Actualizar contador
+                document.getElementById('usersCount').textContent = `${snapshot.size} usuarios`;
             } catch (error) {
                 console.error('Error loading users:', error);
                 const loadingElement = document.querySelector('#users .loading');
