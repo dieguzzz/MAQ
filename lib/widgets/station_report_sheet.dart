@@ -1035,6 +1035,9 @@ class _StationReportViewState extends State<StationReportView>
       _reportType = widget.initialReportType;
     }
     
+    // Inicializar PageController para formularios
+    _formPageController = PageController();
+    
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
