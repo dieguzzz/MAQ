@@ -197,6 +197,9 @@
     <div class="header">
         <h1>🚇 MetroPTY - Dashboard de Administración</h1>
         <p>Monitoreo en tiempo real de la aplicación</p>
+        <div id="authInfo" style="margin-top: 10px; font-size: 14px;">
+            <span style="color: #ff9800;">Cargando...</span>
+        </div>
     </div>
     
     <div class="container">
@@ -280,22 +283,94 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         
-        // Autenticación anónima para el dashboard
+        // Autenticación para el dashboard
         let isAuthenticated = false;
+        let currentUser = null;
         
+        // Función de login con Email/Password
+        async function loginDashboard() {
+            const email = prompt('Email de administrador:');
+            if (!email) return false;
+            
+            const password = prompt('Contraseña:');
+            if (!password) return false;
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                isAuthenticated = true;
+                console.log('Login exitoso:', email);
+                
+                // Actualizar UI
+                updateAuthUI();
+                
+                // Cargar datos
+                refreshAll();
+                
+                return true;
+            } catch (error) {
+                alert('Error de autenticación: ' + error.message);
+                console.error('Error de login:', error);
+                return false;
+            }
+        }
+        
+        // Función para logout
+        async function logoutDashboard() {
+            try {
+                await auth.signOut();
+                currentUser = null;
+                isAuthenticated = false;
+                updateAuthUI();
+                console.log('Logout exitoso');
+                
+                // Intentar autenticación anónima de nuevo
+                authenticateDashboard();
+            } catch (error) {
+                console.error('Error de logout:', error);
+            }
+        }
+        
+        // Actualizar UI de autenticación
+        function updateAuthUI() {
+            const authInfo = document.getElementById('authInfo');
+            if (authInfo) {
+                if (currentUser && currentUser.email) {
+                    authInfo.innerHTML = `
+                        <span style="color: #4caf50;">✓ Autenticado como: ${currentUser.email}</span>
+                        <button onclick="logoutDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Salir</button>
+                    `;
+                } else if (isAuthenticated) {
+                    authInfo.innerHTML = `
+                        <span style="color: #4caf50;">✓ Autenticado (anónimo)</span>
+                        <button onclick="loginDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Login Admin</button>
+                    `;
+                } else {
+                    authInfo.innerHTML = `
+                        <span style="color: #ff9800;">⚠ No autenticado</span>
+                        <button onclick="loginDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Login</button>
+                    `;
+                }
+            }
+        }
+        
+        // Autenticación anónima para el dashboard
         async function authenticateDashboard() {
             try {
                 // Intentar autenticación anónima
                 await auth.signInAnonymously();
                 isAuthenticated = true;
-                console.log('Dashboard autenticado correctamente');
+                console.log('Dashboard autenticado correctamente (anónimo)');
+                updateAuthUI();
             } catch (error) {
-                console.error('Error de autenticación:', error);
+                console.error('Error de autenticación anónima:', error);
+                isAuthenticated = false;
+                updateAuthUI();
                 // Si falla, mostrar mensaje pero continuar
                 document.body.insertAdjacentHTML('afterbegin', 
                     '<div style="background: #ffc107; padding: 1rem; text-align: center; color: #856404;">' +
-                    '⚠️ Error de autenticación. Algunas funciones pueden no estar disponibles. ' +
-                    'Verifica las reglas de Firestore.' +
+                    '⚠️ Error de autenticación anónima. Algunas funciones pueden no estar disponibles. ' +
+                    'Haz clic en "Login" para autenticarte con email/password.' +
                     '</div>'
                 );
             }
@@ -773,19 +848,33 @@
         }
         
         // Esperar autenticación antes de cargar datos
+        let refreshInterval = null;
+        
         auth.onAuthStateChanged((user) => {
+            currentUser = user;
+            isAuthenticated = !!user;
+            updateAuthUI();
+            
             if (user || isAuthenticated) {
-                console.log('Usuario autenticado, cargando datos...');
+                console.log('Usuario autenticado, cargando datos...', user ? user.email : 'anónimo');
+                
+                // Limpiar intervalo anterior si existe
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                }
+                
+                // Cargar datos inmediatamente
                 refreshAll();
+                
                 // Auto-refresh cada 30 segundos
-                setInterval(refreshAll, 30000);
+                refreshInterval = setInterval(refreshAll, 30000);
             } else {
                 console.log('Esperando autenticación...');
-                // Intentar autenticación anónima
-                authenticateDashboard().then(() => {
-                    refreshAll();
-                    setInterval(refreshAll, 30000);
-                });
+                // Limpiar intervalo si existe
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
             }
         });
     </script>
