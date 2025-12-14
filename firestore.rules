@@ -85,6 +85,12 @@ service cloud.firestore {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
       allow write: if request.auth != null; // Usuarios autenticados pueden escribir (para admin/testing)
     }
+    
+    // Community Stats collection (para estadísticas del dashboard)
+    match /community_stats/{statId} {
+      allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      allow write: if false; // Solo Cloud Functions pueden escribir
+    }
   }
 }
 

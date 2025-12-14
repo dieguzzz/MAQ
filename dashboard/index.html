@@ -278,6 +278,31 @@
         // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // Autenticación anónima para el dashboard
+        let isAuthenticated = false;
+        
+        async function authenticateDashboard() {
+            try {
+                // Intentar autenticación anónima
+                await auth.signInAnonymously();
+                isAuthenticated = true;
+                console.log('Dashboard autenticado correctamente');
+            } catch (error) {
+                console.error('Error de autenticación:', error);
+                // Si falla, mostrar mensaje pero continuar
+                document.body.insertAdjacentHTML('afterbegin', 
+                    '<div style="background: #ffc107; padding: 1rem; text-align: center; color: #856404;">' +
+                    '⚠️ Error de autenticación. Algunas funciones pueden no estar disponibles. ' +
+                    'Verifica las reglas de Firestore.' +
+                    '</div>'
+                );
+            }
+        }
+        
+        // Autenticar al cargar
+        authenticateDashboard();
         
         let statsCache = {
             users: 0,
@@ -417,10 +442,35 @@
                     </table>
                 `;
                 
-                document.querySelector('#stations .loading').outerHTML = table;
+                const loadingElement = document.querySelector('#stations .loading');
+                if (loadingElement) {
+                    loadingElement.outerHTML = table;
+                } else {
+                    // Si no existe .loading, insertar la tabla
+                    const section = document.getElementById('stations');
+                    if (section) {
+                        const existingTable = section.querySelector('table');
+                        if (existingTable) {
+                            existingTable.outerHTML = table;
+                        } else {
+                            section.insertAdjacentHTML('beforeend', table);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error loading stations:', error);
-                document.querySelector('#stations .loading').textContent = 'Error al cargar estaciones';
+                const loadingElement = document.querySelector('#stations .loading');
+                const errorMsg = error.message.includes('permissions') 
+                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore o autenticación.'
+                    : 'Error al cargar estaciones: ' + error.message;
+                if (loadingElement) {
+                    loadingElement.textContent = errorMsg;
+                } else {
+                    const section = document.getElementById('stations');
+                    if (section) {
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                    }
+                }
             }
         }
         
@@ -467,10 +517,35 @@
                     </table>
                 `;
                 
-                document.querySelector('#trains .loading').outerHTML = table;
+                const loadingElement = document.querySelector('#trains .loading');
+                if (loadingElement) {
+                    loadingElement.outerHTML = table;
+                } else {
+                    // Si no existe .loading, insertar la tabla
+                    const section = document.getElementById('trains');
+                    if (section) {
+                        const existingTable = section.querySelector('table');
+                        if (existingTable) {
+                            existingTable.outerHTML = table;
+                        } else {
+                            section.insertAdjacentHTML('beforeend', table);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error loading trains:', error);
-                document.querySelector('#trains .loading').textContent = 'Error al cargar trenes';
+                const loadingElement = document.querySelector('#trains .loading');
+                const errorMsg = error.message.includes('permissions') 
+                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore o autenticación.'
+                    : 'Error al cargar trenes: ' + error.message;
+                if (loadingElement) {
+                    loadingElement.textContent = errorMsg;
+                } else {
+                    const section = document.getElementById('trains');
+                    if (section) {
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                    }
+                }
             }
         }
         
@@ -519,10 +594,34 @@
                     </table>
                 `;
                 
-                document.querySelector('#reports .loading').outerHTML = table;
+                const loadingElement = document.querySelector('#reports .loading');
+                if (loadingElement) {
+                    loadingElement.outerHTML = table;
+                } else {
+                    const section = document.getElementById('reports');
+                    if (section) {
+                        const existingTable = section.querySelector('table');
+                        if (existingTable) {
+                            existingTable.outerHTML = table;
+                        } else {
+                            section.insertAdjacentHTML('beforeend', table);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error loading reports:', error);
-                document.querySelector('#reports .loading').textContent = 'Error al cargar reportes';
+                const loadingElement = document.querySelector('#reports .loading');
+                const errorMsg = error.message.includes('permissions') 
+                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore. Los reportes requieren autenticación.'
+                    : 'Error al cargar reportes: ' + error.message;
+                if (loadingElement) {
+                    loadingElement.textContent = errorMsg;
+                } else {
+                    const section = document.getElementById('reports');
+                    if (section) {
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                    }
+                }
             }
         }
         
@@ -565,10 +664,34 @@
                     </table>
                 `;
                 
-                document.querySelector('#users .loading').outerHTML = table;
+                const loadingElement = document.querySelector('#users .loading');
+                if (loadingElement) {
+                    loadingElement.outerHTML = table;
+                } else {
+                    const section = document.getElementById('users');
+                    if (section) {
+                        const existingTable = section.querySelector('table');
+                        if (existingTable) {
+                            existingTable.outerHTML = table;
+                        } else {
+                            section.insertAdjacentHTML('beforeend', table);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error loading users:', error);
-                document.querySelector('#users .loading').textContent = 'Error al cargar usuarios';
+                const loadingElement = document.querySelector('#users .loading');
+                const errorMsg = error.message.includes('permissions') 
+                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore. Los usuarios requieren autenticación.'
+                    : 'Error al cargar usuarios: ' + error.message;
+                if (loadingElement) {
+                    loadingElement.textContent = errorMsg;
+                } else {
+                    const section = document.getElementById('users');
+                    if (section) {
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                    }
+                }
             }
         }
         
@@ -617,21 +740,54 @@
                         </div>
                     `;
                     
-                    document.querySelector('#community .loading').outerHTML = html;
+                    const loadingElement = document.querySelector('#community .loading');
+                    if (loadingElement) {
+                        loadingElement.outerHTML = html;
+                    } else {
+                        const section = document.getElementById('community');
+                        if (section) {
+                            section.insertAdjacentHTML('beforeend', html);
+                        }
+                    }
                 } else {
-                    document.querySelector('#community .loading').textContent = 'No hay estadísticas comunitarias aún';
+                    const loadingElement = document.querySelector('#community .loading');
+                    if (loadingElement) {
+                        loadingElement.textContent = 'No hay estadísticas comunitarias aún';
+                    }
                 }
             } catch (error) {
                 console.error('Error loading community stats:', error);
-                document.querySelector('#community .loading').textContent = 'Error al cargar estadísticas';
+                const loadingElement = document.querySelector('#community .loading');
+                const errorMsg = error.message.includes('permissions') 
+                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore para community_stats.'
+                    : 'Error al cargar estadísticas: ' + error.message;
+                if (loadingElement) {
+                    loadingElement.textContent = errorMsg;
+                } else {
+                    const section = document.getElementById('community');
+                    if (section) {
+                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
+                    }
+                }
             }
         }
         
-        // Cargar todo al iniciar
-        refreshAll();
-        
-        // Auto-refresh cada 30 segundos
-        setInterval(refreshAll, 30000);
+        // Esperar autenticación antes de cargar datos
+        auth.onAuthStateChanged((user) => {
+            if (user || isAuthenticated) {
+                console.log('Usuario autenticado, cargando datos...');
+                refreshAll();
+                // Auto-refresh cada 30 segundos
+                setInterval(refreshAll, 30000);
+            } else {
+                console.log('Esperando autenticación...');
+                // Intentar autenticación anónima
+                authenticateDashboard().then(() => {
+                    refreshAll();
+                    setInterval(refreshAll, 30000);
+                });
+            }
+        });
     </script>
 </body>
 </html>
