@@ -1452,12 +1452,24 @@ class _StationReportViewState extends State<StationReportView>
           const SizedBox(height: 12),
           _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
           const SizedBox(height: 32),
-          // Botón para continuar o enviar
+          // Botón para continuar a la siguiente página
           if (_crowdLevel != null)
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _goToNextPage(),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _goToNextPage();
+                },
+                icon: const Icon(Icons.arrow_forward, size: 24),
+                label: const Text(
+                  'CONTINUAR',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   backgroundColor: Colors.blue,
@@ -1466,14 +1478,7 @@ class _StationReportViewState extends State<StationReportView>
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 8,
-                ),
-                child: const Text(
-                  'CONTINUAR',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
+                  shadowColor: Colors.blue.withOpacity(0.5),
                 ),
               ),
             ),
@@ -1597,14 +1602,14 @@ class _StationReportViewState extends State<StationReportView>
   void _goToNextPage() {
     if (_currentFormPage < _totalPages - 1) {
       final nextPage = _currentFormPage + 1;
+      setState(() {
+        _currentFormPage = nextPage;
+      });
       _formPageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-      setState(() {
-        _currentFormPage = nextPage;
-      });
     }
   }
   
@@ -2176,14 +2181,7 @@ class _StationReportViewState extends State<StationReportView>
                 onTap: () {
                   HapticFeedback.lightImpact();
                   setState(() => _crowdLevel = level);
-                  // Si es la primera página, avanzar automáticamente después de un breve delay
-                  if (_currentFormPage == 0) {
-                    Future.delayed(const Duration(milliseconds: 400), () {
-                      if (mounted && _currentFormPage == 0) {
-                        _goToNextPage();
-                      }
-                    });
-                  }
+                  // No avanzar automáticamente en la página 2 - el usuario debe presionar CONTINUAR
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
