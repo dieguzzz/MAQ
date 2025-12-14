@@ -100,33 +100,11 @@ class _StationReportSheetState extends State<StationReportSheet> {
                     });
                   },
                   children: [
-                    // Página 1: Información de la estación
+                    // Página 1: Información de la estación (solo ver, sin botones)
                     StationInfoView(
                       station: widget.station,
                       trains: widget.trains,
                       scrollController: scrollController,
-                      onReportPressed: () {
-                        // Deslizar a la página de reporte de estación
-                        _pageController.animateToPage(
-                          1,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      onReportTrain: (train) {
-                        // Cerrar el bottom sheet actual y abrir modal de reporte de tren
-                        Navigator.of(context).pop();
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          if (context.mounted) {
-                            showModalBottomSheet<void>(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (modalContext) => EnhancedReportModal(train: train),
-                            );
-                          }
-                        });
-                      },
                     ),
                     // Página 2: Botones de reporte
                     StationReportView(
@@ -144,21 +122,17 @@ class _StationReportSheetState extends State<StationReportSheet> {
   }
 }
 
-/// Vista de información de la estación (primera página)
+/// Vista de información de la estación (primera página - solo ver)
 class StationInfoView extends StatelessWidget {
   final StationModel station;
   final List<TrainModel>? trains;
   final ScrollController? scrollController;
-  final VoidCallback? onReportPressed;
-  final Function(TrainModel)? onReportTrain;
 
   const StationInfoView({
     super.key,
     required this.station,
     this.trains,
     this.scrollController,
-    this.onReportPressed,
-    this.onReportTrain,
   });
 
   @override
