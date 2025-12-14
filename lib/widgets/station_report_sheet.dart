@@ -1953,13 +1953,21 @@ class _StationReportViewState extends State<StationReportView>
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildPointsDetail('✅', 'Reporte básico: +15'),
-                        if (_selectedIssues.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          _buildPointsDetail(
-                            '✅',
-                            '${_selectedIssues.length} problemas: +${_selectedIssues.length * 5}',
-                          ),
+                        if (_reportType == 'station') ...[
+                          _buildPointsDetail('✅', 'Reporte básico: +15'),
+                          if (_selectedIssues.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            _buildPointsDetail(
+                              '✅',
+                              '${_selectedIssues.length} problemas: +${_selectedIssues.length * 5}',
+                            ),
+                          ],
+                        ] else if (_reportType == 'train') ...[
+                          _buildPointsDetail('✅', 'Reporte básico: +20'),
+                          if (_etaBucket != null && _etaBucket != 'unknown') ...[
+                            const SizedBox(height: 8),
+                            _buildPointsDetail('✅', 'Estimación de tiempo: +10'),
+                          ],
                         ],
                         const SizedBox(height: 16),
                         Container(
