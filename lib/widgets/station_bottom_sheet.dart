@@ -96,7 +96,7 @@ class StationBottomSheet extends StatelessWidget {
                       _buildUpcomingTrains(context),
                       const SizedBox(height: 16),
 
-                      // Botones de acción
+                      // Botones de acción (dos botones grandes separados)
                       _buildActionButtons(context),
                       const SizedBox(height: 16),
 
@@ -226,6 +226,7 @@ class StationBottomSheet extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
+        // Botón A: Reportar ESTACIÓN (grande, destacado)
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -239,19 +240,26 @@ class StationBottomSheet extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.add_alert),
-            label: const Text('REPORTAR ESTACIÓN'),
+            icon: const Icon(Icons.add_alert, size: 28),
+            label: const Text(
+              'REPORTAR ESTACIÓN',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+        // Botón B: Reportar TREN (grande, destacado)
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
+          child: ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
                 context,
@@ -262,10 +270,18 @@ class StationBottomSheet extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.train),
-            label: const Text('REPORTAR TREN'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            icon: const Icon(Icons.train, size: 28),
+            label: const Text(
+              'REPORTAR TREN',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),

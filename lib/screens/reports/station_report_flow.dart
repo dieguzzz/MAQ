@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/station_model.dart';
-import '../../services/enhanced_report_service.dart';
+import '../../services/simplified_report_service.dart';
 import '../../providers/location_provider.dart';
-import '../../services/gamification_service.dart';
+import '../../services/location_service.dart';
 
 /// Flujo de reporte de estación (2 pasos)
 class StationReportFlowScreen extends StatefulWidget {
@@ -27,18 +26,19 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
   String? _operational; // 'yes' | 'partial' | 'no'
   int? _crowdLevel; // 1-5
   
-  // Paso 2: Problemas específicos
+  // Paso 2: Problemas específicos (opcional)
   final Set<String> _selectedIssues = {};
+  bool _showOptionalDetails = false;
   
-  final EnhancedReportService _reportService = EnhancedReportService();
+  final SimplifiedReportService _reportService = SimplifiedReportService();
   bool _isSubmitting = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('REPORTAR: ${widget.station.nombre}'),
-        subtitle: Text('${_currentStep + 1} de 2'),
+        title: Text('REPORTAR ESTACIÓN: ${widget.station.nombre}'),
+        subtitle: Text(_currentStep == 0 ? '1 de 2' : '2 de 2 (Opcional)'),
       ),
       body: _currentStep == 0 ? _buildStep1() : _buildStep2(),
     );
@@ -101,16 +101,29 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
           
           const SizedBox(height: 32),
           
+          // Botón para agregar detalles opcionales
+          if (_canContinueStep1())
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _showOptionalDetails = true),
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar detalles (opcional)'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          
+          const SizedBox(height: 16),
+          
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _canContinueStep1() ? _goToStep2 : null,
+              onPressed: _canContinueStep1() ? _submitReport : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.blue,
               ),
               child: const Text(
-                'CONTINUAR',
+                'CONFIRMAR',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
@@ -132,12 +145,20 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
               ],
             ),
           ),
+          
+          // Mostrar detalles opcionales si el usuario los quiere
+          if (_showOptionalDetails) ...[
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildOptionalDetails(),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStep2() {
+  Widget _buildOptionalDetails() {
     final issues = [
       {'id': 'recharge', 'icon': '🎫', 'title': 'MÁQUINA RECARGA'},
       {'id': 'atm', 'icon': '💵', 'title': 'CAJERO / EFECTIVO'},
@@ -146,78 +167,40 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
       {'id': 'elevator', 'icon': '♿', 'title': 'ELEVADOR / ACCESIBILIDAD'},
     ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'DETALLES (OPCIONAL)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Selecciona problemas visibles:',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          
-          ...issues.map((issue) => _buildIssueCheckbox(
-            issue['id']!,
-            issue['icon']!,
-            issue['title']!,
-          )),
-          
-          const SizedBox(height: 32),
-          
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _goToStep1,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('OMITIR'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitReport,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('ENVIAR'),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          if (_selectedIssues.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '+${_selectedIssues.length * 5} puntos por problemas reportados',
-                style: const TextStyle(color: Colors.blue),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Problemas rápidos (opcional)',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...issues.take(5).map((issue) => _buildIssueCheckbox(
+          issue['id']!,
+          issue['icon']!,
+          issue['title']!,
+        )),
+        if (_selectedIssues.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: Text(
+              '+${_selectedIssues.length * 5} puntos por problemas',
+              style: const TextStyle(color: Colors.blue, fontSize: 12),
+            ),
+          ),
         ],
-      ),
+      ],
     );
+  }
+  
+  Widget _buildStep2() {
+    // Este paso ya no se usa - todo está en Step 1 ahora
+    return const SizedBox.shrink();
   }
 
   Widget _buildOptionCard({
@@ -320,28 +303,30 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-      final position = locationProvider.currentPosition;
-      
-      if (position == null) {
-        throw Exception('Ubicación no disponible');
+      // Intentar obtener ubicación (opcional - no bloquea el reporte)
+      Position? position;
+      try {
+        final locationService = LocationService();
+        final status = await locationService.checkLocationStatus();
+        if (status.hasPermission) {
+          position = await locationService.getCurrentPosition();
+        }
+      } catch (e) {
+        // Si no hay permisos o falla, continuar sin ubicación
+        print('No se pudo obtener ubicación: $e');
       }
-
-      final geoPoint = GeoPoint(position.latitude, position.longitude);
-      final accuracy = position.accuracy;
 
       final reportId = await _reportService.createStationReport(
         stationId: widget.station.id,
         operational: _operational!,
         crowdLevel: _crowdLevel!,
-        issues: _selectedIssues.toList(),
-        userLocation: geoPoint,
-        accuracy: accuracy,
+        issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
+        userPosition: position, // Opcional
       );
 
       if (!mounted) return;
 
-      // Mostrar pantalla de éxito
+      // Mostrar pantalla de éxito y luego volver
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -439,7 +424,9 @@ class ReportSuccessScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  onPressed: () {
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  },
                   child: const Text('VER EN MAPA'),
                 ),
               ),

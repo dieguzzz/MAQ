@@ -15,6 +15,8 @@ import 'services/station_position_editor_service.dart';
 import 'services/station_edit_mode_service.dart';
 import 'services/notification_service.dart';
 import 'utils/navigation_helper.dart';
+import 'screens/reports/report_summary_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -208,6 +210,7 @@ class _MetroPTYAppState extends State<MetroPTYApp> {
           final bool hasCompleted = snapshot.data ?? false;
 
           return MaterialApp(
+            navigatorKey: NavigationHelper.navigatorKey,
             title: 'MetroPTY',
             theme: MetroTheme.light(),
             themeMode: ThemeMode.light,
@@ -238,20 +241,52 @@ class _SplashScaffold extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _hasCheckedSummary = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForSummary();
+  }
+
+  Future<void> _checkForSummary() async {
+    // Verificar si hay reportes confirmados mientras la app estaba cerrada
+    // y mostrar pantalla de resumen
+    final prefs = await SharedPreferences.getInstance();
+    final lastSummaryShown = prefs.getString('last_summary_date');
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    // Si no se ha mostrado resumen hoy, verificar si hay actividad reciente
+    if (lastSummaryShown != today) {
+      // TODO: Verificar si hay reportes confirmados recientes
+      // Por ahora, solo marcamos que ya verificamos
+      setState(() => _hasCheckedSummary = true);
+    } else {
+      setState(() => _hasCheckedSummary = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        if (auth.isLoading) {
+        if (auth.isLoading || !_hasCheckedSummary) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
         if (auth.isAuthenticated) {
+          // TODO: Mostrar ReportSummaryScreen si hay actividad reciente
+          // Por ahora, ir directo al mapa
           return const MainNavigationScreen();
         }
 

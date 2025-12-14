@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../theme/metro_theme.dart';
+import '../../services/location_service.dart';
+import '../../services/notification_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, required this.onFinished});
@@ -60,14 +63,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _handlePrimaryAction() {
+  Future<void> _handlePrimaryAction() async {
     if (_isLastPage) {
+      // Pedir permisos antes de finalizar
+      await _requestPermissions();
       widget.onFinished();
     } else {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeOutCubic,
       );
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    // Pedir permisos de notificaciones
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+
+    // Pedir permisos de ubicación
+    final locationService = LocationService();
+    final status = await locationService.checkLocationStatus();
+    
+    if (!status.hasPermission) {
+      // Solo pedir si no está denegado permanentemente
+      if (status.permission != LocationPermission.deniedForever) {
+        await locationService.checkLocationPermission();
+      }
     }
   }
 
