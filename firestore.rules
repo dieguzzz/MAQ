@@ -40,25 +40,37 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Reports collection
+    // Reports collection (modelo simplificado)
     match /reports/{reportId} {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      // Permitir crear si el usuario está autenticado y el userId coincide
       allow create: if request.auth != null 
-        && request.resource.data.usuario_id == request.auth.uid;
+        && request.resource.data.userId == request.auth.uid;
+      // Permitir actualizar si:
+      // - El usuario es el dueño del reporte, O
+      // - Solo se actualizan campos de confirmación/validación (para Cloud Functions)
       allow update: if request.auth != null 
-        && (resource.data.usuario_id == request.auth.uid 
+        && (resource.data.userId == request.auth.uid 
             || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['confirmation_count', 'verification_status'])); // Permitir actualizar confirmaciones
+                .hasOnly(['confirmations', 'status', 'confidence', 'validationStatus', 'validationPoints', 'totalPoints']));
       allow delete: if false; // No permitir eliminar
       
-      // Subcolección de confirmaciones
-      match /confirmations/{userId} {
-        allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      // Subcolección de validaciones ETA
+      match /eta_validations/{userId} {
+        allow read: if request.auth != null;
         allow create: if request.auth != null 
-          && request.auth.uid == userId 
-          && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId)); // Solo crear si no existe
-        allow update: if false; // No permitir actualizar confirmaciones
-        allow delete: if false; // No permitir eliminar confirmaciones
+          && request.auth.uid == userId;
+        allow update: if false;
+        allow delete: if false;
+      }
+      
+      // Subcolección de confirmaciones (legacy - mantener por compatibilidad)
+      match /confirmations/{userId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null 
+          && request.auth.uid == userId;
+        allow update: if false;
+        allow delete: if false;
       }
     }
     
