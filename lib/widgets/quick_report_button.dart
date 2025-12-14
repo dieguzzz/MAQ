@@ -4,9 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../models/station_model.dart';
-import '../models/train_model.dart';
-import 'station_report_sheet.dart';
-import 'enhanced_report_modal.dart';
+import '../screens/reports/station_report_flow.dart';
+import '../screens/reports/train_report_flow.dart';
 
 class QuickReportButton extends StatefulWidget {
   const QuickReportButton({super.key});
@@ -139,47 +138,58 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de estación (1 toque)
   Future<void> _handleStationReport() async {
-    final userPosition = await _getUserLocation();
-    if (userPosition == null) return;
-
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
-    // Buscar estación más cercana
-    final nearestStation = _findNearestStation(
-      metroProvider.stations,
-      userPosition.latitude,
-      userPosition.longitude,
-    );
-
-    if (nearestStation == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No hay estaciones cercanas para reportar'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
+    // Buscar estación más cercana (ubicación opcional)
+    Position? userPosition;
+    try {
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      userPosition = locationProvider.currentPosition;
+    } catch (e) {
+      // Si no hay ubicación, continuar de todas formas
     }
 
-    // Obtener trenes de la misma línea
-    final trains = metroProvider.trains
-        .where((t) => t.linea == nearestStation.linea)
-        .toList();
+    StationModel? nearestStation;
+    
+    if (userPosition != null) {
+      // Si hay ubicación, buscar la más cercana
+      nearestStation = _findNearestStation(
+        metroProvider.stations,
+        userPosition!.latitude,
+        userPosition!.longitude,
+      );
+    }
 
-    // Abrir StationReportSheet directamente en la página de reporte (página 1) y ampliado al máximo
+    // Si no hay estación cercana o no hay ubicación, usar la primera estación de L1
+    if (nearestStation == null) {
+      final stations = metroProvider.stations;
+      if (stations.isNotEmpty) {
+        nearestStation = stations.firstWhere(
+          (s) => s.linea == 'L1',
+          orElse: () => stations.first,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No hay estaciones disponibles'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Abrir nuevo flujo simplificado de reporte de estación
     if (mounted) {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetContext) => StationReportSheet(
-          station: nearestStation,
-          trains: trains.isNotEmpty ? trains : null,
-          initialPage: 1, // Empezar directamente en la página de reporte
-          initialChildSize: 0.85, // Ampliado al máximo (85% de la pantalla)
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StationReportFlowScreen(
+            station: nearestStation!,
+          ),
         ),
       );
     }
@@ -187,38 +197,59 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de tren (2 toques)
   Future<void> _handleTrainReport() async {
-    final userPosition = await _getUserLocation();
-    if (userPosition == null) return;
-
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
 
-    // Buscar tren más cercano
-    final nearestTrain = _findNearestTrain(
-      metroProvider.trains,
-      userPosition.latitude,
-      userPosition.longitude,
-    );
-
-    if (nearestTrain == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No hay trenes cercanos para reportar'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
+    // Buscar estación más cercana para el reporte de tren
+    Position? userPosition;
+    try {
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      userPosition = locationProvider.currentPosition;
+    } catch (e) {
+      // Si no hay ubicación, continuar de todas formas
     }
 
-    // Abrir EnhancedReportModal directamente
+    StationModel? nearestStation;
+    
+    if (userPosition != null) {
+      // Si hay ubicación, buscar la estación más cercana
+      nearestStation = _findNearestStation(
+        metroProvider.stations,
+        userPosition!.latitude,
+        userPosition!.longitude,
+      );
+    }
+
+    // Si no hay estación cercana o no hay ubicación, usar la primera estación de L1
+    if (nearestStation == null) {
+      final stations = metroProvider.stations;
+      if (stations.isNotEmpty) {
+        nearestStation = stations.firstWhere(
+          (s) => s.linea == 'L1',
+          orElse: () => stations.first,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No hay estaciones disponibles'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Abrir nuevo flujo simplificado de reporte de tren
     if (mounted) {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (modalContext) => EnhancedReportModal(train: nearestTrain),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TrainReportFlowScreen(
+            station: nearestStation!,
+          ),
+        ),
       );
     }
   }

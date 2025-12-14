@@ -96,9 +96,10 @@ class MetroDataProvider with ChangeNotifier {
 
   MetroDataProvider() {
     // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
-    // Cargar datos estáticos iniciales
+    // Cargar solo estaciones estáticas (las estaciones son fijas)
     _stations = MetroData.getAllStations();
-    _trains = MetroData.getSampleTrains();
+    // NO cargar trenes iniciales - se construirán desde los reportes
+    _trains = [];
   }
 
   /// Inicializa los streams solo cuando se necesitan (lazy initialization)
