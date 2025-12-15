@@ -672,11 +672,17 @@
                 // Reportes de hoy (usando modelo simplificado, excluyendo eliminados)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
+                // Cargar todos los reportes de hoy y filtrar eliminados en memoria (no se pueden usar dos filtros de desigualdad)
                 const reportsTodaySnapshot = await db.collection('reports')
                     .where('createdAt', '>=', firebase.firestore.Timestamp.fromDate(today))
-                    .where('status', '!=', 'deleted')
                     .get();
-                const reportsToday = reportsTodaySnapshot.size;
+                
+                // Filtrar eliminados en memoria
+                const activeReportsToday = reportsTodaySnapshot.docs.filter(doc => {
+                    const data = doc.data();
+                    return data.status !== 'deleted';
+                });
+                const reportsToday = activeReportsToday.length;
                 document.getElementById('reportsToday').textContent = reportsToday;
                 document.getElementById('reportsChange').textContent = 
                     `Anterior: ${statsCache.reports} | Cambio: ${reportsToday - statsCache.reports >= 0 ? '+' : ''}${reportsToday - statsCache.reports}`;
@@ -684,7 +690,7 @@
                 
                 // Estaciones activas (con al menos 1 reporte hoy)
                 const activeStationsSet = new Set();
-                reportsTodaySnapshot.docs.forEach(doc => {
+                activeReportsToday.forEach(doc => {
                     const data = doc.data();
                     if (data.scope === 'station' && data.stationId) {
                         activeStationsSet.add(data.stationId);
@@ -1139,9 +1145,10 @@
                     const batchDocs = snapshot.docs.slice(i, i + batchSize);
                     
                     batchDocs.forEach(doc => {
+                        // Solo actualizar status (campo permitido en las reglas)
+                        // No agregar deletedAt para evitar problemas de permisos
                         batch.update(doc.ref, {
-                            status: 'deleted',
-                            deletedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            status: 'deleted'
                         });
                     });
                     
