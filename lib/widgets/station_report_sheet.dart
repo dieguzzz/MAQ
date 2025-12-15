@@ -15,6 +15,7 @@ import '../services/schedule_service.dart';
 import '../services/firebase_service.dart';
 import '../models/learning_report_model.dart';
 import '../models/report_model.dart';
+import '../models/simplified_report_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../screens/reports/station_report_flow.dart';
 import 'arrival_confirmation_dialog.dart';
@@ -276,15 +277,11 @@ class _EtaSection extends StatelessWidget {
 
   final StationModel station;
 
-  List<_EtaData> get _etas => const [
-        _EtaData(label: 'Próximo', minutes: 2, confidence: '✅ 8 usuarios'),
-        _EtaData(label: 'Siguiente', minutes: 7, confidence: '⚠️ 3 usuarios'),
-        _EtaData(label: 'Más tarde', minutes: 12, confidence: '❓ 1 usuario'),
-      ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final firestore = FirebaseFirestore.instance;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -295,50 +292,176 @@ class _EtaSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        ..._etas.map(
-          (eta) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: MetroColors.grayLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          eta.label,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: MetroColors.grayDark,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          eta.confidence,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: MetroColors.grayDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${eta.minutes} min',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        StreamBuilder<QuerySnapshot>(
+          stream: firestore
+              .collection('reports')
+              .where('stationId', isEqualTo: station.id)
+              .where('scope', isEqualTo: 'train')
+              .where('status', isEqualTo: 'active')
+              .where('etaBucket', isNotEqualTo: 'unknown')
+              .orderBy('etaBucket')
+              .orderBy('createdAt', descending: true)
+              .limit(10)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (snapshot.hasError) {
+              // Si hay error de índice, intentar sin orderBy
+              return StreamBuilder<QuerySnapshot>(
+                stream: firestore
+                    .collection('reports')
+                    .where('stationId', isEqualTo: station.id)
+                    .where('scope', isEqualTo: 'train')
+                    .where('status', isEqualTo: 'active')
+                    .snapshots(),
+                builder: (context, snapshot2) {
+                  if (snapshot2.hasError) {
+                    return Text('Error: ${snapshot2.error}');
+                  }
+                  final docs2 = snapshot2.data?.docs ?? <QueryDocumentSnapshot>[];
+                  return _buildEtaList(context, theme, docs2);
+                },
+              );
+            }
+            
+            final docs = snapshot.data?.docs ?? <QueryDocumentSnapshot>[];
+            return _buildEtaList(context, theme, docs);
+          },
         ),
       ],
+    );
+  }
+  
+  Widget _buildEtaList(BuildContext context, ThemeData theme, List<QueryDocumentSnapshot> docs) {
+    // Convertir a SimplifiedReportModel y agrupar por ETA
+    final trainReports = docs.map((doc) {
+      try {
+        return SimplifiedReportModel.fromFirestore(doc);
+      } catch (e) {
+        print('Error parsing train report ${doc.id}: $e');
+        return null;
+      }
+    }).whereType<SimplifiedReportModel>().toList();
+    
+    if (trainReports.isEmpty) {
+      return Text(
+        'No hay reportes de trenes recientes',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: MetroColors.grayMedium,
+        ),
+      );
+    }
+    
+    // Agrupar por etaBucket y tomar el más reciente de cada grupo
+    final Map<String, SimplifiedReportModel> reportsByBucket = {};
+    for (var report in trainReports) {
+      if (report.etaBucket != null && report.etaBucket != 'unknown') {
+        if (!reportsByBucket.containsKey(report.etaBucket) ||
+            report.createdAt.isAfter(reportsByBucket[report.etaBucket]!.createdAt)) {
+          reportsByBucket[report.etaBucket!] = report;
+        }
+      }
+    }
+    
+    // Ordenar buckets por tiempo estimado
+    final sortedBuckets = reportsByBucket.entries.toList()
+      ..sort((a, b) {
+        final order = {'1-2': 1, '3-5': 2, '6-8': 3, '9+': 4};
+        return (order[a.key] ?? 99).compareTo(order[b.key] ?? 99);
+      });
+    
+    // Tomar los primeros 3
+    final displayReports = sortedBuckets.take(3).toList();
+    final labels = ['Próximo', 'Siguiente', 'Más tarde'];
+    
+    if (displayReports.isEmpty) {
+      return Text(
+        'No hay estimaciones de tiempo disponibles',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: MetroColors.grayMedium,
+        ),
+      );
+    }
+    
+    return Column(
+      children: displayReports.asMap().entries.map((entry) {
+        final index = entry.key;
+        final report = entry.value.value;
+        final bucket = entry.value.key;
+        
+        // Calcular minutos estimados desde el bucket
+        final now = DateTime.now();
+        int estimatedMinutes = 0;
+        if (report.etaExpectedAt != null) {
+          estimatedMinutes = report.etaExpectedAt!.difference(now).inMinutes;
+          if (estimatedMinutes < 0) estimatedMinutes = 0;
+        } else {
+          // Fallback basado en el bucket
+          final bucketMinutes = {
+            '1-2': 1.5,
+            '3-5': 4,
+            '6-8': 7,
+            '9+': 10,
+          };
+          estimatedMinutes = (bucketMinutes[bucket] ?? 4).round();
+        }
+        
+        // Contar confirmaciones
+        final confirmations = report.confirmations;
+        String confidenceText = '';
+        if (confirmations >= 3) {
+          confidenceText = '✅ $confirmations usuarios';
+        } else if (confirmations >= 1) {
+          confidenceText = '⚠️ $confirmations usuario${confirmations > 1 ? 's' : ''}';
+        } else {
+          confidenceText = '❓ 1 usuario';
+        }
+        
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: MetroColors.grayLight,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        labels[index],
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: MetroColors.grayDark,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        confidenceText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: MetroColors.grayDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$estimatedMinutes min',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -352,7 +475,7 @@ class _StatusSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final firebaseService = FirebaseService();
+    final firestore = FirebaseFirestore.instance;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,150 +487,243 @@ class _StatusSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Mostrar reportes activos de la estación
-        StreamBuilder<List<ReportModel>>(
-          stream: firebaseService.getActiveReportsStream(),
+        // Mostrar reportes activos de la estación usando SimplifiedReportModel
+        StreamBuilder<QuerySnapshot>(
+          stream: firestore
+              .collection('reports')
+              .where('stationId', isEqualTo: station.id)
+              .where('scope', isEqualTo: 'station')
+              .where('status', isEqualTo: 'active')
+              .orderBy('createdAt', descending: true)
+              .limit(50)
+              .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
             
             if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
+              print('Error en stream de reportes: ${snapshot.error}');
+              // Si hay error de índice, intentar sin orderBy
+              return StreamBuilder<QuerySnapshot>(
+                stream: firestore
+                    .collection('reports')
+                    .where('stationId', isEqualTo: station.id)
+                    .where('scope', isEqualTo: 'station')
+                    .where('status', isEqualTo: 'active')
+                    .snapshots(),
+                builder: (context, snapshot2) {
+                  if (snapshot2.hasError) {
+                    return Text('Error: ${snapshot2.error}');
+                  }
+                  final docs2 = snapshot2.data?.docs ?? <QueryDocumentSnapshot>[];
+                  return _buildStatusContent(context, theme, docs2);
+                },
+              );
             }
             
-            // Filtrar reportes de esta estación
-            final stationReports = snapshot.data?.where((report) => 
-              report.tipo == TipoReporte.estacion && 
-              report.objetivoId == station.id
-            ).toList() ?? [];
-            
-            // Obtener el estado más reciente y problemas
-            String estadoPrincipal = 'Normal';
-            List<String> problemas = [];
-            
-            if (stationReports.isNotEmpty) {
-              // Ordenar por fecha (más reciente primero)
-              stationReports.sort((a, b) => b.creadoEn.compareTo(a.creadoEn));
-              final latestReport = stationReports.first;
-              
-              if (latestReport.estadoPrincipal != null && latestReport.estadoPrincipal!.isNotEmpty) {
-                estadoPrincipal = latestReport.estadoPrincipal!;
-              }
-              
-              if (latestReport.problemasEspecificos.isNotEmpty) {
-                problemas = latestReport.problemasEspecificos;
-              }
-            }
-            
-            return Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Aglomeración',
-                            style: TextStyle(
-                              color: MetroColors.grayDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          _buildStars(station.aglomeracion),
-                          const SizedBox(height: 4),
-                          Text(
-                            station.getAglomeracionTexto(),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Estado reportado',
-                            style: TextStyle(
-                              color: MetroColors.grayDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            estadoPrincipal,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: _getEstadoColor(estadoPrincipal),
-                            ),
-                          ),
-                          if (stationReports.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '${stationReports.length} reporte${stationReports.length > 1 ? 's' : ''}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: MetroColors.grayMedium,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (problemas.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Problemas activos',
-                        style: TextStyle(
-                          color: MetroColors.grayDark,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: problemas.map((problema) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: MetroColors.energyOrange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              problema,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ] else if (stationReports.isEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Sin problemas reportados',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayMedium,
-                    ),
-                  ),
-                ],
-              ],
-            );
+            final docs = snapshot.data?.docs ?? <QueryDocumentSnapshot>[];
+            return _buildStatusContent(context, theme, docs);
           },
         ),
       ],
     );
+  }
+  
+  Widget _buildStatusContent(BuildContext context, ThemeData theme, List<QueryDocumentSnapshot> docs) {
+    // Convertir a SimplifiedReportModel
+    final stationReports = docs.map((doc) {
+      try {
+        return SimplifiedReportModel.fromFirestore(doc);
+      } catch (e) {
+        print('Error parsing report ${doc.id}: $e');
+        return null;
+      }
+    }).whereType<SimplifiedReportModel>().toList();
+    
+    // Obtener el estado más reciente y problemas
+    String estadoReportado = 'Normal';
+    int? aglomeracionReportada = station.aglomeracion;
+    List<String> problemas = [];
+    int reportCount = stationReports.length;
+    
+    if (stationReports.isNotEmpty) {
+      // Ordenar por fecha (más reciente primero) y confirmaciones
+      stationReports.sort((a, b) {
+        if (b.confirmations != a.confirmations) {
+          return b.confirmations.compareTo(a.confirmations);
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      
+      final latestReport = stationReports.first;
+      
+      // Convertir stationOperational a texto legible
+      if (latestReport.stationOperational != null) {
+        switch (latestReport.stationOperational) {
+          case 'yes':
+            estadoReportado = 'Normal';
+            break;
+          case 'partial':
+            estadoReportado = 'Moderado';
+            break;
+          case 'no':
+            estadoReportado = 'Cerrado';
+            break;
+        }
+      }
+      
+      // Usar aglomeración del reporte si está disponible
+      if (latestReport.stationCrowd != null) {
+        aglomeracionReportada = latestReport.stationCrowd;
+      }
+      
+      // Obtener problemas de todos los reportes recientes (última hora)
+      final now = DateTime.now();
+      final recentReports = stationReports.where((r) => 
+        now.difference(r.createdAt).inHours < 1
+      ).toList();
+      
+      // Recolectar todos los problemas únicos
+      final allIssues = <String>{};
+      for (var report in recentReports) {
+        allIssues.addAll(report.stationIssues);
+      }
+      problemas = allIssues.toList();
+    }
+            
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Aglomeración',
+                    style: TextStyle(
+                      color: MetroColors.grayDark,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildStars(aglomeracionReportada ?? station.aglomeracion),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getAglomeracionTexto(aglomeracionReportada ?? station.aglomeracion),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Estado reportado',
+                    style: TextStyle(
+                      color: MetroColors.grayDark,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    estadoReportado,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: _getEstadoColor(estadoReportado),
+                    ),
+                  ),
+                  if (reportCount > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '$reportCount reporte${reportCount > 1 ? 's' : ''}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: MetroColors.grayMedium,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (problemas.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Problemas activos',
+                style: TextStyle(
+                  color: MetroColors.grayDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: problemas.map((problema) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: MetroColors.energyOrange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _getProblemaTexto(problema),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ] else if (reportCount == 0) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Sin problemas reportados',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: MetroColors.grayMedium,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  String _getAglomeracionTexto(int aglomeracion) {
+    switch (aglomeracion) {
+      case 1:
+        return 'Vacía';
+      case 2:
+        return 'Poca gente';
+      case 3:
+        return 'Moderada';
+      case 4:
+        return 'Llena';
+      case 5:
+        return 'Muy llena';
+      default:
+        return 'Normal';
+    }
+  }
+  
+  String _getProblemaTexto(String problema) {
+    final map = {
+      'recharge': 'Recarga',
+      'atm': 'Cajero',
+      'ac': 'Aire acondicionado',
+      'escalator': 'Escaleras',
+      'elevator': 'Ascensor',
+    };
+    return map[problema] ?? problema;
   }
 
   Color _getEstadoColor(String estado) {
