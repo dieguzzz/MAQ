@@ -67,8 +67,10 @@ service cloud.firestore {
       // Subcolección de confirmaciones (legacy - mantener por compatibilidad)
       match /confirmations/{userId} {
         allow read: if request.auth != null;
+        // Permitir crear confirmación si el usuario está autenticado y el userId de la ruta coincide
         allow create: if request.auth != null 
-          && request.auth.uid == userId;
+          && request.auth.uid == userId
+          && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId));
         allow update: if false;
         allow delete: if false;
       }

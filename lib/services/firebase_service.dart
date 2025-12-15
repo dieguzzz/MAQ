@@ -195,7 +195,8 @@ class FirebaseService {
         }
 
         final reportData = reportDoc.data()!;
-        final currentConfirmations = reportData['confirmation_count'] ?? 0;
+        // Usar 'confirmations' (modelo simplificado) o 'confirmation_count' (legacy)
+        final currentConfirmations = reportData['confirmations'] ?? reportData['confirmation_count'] ?? 0;
         final newConfirmations = currentConfirmations + 1;
 
         // Crear la confirmación
@@ -204,18 +205,19 @@ class FirebaseService {
           'confirmado_en': FieldValue.serverTimestamp(),
         });
 
-        // Actualizar contador de confirmaciones
-        transaction.update(reportRef, {
-          'confirmation_count': newConfirmations,
-        });
+        // Actualizar contador de confirmaciones (usar ambos campos para compatibilidad)
+        final updateData = <String, dynamic>{
+          'confirmations': newConfirmations,
+          'confirmation_count': newConfirmations, // Legacy
+        };
 
         // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
         if (newConfirmations >= 3) {
-          transaction.update(reportRef, {
-            'verification_status': 'community_verified',
-            'confidence': 0.9, // Alta confianza
-          });
+          updateData['verification_status'] = 'community_verified';
+          updateData['confidence'] = 0.9; // Alta confianza
         }
+
+        transaction.update(reportRef, updateData);
       });
     } on FirebaseException catch (e) {
       throw Exception(ErrorHandlerService.getErrorMessage(e));
