@@ -19,6 +19,7 @@ import '../admin/learning_demo_panel.dart';
 import '../../services/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
 import '../../widgets/location_permission_dialog.dart';
+import '../../widgets/confirm_reports_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -598,6 +599,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             bottom: 80,
             left: 20,
             child: QuickReportButton(),
+          ),
+          // Botón para confirmar reportes
+          Positioned(
+            bottom: 160,
+            left: 20,
+            child: FloatingActionButton(
+              heroTag: "confirm_reports",
+              onPressed: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (sheetContext) => const ConfirmReportsSheet(),
+                );
+              },
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.verified_user, color: Colors.white),
+            ),
           ),
           Positioned(
             bottom: 80,

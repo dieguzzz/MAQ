@@ -48,11 +48,11 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid;
       // Permitir actualizar si:
       // - El usuario es el dueño del reporte, O
-      // - Solo se actualizan campos de confirmación/validación (para Cloud Functions)
+      // - Solo se actualizan campos de confirmación/validación (para Cloud Functions o confirmaciones de usuarios)
       allow update: if request.auth != null 
         && (resource.data.userId == request.auth.uid 
-            || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['confirmations', 'status', 'confidence', 'validationStatus', 'validationPoints', 'totalPoints']));
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['confirmations', 'confirmation_count', 'status', 'confidence', 'verification_status', 'validationStatus', 'validationPoints', 'totalPoints'])));
       allow delete: if false; // No permitir eliminar
       
       // Subcolección de validaciones ETA
