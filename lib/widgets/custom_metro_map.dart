@@ -202,12 +202,30 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     }
   }
 
-  /// Compara dos listas de estaciones para ver si son iguales (por ID)
+  /// Compara dos listas de estaciones para ver si son iguales (por ID y estado)
   bool _listsEqualStations(List<StationModel> list1, List<StationModel> list2) {
     if (list1.length != list2.length) return false;
-    final ids1 = list1.map((s) => s.id).toSet();
-    final ids2 = list2.map((s) => s.id).toSet();
-    return ids1.length == ids2.length && ids1.every((id) => ids2.contains(id));
+    
+    // Crear mapas por ID para comparación rápida
+    final map1 = {for (var s in list1) s.id: s};
+    final map2 = {for (var s in list2) s.id: s};
+    
+    // Verificar que todos los IDs coincidan y que los estados sean iguales
+    for (var id in map1.keys) {
+      if (!map2.containsKey(id)) return false;
+      
+      final s1 = map1[id]!;
+      final s2 = map2[id]!;
+      
+      // Comparar estado y aglomeración (campos que afectan la visualización)
+      if (s1.estadoActual != s2.estadoActual ||
+          s1.aglomeracion != s2.aglomeracion ||
+          s1.confidence != s2.confidence) {
+        return false; // Hay cambios en el estado
+      }
+    }
+    
+    return true;
   }
 
   /// Compara dos listas de trenes para ver si son iguales (por ID)
@@ -245,14 +263,24 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     _stationStatus.clear();
     _nextTrainMinutes.clear();
 
-    // Inicializar estados basados en aglomeración
+    // Inicializar estados basados en estadoActual y aglomeración
     for (var station in widget.stations) {
-      if (station.aglomeracion <= 2) {
-        _stationStatus[station.id] = StationStatus.normal;
-      } else if (station.aglomeracion == 3) {
+      // Priorizar estadoActual si está disponible
+      if (station.estadoActual == EstadoEstacion.cerrado) {
+        _stationStatus[station.id] = StationStatus.cerrado;
+      } else if (station.estadoActual == EstadoEstacion.lleno) {
+        _stationStatus[station.id] = StationStatus.lleno;
+      } else if (station.estadoActual == EstadoEstacion.moderado) {
         _stationStatus[station.id] = StationStatus.moderado;
       } else {
-        _stationStatus[station.id] = StationStatus.lleno;
+        // Si no hay estado específico, usar aglomeración
+        if (station.aglomeracion <= 2) {
+          _stationStatus[station.id] = StationStatus.normal;
+        } else if (station.aglomeracion == 3) {
+          _stationStatus[station.id] = StationStatus.moderado;
+        } else {
+          _stationStatus[station.id] = StationStatus.lleno;
+        }
       }
 
       // Tiempo estimado para próximo tren (simulado)

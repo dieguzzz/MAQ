@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firebase_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/metro_simulator_service.dart';
 import '../services/station_position_editor_service.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
+import '../models/simplified_report_model.dart';
 import '../utils/metro_data.dart';
 import '../providers/auth_provider.dart';
 
@@ -20,6 +23,8 @@ class MetroDataProvider with ChangeNotifier {
   String _selectedLinea = 'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
   bool _streamInitialized = false;
   bool _isTestMode = false;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  StreamSubscription? _reportsSubscription;
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
@@ -144,6 +149,23 @@ class MetroDataProvider with ChangeNotifier {
           notifyListeners();
         },
       );
+      
+      // Listen to reports stream para actualizar estaciones en tiempo real
+      _reportsSubscription = _firestore
+          .collection('reports')
+          .where('status', isEqualTo: 'active')
+          .where('scope', isEqualTo: 'station')
+          .orderBy('createdAt', descending: true)
+          .limit(100)
+          .snapshots()
+          .listen(
+        (snapshot) {
+          _updateStationsFromReports(snapshot.docs);
+        },
+        onError: (error) {
+          print('Error en stream de reportes: $error');
+        },
+      );
     } else {
       // En modo test, usar solo datos estáticos
       print('🧪 Modo Test: Usando datos estáticos sin streams de Firestore');
@@ -260,6 +282,117 @@ class MetroDataProvider with ChangeNotifier {
 
   List<StationModel> getStationsByLinea(String linea) {
     return _stations.where((s) => s.linea == linea).toList();
+  }
+  
+  /// Actualizar estaciones basándose en reportes recientes
+  void _updateStationsFromReports(List<QueryDocumentSnapshot> reportDocs) {
+    if (reportDocs.isEmpty) return;
+    
+    // Agrupar reportes por estación
+    final Map<String, List<SimplifiedReportModel>> reportsByStation = {};
+    
+    for (var doc in reportDocs) {
+      try {
+        final report = SimplifiedReportModel.fromFirestore(doc);
+        if (report.status == 'active' && report.scope == 'station') {
+          if (!reportsByStation.containsKey(report.stationId)) {
+            reportsByStation[report.stationId] = [];
+          }
+          reportsByStation[report.stationId]!.add(report);
+        }
+      } catch (e) {
+        print('Error parsing report: $e');
+      }
+    }
+    
+    // Actualizar estaciones con datos de reportes más recientes
+    bool hasChanges = false;
+    final updatedStations = _stations.map((station) {
+      final stationReports = reportsByStation[station.id];
+      if (stationReports == null || stationReports.isEmpty) {
+        return station;
+      }
+      
+      // Obtener el reporte más reciente y con más confirmaciones
+      stationReports.sort((a, b) {
+        if (b.confirmations != a.confirmations) {
+          return b.confirmations.compareTo(a.confirmations);
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      
+      final latestReport = stationReports.first;
+      
+      // Solo actualizar si el reporte tiene datos válidos
+      if (latestReport.stationOperational == null || 
+          latestReport.stationCrowd == null) {
+        return station;
+      }
+      
+      // Convertir stationOperational a EstadoEstacion
+      EstadoEstacion newEstado;
+      switch (latestReport.stationOperational) {
+        case 'yes':
+          newEstado = EstadoEstacion.normal;
+          break;
+        case 'partial':
+          newEstado = EstadoEstacion.moderado;
+          break;
+        case 'no':
+          newEstado = EstadoEstacion.cerrado;
+          break;
+        default:
+          newEstado = station.estadoActual;
+      }
+      
+      // Determinar confianza basada en confirmaciones y tiempo
+      final now = DateTime.now();
+      final reportAge = now.difference(latestReport.createdAt).inMinutes;
+      String? newConfidence;
+      
+      if (latestReport.confirmations >= 3) {
+        newConfidence = 'high';
+      } else if (latestReport.confirmations >= 1) {
+        newConfidence = 'medium';
+      } else if (reportAge <= 15) {
+        newConfidence = 'medium';
+      } else {
+        newConfidence = 'low';
+      }
+      
+      // Solo actualizar si hay cambios
+      if (station.estadoActual != newEstado ||
+          station.aglomeracion != latestReport.stationCrowd ||
+          station.confidence != newConfidence) {
+        hasChanges = true;
+        
+        return StationModel(
+          id: station.id,
+          nombre: station.nombre,
+          linea: station.linea,
+          ubicacion: station.ubicacion,
+          estadoActual: newEstado,
+          aglomeracion: latestReport.stationCrowd!,
+          ultimaActualizacion: latestReport.createdAt,
+          confidence: newConfidence,
+          isEstimated: false,
+        );
+      }
+      
+      return station;
+    }).toList();
+    
+    if (hasChanges) {
+      _stations = updatedStations;
+      notifyListeners();
+      print('🔄 Estaciones actualizadas desde reportes: ${reportsByStation.length} estaciones con reportes');
+    }
+  }
+  
+  @override
+  void dispose() {
+    _reportsSubscription?.cancel();
+    super.dispose();
   }
 }
 
