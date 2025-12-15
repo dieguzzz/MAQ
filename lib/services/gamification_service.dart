@@ -6,14 +6,18 @@ import 'accuracy_service.dart';
 import 'level_service.dart';
 import 'schedule_service.dart';
 import 'firebase_service.dart';
+import 'points_history_service.dart';
+import '../models/points_transaction_model.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AccuracyService _accuracyService = AccuracyService();
+  final PointsHistoryService _pointsHistoryService = PointsHistoryService();
 
   // Puntos por acciones
   static const int puntosPorReporteVerificado = 10;
-  static const int puntosPorConfirmarReporte = 5;
+  static const int puntosPorConfirmarReporte = 15; // Cambiado de 5 a 15
+  static const int puntosPorReporteConfirmado = 5; // Para el autor cuando alguien confirma su reporte
   static const int puntosPorReporteEpico = 100;
   static const int puntosPorStreak = 2;
 
@@ -52,6 +56,16 @@ class GamificationService {
             (gamification?['reportes_verificados'] ?? 0) + 1,
       });
 
+      // Guardar en historial
+      await _pointsHistoryService.saveTransaction(
+        userId: userId,
+        points: puntosPorReporteVerificado,
+        type: PointsTransaction.typeReportVerified,
+        description: 'Reporte verificado por la comunidad',
+        reportId: reportId,
+        metadata: {'linea': linea},
+      );
+
       // Verificar si desbloquea algún badge
       await _checkAndAwardBadges(userId, newPuntos);
       
@@ -83,6 +97,15 @@ class GamificationService {
         'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         'gamification.verificaciones_hechas': FieldValue.increment(1),
       });
+
+      // Guardar en historial
+      await _pointsHistoryService.saveTransaction(
+        userId: userId,
+        points: puntosPorConfirmarReporte,
+        type: PointsTransaction.typeConfirmReport,
+        description: 'Confirmaste un reporte de otro usuario',
+        reportId: reportId,
+      );
 
       // Verificar badges de verificación
       final updatedDoc = await userRef.get();
@@ -134,6 +157,15 @@ class GamificationService {
             'gamification.puntos': FieldValue.increment(puntosPorStreak),
             'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
           });
+
+          // Guardar en historial
+          await _pointsHistoryService.saveTransaction(
+            userId: userId,
+            points: puntosPorStreak,
+            type: PointsTransaction.typeStreak,
+            description: 'Racha de ${currentStreak + 1} días consecutivos',
+            metadata: {'streak': currentStreak + 1},
+          );
         } else if (daysDifference > 1) {
           // Resetear streak
           await userRef.update({
@@ -592,6 +624,15 @@ class GamificationService {
           'gamification.puntos': FieldValue.increment(puntosPorReporteEpico),
           'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         });
+
+        // Guardar en historial
+        await _pointsHistoryService.saveTransaction(
+          userId: userId,
+          points: puntosPorReporteEpico,
+          type: PointsTransaction.typeEpicReport,
+          description: 'Reporte épico - Ayudaste a $personasAyudadas personas',
+          metadata: {'personas_ayudadas': personasAyudadas},
+        );
       } catch (e) {
         print('Error awarding epic report: $e');
       }
@@ -679,6 +720,20 @@ class GamificationService {
         'gamification.teaching_score': newTeachingScore,
       });
 
+      // Guardar en historial
+      await _pointsHistoryService.saveTransaction(
+        userId: userId,
+        points: totalPuntos,
+        type: PointsTransaction.typeTeachingReport,
+        description: 'Reporte de enseñanza${bonusPrecision > 0 ? ' + bonus precisión' : ''}${bonusHoraCritica > 0 ? ' + bonus hora crítica' : ''}',
+        reportId: report.id,
+        metadata: {
+          'puntos_base': puntosBase,
+          'bonus_precision': bonusPrecision,
+          'bonus_hora_critica': bonusHoraCritica,
+        },
+      );
+
       // Verificar si otorgar badge "Profesor del Metro"
       if (newTeachingReportsCount >= 10) {
         await _awardTeachingBadge(userId);
@@ -691,6 +746,37 @@ class GamificationService {
   /// Otorga el badge "Profesor del Metro"
   Future<void> _awardTeachingBadge(String userId) async {
     await _awardBadge(userId, BadgeType.profesorDelMetro);
+  }
+
+  /// Otorga puntos al autor del reporte cuando alguien lo confirma
+  Future<void> awardPointsToReportAuthor(String authorUserId, String reportId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(authorUserId);
+      final userDoc = await userRef.get();
+      
+      if (!userDoc.exists) return;
+      
+      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final newPuntos = currentPuntos + puntosPorReporteConfirmado;
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
+      await userRef.update({
+        'gamification.puntos': FieldValue.increment(puntosPorReporteConfirmado),
+        'gamification.nivel': nuevoNivel,
+      });
+
+      // Guardar en historial del autor
+      await _pointsHistoryService.saveTransaction(
+        userId: authorUserId,
+        points: puntosPorReporteConfirmado,
+        type: PointsTransaction.typeReportVerified,
+        description: 'Alguien confirmó tu reporte',
+        reportId: reportId,
+      );
+    } catch (e) {
+      print('Error awarding points to report author: $e');
+    }
   }
 }
 

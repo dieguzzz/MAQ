@@ -554,19 +554,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
           ),
-          // Icono de Mis Reportes
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'Mis Reportes',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ReportHistoryScreen(),
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
@@ -618,31 +605,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             right: 8,
             child: Consumer<LocationProvider>(
               builder: (context, locationProvider, child) {
-                return FloatingActionButton(
-                  heroTag: 'locate_fab',
-                  onPressed: () async {
-                    // Verificar estado antes de obtener ubicación
-                    final status = await locationProvider.checkLocationStatus();
-                    
-                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
-                    if (!status.isGpsEnabled || !status.hasPermission) {
-                      if (mounted) {
-                        final result = await LocationPermissionDialog.show(
-                          context,
-                          isGpsEnabled: status.isGpsEnabled,
-                          hasPermission: status.hasPermission,
-                        );
+                final speed = locationProvider.currentPosition?.speed ?? 0.0;
+                final speedKmh = (speed * 3.6).clamp(0.0, 200.0); // Convertir m/s a km/h
+                
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Medidor de velocidad
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.speed, color: Colors.white, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${speedKmh.toStringAsFixed(0)} km/h',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    FloatingActionButton(
+                      heroTag: 'locate_fab',
+                      onPressed: () async {
+                        // Verificar estado antes de obtener ubicación
+                        final status = await locationProvider.checkLocationStatus();
                         
-                        if (result == true && mounted) {
+                        // Si el GPS está desactivado o no hay permisos, mostrar diálogo
+                        if (!status.isGpsEnabled || !status.hasPermission) {
+                          if (mounted) {
+                            final result = await LocationPermissionDialog.show(
+                              context,
+                              isGpsEnabled: status.isGpsEnabled,
+                              hasPermission: status.hasPermission,
+                            );
+                            
+                            if (result == true && mounted) {
+                              await locationProvider.getCurrentLocation();
+                            }
+                          }
+                        } else {
+                          // Si todo está bien, obtener ubicación normalmente
                           await locationProvider.getCurrentLocation();
                         }
-                      }
-                    } else {
-                      // Si todo está bien, obtener ubicación normalmente
-                      await locationProvider.getCurrentLocation();
-                    }
-                  },
-                  child: const Icon(Icons.my_location),
+                      },
+                      child: const Icon(Icons.my_location),
+                    ),
+                  ],
                 );
               },
             ),

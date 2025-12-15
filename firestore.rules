@@ -10,6 +10,17 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false; // No permitir eliminar (usar función de Firebase Auth)
+      
+      // Subcolección de historial de puntos
+      match /points_history/{transactionId} {
+        // Solo el propio usuario puede leer su historial
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Solo el sistema puede escribir (usando serverTimestamp)
+        // Permitir crear transacciones si el usuario está autenticado y es el dueño
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update: if false;
+        allow delete: if false;
+      }
     }
     
     // Stations collection
@@ -48,11 +59,12 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid;
       // Permitir actualizar si:
       // - El usuario es el dueño del reporte, O
-      // - Solo se actualizan campos de confirmación/validación (para Cloud Functions o confirmaciones de usuarios)
+      // - Solo se actualizan campos de confirmación/validación (cualquier usuario autenticado puede confirmar reportes de otros, pero no su propio reporte)
       allow update: if request.auth != null 
         && (resource.data.userId == request.auth.uid 
             || (request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['confirmations', 'confirmation_count', 'status', 'confidence', 'verification_status', 'validationStatus', 'validationPoints', 'totalPoints'])));
+                .hasOnly(['confirmations', 'confirmation_count', 'status', 'confidence', 'verification_status', 'validationStatus', 'validationPoints', 'totalPoints'])
+                && resource.data.userId != request.auth.uid)); // No puede actualizar confirmaciones de su propio reporte
       allow delete: if false; // No permitir eliminar
       
       // Subcolección de validaciones ETA
@@ -64,13 +76,18 @@ service cloud.firestore {
         allow delete: if false;
       }
       
-      // Subcolección de confirmaciones (legacy - mantener por compatibilidad)
+      // Subcolección de confirmaciones
       match /confirmations/{userId} {
         allow read: if request.auth != null;
-        // Permitir crear confirmación si el usuario está autenticado y el userId de la ruta coincide
+        // Permitir crear confirmación si:
+        // - El usuario está autenticado
+        // - El userId de la ruta coincide con el auth.uid
+        // - No existe ya una confirmación
+        // - El usuario NO es el dueño del reporte
         allow create: if request.auth != null 
           && request.auth.uid == userId
-          && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId));
+          && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId))
+          && get(/databases/$(database)/documents/reports/$(reportId)).data.userId != request.auth.uid;
         allow update: if false;
         allow delete: if false;
       }

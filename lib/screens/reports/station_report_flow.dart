@@ -5,6 +5,7 @@ import '../../models/station_model.dart';
 import '../../services/simplified_report_service.dart';
 import '../../providers/location_provider.dart';
 import '../../services/location_service.dart';
+import '../../services/report_progress_service.dart';
 
 /// Flujo de reporte de estación (2 pasos)
 class StationReportFlowScreen extends StatefulWidget {
@@ -31,10 +32,56 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
   bool _showOptionalDetails = false;
   
   final SimplifiedReportService _reportService = SimplifiedReportService();
+  final ReportProgressService _progressService = ReportProgressService();
   bool _isSubmitting = false;
+  bool _isLoadingProgress = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    final progress = await _progressService.getStationReportProgress(widget.station.id);
+    if (progress != null && mounted) {
+      setState(() {
+        _operational = progress['operational'] as String?;
+        _crowdLevel = progress['crowdLevel'] as int?;
+        _showOptionalDetails = progress['showOptionalDetails'] ?? false;
+        final issues = progress['selectedIssues'] as List<dynamic>?;
+        if (issues != null) {
+          _selectedIssues.clear();
+          _selectedIssues.addAll(issues.map((e) => e.toString()));
+        }
+        _isLoadingProgress = false;
+      });
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoadingProgress = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveProgress() async {
+    await _progressService.saveStationReportProgress(
+      stationId: widget.station.id,
+      operational: _operational,
+      crowdLevel: _crowdLevel,
+      selectedIssues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
+      showOptionalDetails: _showOptionalDetails,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingProgress) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -69,7 +116,10 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
             iconColor: Colors.green,
             title: '✅ SÍ - Todo funciona',
             isSelected: _operational == 'yes',
-            onTap: () => setState(() => _operational = 'yes'),
+            onTap: () {
+              setState(() => _operational = 'yes');
+              _saveProgress();
+            },
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -78,7 +128,10 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
             iconColor: Colors.orange,
             title: '⚠️ PARCIAL - Algo falla',
             isSelected: _operational == 'partial',
-            onTap: () => setState(() => _operational = 'partial'),
+            onTap: () {
+              setState(() => _operational = 'partial');
+              _saveProgress();
+            },
           ),
           const SizedBox(height: 12),
           _buildOptionCard(
@@ -87,7 +140,10 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
             iconColor: Colors.red,
             title: '🚫 NO - Cerrada / grave',
             isSelected: _operational == 'no',
-            onTap: () => setState(() => _operational = 'no'),
+            onTap: () {
+              setState(() => _operational = 'no');
+              _saveProgress();
+            },
           ),
           
           const SizedBox(height: 32),
@@ -112,7 +168,10 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
           // Botón para agregar detalles opcionales
           if (_canContinueStep1())
             OutlinedButton.icon(
-              onPressed: () => setState(() => _showOptionalDetails = true),
+              onPressed: () {
+                setState(() => _showOptionalDetails = true);
+                _saveProgress();
+              },
               icon: const Icon(Icons.add),
               label: const Text('Agregar detalles (opcional)'),
               style: OutlinedButton.styleFrom(
@@ -247,7 +306,10 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
       elevation: isSelected ? 4 : 1,
       color: isSelected ? color.withOpacity(0.1) : null,
       child: InkWell(
-        onTap: () => setState(() => _crowdLevel = level),
+        onTap: () {
+          setState(() => _crowdLevel = level);
+          _saveProgress();
+        },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -287,6 +349,7 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
             _selectedIssues.remove(id);
           }
         });
+        _saveProgress();
       },
       title: Text('$icon $title'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -331,6 +394,9 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
         issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
         userPosition: position, // Opcional
       );
+
+      // Limpiar el progreso guardado después de enviar
+      await _progressService.clearStationReportProgress(widget.station.id);
 
       if (!mounted) return;
 

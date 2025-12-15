@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/gamification_model.dart';
+import 'points_history_screen.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -33,7 +34,7 @@ class StatsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Nivel y puntos
-                _buildLevelCard(stats),
+                _buildLevelCard(stats, context),
                 const SizedBox(height: 16),
 
                 // Streak
@@ -62,30 +63,82 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLevelCard(GamificationStats stats) {
+  Widget _buildLevelCard(GamificationStats stats, BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              stats.getNivelNombre(),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: () {
+          // Navegar a la pantalla de historial de puntos
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PointsHistoryScreen(),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          stats.getNivelNombre(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          stats.getNivelDescripcion(),
+                          style: const TextStyle(color: Colors.black),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.history,
+                    color: Colors.grey,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(stats.getNivelDescripcion()),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: stats.puntos / 1000, // Ajustar según máximo
-              backgroundColor: Colors.grey[200],
-            ),
-            const SizedBox(height: 8),
-            Text('${stats.puntos} puntos'),
-          ],
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: stats.puntos / 1000, // Ajustar según máximo
+                backgroundColor: Colors.grey[200],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${stats.puntos} puntos',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const Text(
+                    'Toca para ver historial',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

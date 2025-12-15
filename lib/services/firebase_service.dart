@@ -195,6 +195,13 @@ class FirebaseService {
         }
 
         final reportData = reportDoc.data()!;
+        
+        // Verificar que el usuario no esté confirmando su propio reporte
+        final reportUserId = reportData['userId'] ?? reportData['usuario_id'];
+        if (reportUserId == userId) {
+          throw Exception('No puedes confirmar tu propio reporte');
+        }
+        
         // Usar 'confirmations' (modelo simplificado) o 'confirmation_count' (legacy)
         final currentConfirmations = reportData['confirmations'] ?? reportData['confirmation_count'] ?? 0;
         final newConfirmations = currentConfirmations + 1;
@@ -219,6 +226,11 @@ class FirebaseService {
 
         transaction.update(reportRef, updateData);
       });
+      
+      // Otorgar puntos al autor del reporte cuando alguien lo confirma (fuera de la transacción)
+      final gamificationService = GamificationService();
+      await gamificationService.awardPointsToReportAuthor(reportUserId, reportId);
+      
     } on FirebaseException catch (e) {
       throw Exception(ErrorHandlerService.getErrorMessage(e));
     } catch (e) {
