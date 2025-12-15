@@ -151,16 +151,21 @@ class MetroDataProvider with ChangeNotifier {
       );
       
       // Listen to reports stream para actualizar estaciones en tiempo real
+      // Cargar reportes activos de estaciones y filtrar en memoria para evitar índices compuestos
       _reportsSubscription = _firestore
           .collection('reports')
-          .where('status', isEqualTo: 'active')
           .where('scope', isEqualTo: 'station')
           .orderBy('createdAt', descending: true)
-          .limit(100)
+          .limit(200)
           .snapshots()
           .listen(
         (snapshot) {
-          _updateStationsFromReports(snapshot.docs);
+          // Filtrar reportes activos en memoria
+          final activeReports = snapshot.docs.where((doc) {
+            final data = doc.data();
+            return data['status'] == 'active';
+          }).toList();
+          _updateStationsFromReports(activeReports);
         },
         onError: (error) {
           print('Error en stream de reportes: $error');
