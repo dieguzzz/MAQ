@@ -4,7 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../services/firebase_service.dart';
+import '../../services/simplified_report_service.dart';
 import '../../models/report_model.dart';
+import '../../models/simplified_report_model.dart';
 import '../../models/user_model.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
@@ -22,11 +24,12 @@ class ReportHistoryScreen extends StatefulWidget {
 class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  EstadoReporte? _selectedEstado;
+  String? _selectedStatus; // 'active', 'resolved', 'rejected'
   String _sortBy = 'reciente'; // 'reciente', 'verificado'
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
   late TabController _tabController;
+  final SimplifiedReportService _reportService = SimplifiedReportService();
 
   @override
   void initState() {
@@ -41,30 +44,27 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     super.dispose();
   }
 
-  List<ReportModel> _filterAndSortReports(
-    List<ReportModel> reports,
+  List<SimplifiedReportModel> _filterAndSortReports(
+    List<SimplifiedReportModel> reports,
     MetroDataProvider? metroProvider,
   ) {
     var filtered = reports;
 
     // Filtrar por estado
-    if (_selectedEstado != null) {
-      filtered = filtered.where((r) => r.estado == _selectedEstado).toList();
+    if (_selectedStatus != null) {
+      filtered = filtered.where((r) => r.status == _selectedStatus).toList();
     }
 
     // Filtrar por búsqueda
     if (_searchController.text.isNotEmpty) {
       final searchTerm = _searchController.text.toLowerCase();
       filtered = filtered.where((report) {
-        // Buscar en categoría
-        final categoriaMatch = _getCategoriaText(report.categoria)
+        // Buscar en scope
+        final scopeMatch = (report.scope == 'station' ? 'estación' : 'tren')
             .toLowerCase()
             .contains(searchTerm);
         
-        // Buscar en descripción
-        final descripcionMatch = report.descripcion?.toLowerCase().contains(searchTerm) ?? false;
-        
-        // Buscar en nombre de estación/tren si tenemos el provider
+        // Buscar en nombre de estación si tenemos el provider
         bool nombreMatch = false;
         if (metroProvider != null) {
           try {
@@ -75,49 +75,30 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
           }
         }
         
-        return categoriaMatch || descripcionMatch || nombreMatch;
+        return scopeMatch || nombreMatch;
       }).toList();
     }
 
     // Ordenar
     if (_sortBy == 'reciente') {
-      filtered.sort((a, b) => b.creadoEn.compareTo(a.creadoEn));
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } else if (_sortBy == 'verificado') {
-      filtered.sort((a, b) => b.verificaciones.compareTo(a.verificaciones));
+      filtered.sort((a, b) => b.confirmations.compareTo(a.confirmations));
     }
 
     return filtered;
   }
 
-  String _getObjetivoNombre(ReportModel report, MetroDataProvider metroProvider) {
-    if (report.tipo == TipoReporte.estacion) {
-      final station = metroProvider.stations
-          .firstWhere(
-            (s) => s.id == report.objetivoId,
-            orElse: () => StationModel(
-              id: '',
-              nombre: 'Estación desconocida',
-              linea: 'linea1',
-              ubicacion: const GeoPoint(0, 0),
-              ultimaActualizacion: DateTime.now(),
-            ),
-          );
-      return station.nombre;
-    } else {
-      final train = metroProvider.trains
-          .firstWhere(
-            (t) => t.id == report.objetivoId,
-            orElse: () => TrainModel(
-              id: 'desconocido',
-              linea: 'linea1',
-              direccion: DireccionTren.norte,
-              ubicacionActual: const GeoPoint(0, 0),
-              velocidad: 0,
-              ultimaActualizacion: DateTime.now(),
-            ),
-          );
-      return 'Tren ${train.id}';
+  String _getObjetivoNombre(SimplifiedReportModel report, MetroDataProvider metroProvider) {
+    try {
+      final station = metroProvider.getStationById(report.stationId);
+      if (station != null) {
+        return station.nombre;
+      }
+    } catch (e) {
+      // Si hay error, usar ID
     }
+    return 'Estación ${report.stationId}';
   }
 
   @override
@@ -284,11 +265,11 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                   children: [
                     _buildFilterChip('Todos', null),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Activo', EstadoReporte.activo),
+                    _buildFilterChip('Activo', 'active'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Resuelto', EstadoReporte.resuelto),
+                    _buildFilterChip('Resuelto', 'resolved'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Falso', EstadoReporte.falso),
+                    _buildFilterChip('Rechazado', 'rejected'),
                   ],
                 ),
               ),
@@ -299,8 +280,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
         Expanded(
           child: Consumer<MetroDataProvider>(
             builder: (context, metroProvider, child) {
-              return StreamBuilder<List<ReportModel>>(
-                stream: firebaseService.getUserReportsStream(user.uid),
+              return StreamBuilder<List<SimplifiedReportModel>>(
+                stream: _reportService.getUserReportsStream(user.uid),
                 builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -382,7 +363,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                         ElevatedButton(
                           onPressed: () {
                             setState(() {
-                              _selectedEstado = null;
+                              _selectedStatus = null;
                               _searchController.clear();
                             });
                           },
@@ -420,8 +401,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
   Widget _buildNearbyReportsTab(UserModel user, FirebaseService firebaseService) {
     return Consumer<ReportProvider>(
       builder: (context, reportProvider, child) {
-        return StreamBuilder<List<ReportModel>>(
-          stream: firebaseService.getActiveReportsStream(),
+        return StreamBuilder<List<SimplifiedReportModel>>(
+          stream: _reportService.getActiveReportsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -443,7 +424,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
             final allReports = snapshot.data ?? [];
             // Filtrar reportes de otros usuarios (no del usuario actual)
             final otherUsersReports = allReports
-                .where((report) => report.usuarioId != user.uid)
+                .where((report) => report.userId != user.uid)
                 .toList();
 
             if (otherUsersReports.isEmpty) {
@@ -475,7 +456,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
             }
 
             // Ordenar por más recientes primero
-            otherUsersReports.sort((a, b) => b.creadoEn.compareTo(a.creadoEn));
+            otherUsersReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -498,7 +479,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
 
   Widget _buildVerificationCard(
     BuildContext context,
-    ReportModel report,
+    SimplifiedReportModel report,
     ReportProvider reportProvider,
     String currentUserId,
     FirebaseService firebaseService,
@@ -508,58 +489,94 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
       builder: (context, confirmationSnapshot) {
         final isVerified = confirmationSnapshot.data ?? false;
 
-        return ReportVerificationWidget(
-          report: report,
-          isVerified: isVerified,
-          onVerify: isVerified
-              ? null
-              : () async {
-                  // Capturar context y messenger antes del async gap
-                  final navigator = Navigator.of(context);
-                  final messenger = ScaffoldMessenger.of(context);
-                  
-                  try {
-                    final success = await reportProvider.confirmReport(report.id, currentUserId);
-                    if (success && mounted) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text('¡Reporte confirmado! +5 puntos'),
-                            ],
-                          ),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
+        // TODO: Actualizar ReportVerificationWidget para usar SimplifiedReportModel
+        // Por ahora, mostrar un card simple
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      report.scope == 'station' ? Icons.train : Icons.directions_transit,
+                      color: report.scope == 'station' ? MetroColors.blue : MetroColors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        report.scope == 'station' ? 'Reporte de Estación' : 'Reporte de Tren',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                      setState(() {}); // Refrescar para actualizar el estado
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(e.toString().replaceAll('Exception: ', '')),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
+                      ),
+                    ),
+                    if (!isVerified)
+                      ElevatedButton(
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          try {
+                            final success = await reportProvider.confirmReport(report.id, currentUserId);
+                            if (success && mounted) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Icons.check_circle, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text('¡Reporte confirmado! +5 puntos'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              setState(() {});
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text('Confirmar'),
+                      )
+                    else
+                      const Chip(
+                        label: Text('Confirmado'),
+                        backgroundColor: Colors.green,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Confirmaciones: ${report.confirmations}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _buildFilterChip(String label, EstadoReporte? estado) {
-    final isSelected = _selectedEstado == estado;
+  Widget _buildFilterChip(String label, String? status) {
+    final isSelected = _selectedStatus == status;
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
-          _selectedEstado = selected ? estado : null;
+          _selectedStatus = selected ? status : null;
         });
       },
       selectedColor: MetroColors.blue.withOpacity(0.2),
@@ -571,7 +588,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     );
   }
 
-  Widget _buildReportCard(BuildContext context, ReportModel report) {
+  Widget _buildReportCard(BuildContext context, SimplifiedReportModel report) {
     return Consumer<MetroDataProvider>(
       builder: (context, metroProvider, child) {
         final objetivoNombre = _getObjetivoNombre(report, metroProvider);
@@ -591,16 +608,16 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: report.tipo == TipoReporte.estacion
+                          color: report.scope == 'station'
                               ? MetroColors.blue.withOpacity(0.1)
                               : MetroColors.green.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          report.tipo == TipoReporte.estacion
+                          report.scope == 'station'
                               ? Icons.train
                               : Icons.directions_transit,
-                          color: report.tipo == TipoReporte.estacion
+                          color: report.scope == 'station'
                               ? MetroColors.blue
                               : MetroColors.green,
                           size: 24,
@@ -621,7 +638,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _getCategoriaText(report.categoria),
+                              report.scope == 'station' ? 'Reporte de Estación' : 'Reporte de Tren',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -631,19 +648,24 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                         ),
                       ),
                       // Estado del reporte
-                      _buildEstadoChip(report.estado),
+                      _buildEstadoChip(report.status),
                     ],
                   ),
-                  if (report.descripcion != null && report.descripcion!.isNotEmpty) ...[
+                  if (report.stationIssues.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      report.descripcion!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: report.stationIssues.take(3).map((issue) {
+                        return Chip(
+                          label: Text(
+                            _getProblemaTexto(issue),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          padding: EdgeInsets.zero,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        );
+                      }).toList(),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -652,17 +674,27 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       Icon(Icons.verified, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        '${report.verificaciones} verificaciones',
+                        '${report.confirmations} confirmaciones',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
                       ),
                       const Spacer(),
+                      Icon(Icons.stars, size: 16, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${report.totalPoints} pts',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDate(report.creadoEn),
+                        _formatDate(report.createdAt),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -679,27 +711,31 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     );
   }
 
-  Widget _buildEstadoChip(EstadoReporte estado) {
+  Widget _buildEstadoChip(String status) {
     Color color;
     String text;
     IconData icon;
 
-    switch (estado) {
-      case EstadoReporte.activo:
+    switch (status) {
+      case 'active':
         color = MetroColors.green;
         text = 'Activo';
         icon = Icons.check_circle;
         break;
-      case EstadoReporte.resuelto:
+      case 'resolved':
         color = Colors.blue;
         text = 'Resuelto';
         icon = Icons.done_all;
         break;
-      case EstadoReporte.falso:
+      case 'rejected':
         color = Colors.red;
-        text = 'Falso';
+        text = 'Rechazado';
         icon = Icons.cancel;
         break;
+      default:
+        color = Colors.grey;
+        text = status;
+        icon = Icons.help_outline;
     }
 
     return Container(
@@ -727,9 +763,20 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     );
   }
 
+  String _getProblemaTexto(String problema) {
+    final map = {
+      'recharge': 'Recarga',
+      'atm': 'Cajero',
+      'ac': 'Aire acondicionado',
+      'escalator': 'Escaleras',
+      'elevator': 'Ascensor',
+    };
+    return map[problema] ?? problema;
+  }
+
   void _showReportDetails(
     BuildContext context,
-    ReportModel report,
+    SimplifiedReportModel report,
     String objetivoNombre,
   ) {
     showModalBottomSheet(
@@ -769,7 +816,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      report.tipo == TipoReporte.estacion
+                      report.scope == 'station'
                           ? Icons.train
                           : Icons.directions_transit,
                       color: MetroColors.blue,
@@ -790,7 +837,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _getCategoriaText(report.categoria),
+                          report.scope == 'station' ? 'Reporte de Estación' : 'Reporte de Tren',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -799,48 +846,72 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       ],
                     ),
                   ),
-                  _buildEstadoChip(report.estado),
+                  _buildEstadoChip(report.status),
                 ],
               ),
               const SizedBox(height: 24),
               _buildDetailRow(
                 Icons.access_time,
                 'Fecha',
-                _formatDateTime(report.creadoEn),
+                _formatDateTime(report.createdAt),
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
                 Icons.verified,
-                'Verificaciones',
-                '${report.verificaciones} usuarios confirmaron este reporte',
+                'Confirmaciones',
+                '${report.confirmations} usuarios confirmaron este reporte',
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
-                Icons.location_on,
-                'Ubicación',
-                '${report.ubicacion.latitude.toStringAsFixed(4)}, ${report.ubicacion.longitude.toStringAsFixed(4)}',
+                Icons.stars,
+                'Puntos',
+                '${report.totalPoints} puntos (${report.basePoints} base + ${report.bonusPoints} bonus)',
               ),
-              if (report.descripcion != null && report.descripcion!.isNotEmpty) ...[
+              if (report.userLocation != null) ...[
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  Icons.location_on,
+                  'Ubicación',
+                  '${report.userLocation!.latitude.toStringAsFixed(4)}, ${report.userLocation!.longitude.toStringAsFixed(4)}',
+                ),
+              ],
+              if (report.scope == 'station' && report.stationIssues.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 const Text(
-                  'Descripción',
+                  'Problemas reportados',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: MetroColors.grayLight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    report.descripcion!,
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: report.stationIssues.map((issue) {
+                    return Chip(
+                      label: Text(_getProblemaTexto(issue)),
+                      backgroundColor: MetroColors.energyOrange.withOpacity(0.1),
+                    );
+                  }).toList(),
+                ),
+              ],
+              if (report.scope == 'station' && report.stationOperational != null) ...[
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  Icons.info_outline,
+                  'Estado operacional',
+                  report.stationOperational == 'yes' ? 'Operativa' : 
+                  report.stationOperational == 'partial' ? 'Parcialmente operativa' : 
+                  'No operativa',
+                ),
+              ],
+              if (report.scope == 'station' && report.stationCrowd != null) ...[
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  Icons.people,
+                  'Aglomeración',
+                  'Nivel ${report.stationCrowd}/5',
                 ),
               ],
             ],

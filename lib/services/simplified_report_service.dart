@@ -172,4 +172,49 @@ class SimplifiedReportService {
       return [];
     }
   }
+
+  /// Stream de reportes del usuario actual
+  Stream<List<SimplifiedReportModel>> getUserReportsStream(String userId) {
+    return _firestore
+        .collection('reports')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            try {
+              return SimplifiedReportModel.fromFirestore(doc);
+            } catch (e) {
+              print('Error parsing report ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<SimplifiedReportModel>()
+          .toList();
+    });
+  }
+
+  /// Stream de reportes activos (todos los usuarios)
+  Stream<List<SimplifiedReportModel>> getActiveReportsStream() {
+    return _firestore
+        .collection('reports')
+        .where('status', isEqualTo: 'active')
+        .orderBy('createdAt', descending: true)
+        .limit(100)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            try {
+              return SimplifiedReportModel.fromFirestore(doc);
+            } catch (e) {
+              print('Error parsing report ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<SimplifiedReportModel>()
+          .toList();
+    });
+  }
 }
