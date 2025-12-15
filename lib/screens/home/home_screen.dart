@@ -541,6 +541,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
           ),
+          // Botón para confirmar reportes
+          IconButton(
+            icon: const Icon(Icons.verified_user),
+            tooltip: 'Confirmar Reportes',
+            onPressed: () {
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (sheetContext) => const ConfirmReportsSheet(),
+              );
+            },
+          ),
           // Icono de Mis Reportes
           IconButton(
             icon: const Icon(Icons.history),
@@ -599,24 +612,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             bottom: 80,
             left: 20,
             child: QuickReportButton(),
-          ),
-          // Botón para confirmar reportes
-          Positioned(
-            bottom: 160,
-            left: 20,
-            child: FloatingActionButton(
-              heroTag: "confirm_reports",
-              onPressed: () {
-                showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (sheetContext) => const ConfirmReportsSheet(),
-                );
-              },
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.verified_user, color: Colors.white),
-            ),
           ),
           Positioned(
             bottom: 80,
