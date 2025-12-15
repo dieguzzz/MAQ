@@ -14,9 +14,6 @@ class QuickReportButton extends StatefulWidget {
 }
 
 class _QuickReportButtonState extends State<QuickReportButton> {
-  DateTime? _lastTap;
-  static const Duration _doubleTapDelay = Duration(milliseconds: 400);
-
   /// Encuentra la estación más cercana al usuario
   StationModel? _findNearestStation(
     List<StationModel> stations,
@@ -44,42 +41,6 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
     // Solo retornar si está a menos de 2 km
     return minDistance <= 2000 ? nearest : null;
-  }
-
-
-  /// Maneja el toque del botón con detección de doble toque
-  void _handleTap() {
-    final now = DateTime.now();
-
-    if (_lastTap == null) {
-      // Primer tap - esperar para ver si hay segundo
-      _lastTap = now;
-      Future.delayed(_doubleTapDelay, () {
-        if (mounted && _lastTap != null &&
-            DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
-          // Solo un tap - reporte de estación
-          _lastTap = null;
-          _handleStationReport();
-        }
-      });
-    } else {
-      // Segundo tap dentro del delay
-      if (now.difference(_lastTap!) < _doubleTapDelay) {
-        // Doble tap - reporte de tren
-        _lastTap = null;
-        _handleTrainReport();
-      } else {
-        // Taps muy separados, tratar como tap simple
-        _lastTap = now;
-        Future.delayed(_doubleTapDelay, () {
-          if (mounted && _lastTap != null &&
-              DateTime.now().difference(_lastTap!) >= _doubleTapDelay) {
-            _lastTap = null;
-            _handleStationReport();
-          }
-        });
-      }
-    }
   }
 
 
@@ -207,10 +168,25 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton(
-      onPressed: _handleTap,
-      backgroundColor: Colors.green,
-      child: const Icon(Icons.add_alert),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Botón para reportar estación
+        FloatingActionButton(
+          onPressed: _handleStationReport,
+          backgroundColor: Colors.blue,
+          heroTag: "report_station",
+          child: const Icon(Icons.add_alert, color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+        // Botón para reportar tren
+        FloatingActionButton(
+          onPressed: _handleTrainReport,
+          backgroundColor: Colors.green,
+          heroTag: "report_train",
+          child: const Icon(Icons.train, color: Colors.white),
+        ),
+      ],
     );
   }
 }
