@@ -154,19 +154,23 @@ class SimplifiedReportService {
       final now = DateTime.now();
       final oneHourAgo = now.subtract(const Duration(hours: 1));
 
+      // Consulta sin orderBy para evitar índice compuesto
       final snapshot = await _firestore
           .collection('reports')
           .where('stationId', isEqualTo: stationId)
           .where('scope', isEqualTo: 'station')
-          .where('createdAt', isGreaterThan: Timestamp.fromDate(oneHourAgo))
           .where('status', isEqualTo: 'active')
-          .orderBy('createdAt', descending: true)
-          .limit(limit)
           .get();
 
-      return snapshot.docs
+      // Filtrar por fecha y ordenar en memoria
+      final reports = snapshot.docs
           .map((doc) => SimplifiedReportModel.fromFirestore(doc))
+          .where((report) => report.createdAt.isAfter(oneHourAgo))
           .toList();
+      
+      // Ordenar por fecha (más reciente primero) y limitar
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports.take(limit).toList();
     } catch (e) {
       print('Error getting recent reports: $e');
       return [];
@@ -178,10 +182,9 @@ class SimplifiedReportService {
     return _firestore
         .collection('reports')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final reports = snapshot.docs
           .map((doc) {
             try {
               return SimplifiedReportModel.fromFirestore(doc);
@@ -192,6 +195,10 @@ class SimplifiedReportService {
           })
           .whereType<SimplifiedReportModel>()
           .toList();
+      
+      // Ordenar en memoria por fecha (más reciente primero)
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports;
     });
   }
 
@@ -200,11 +207,9 @@ class SimplifiedReportService {
     return _firestore
         .collection('reports')
         .where('status', isEqualTo: 'active')
-        .orderBy('createdAt', descending: true)
-        .limit(100)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final reports = snapshot.docs
           .map((doc) {
             try {
               return SimplifiedReportModel.fromFirestore(doc);
@@ -215,6 +220,10 @@ class SimplifiedReportService {
           })
           .whereType<SimplifiedReportModel>()
           .toList();
+      
+      // Ordenar en memoria por fecha (más reciente primero) y limitar a 100
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports.take(100).toList();
     });
   }
 }

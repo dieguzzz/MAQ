@@ -298,10 +298,6 @@ class _EtaSection extends StatelessWidget {
               .where('stationId', isEqualTo: station.id)
               .where('scope', isEqualTo: 'train')
               .where('status', isEqualTo: 'active')
-              .where('etaBucket', isNotEqualTo: 'unknown')
-              .orderBy('etaBucket')
-              .orderBy('createdAt', descending: true)
-              .limit(10)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -309,22 +305,7 @@ class _EtaSection extends StatelessWidget {
             }
             
             if (snapshot.hasError) {
-              // Si hay error de índice, intentar sin orderBy
-              return StreamBuilder<QuerySnapshot>(
-                stream: firestore
-                    .collection('reports')
-                    .where('stationId', isEqualTo: station.id)
-                    .where('scope', isEqualTo: 'train')
-                    .where('status', isEqualTo: 'active')
-                    .snapshots(),
-                builder: (context, snapshot2) {
-                  if (snapshot2.hasError) {
-                    return Text('Error: ${snapshot2.error}');
-                  }
-                  final docs2 = snapshot2.data?.docs ?? <QueryDocumentSnapshot>[];
-                  return _buildEtaList(context, theme, docs2);
-                },
-              );
+              return Text('Error: ${snapshot.error}');
             }
             
             final docs = snapshot.data?.docs ?? <QueryDocumentSnapshot>[];
@@ -494,8 +475,6 @@ class _StatusSection extends StatelessWidget {
               .where('stationId', isEqualTo: station.id)
               .where('scope', isEqualTo: 'station')
               .where('status', isEqualTo: 'active')
-              .orderBy('createdAt', descending: true)
-              .limit(50)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -503,27 +482,20 @@ class _StatusSection extends StatelessWidget {
             }
             
             if (snapshot.hasError) {
-              print('Error en stream de reportes: ${snapshot.error}');
-              // Si hay error de índice, intentar sin orderBy
-              return StreamBuilder<QuerySnapshot>(
-                stream: firestore
-                    .collection('reports')
-                    .where('stationId', isEqualTo: station.id)
-                    .where('scope', isEqualTo: 'station')
-                    .where('status', isEqualTo: 'active')
-                    .snapshots(),
-                builder: (context, snapshot2) {
-                  if (snapshot2.hasError) {
-                    return Text('Error: ${snapshot2.error}');
-                  }
-                  final docs2 = snapshot2.data?.docs ?? <QueryDocumentSnapshot>[];
-                  return _buildStatusContent(context, theme, docs2);
-                },
-              );
+              return Text('Error: ${snapshot.error}');
             }
             
             final docs = snapshot.data?.docs ?? <QueryDocumentSnapshot>[];
-            return _buildStatusContent(context, theme, docs);
+            // Ordenar en memoria por fecha (más reciente primero) y limitar a 50
+            final sortedDocs = docs.toList()
+              ..sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aDate = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(1970);
+                final bDate = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(1970);
+                return bDate.compareTo(aDate);
+              });
+            return _buildStatusContent(context, theme, sortedDocs.take(50).toList());
           },
         ),
       ],
