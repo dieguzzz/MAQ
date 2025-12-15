@@ -1006,37 +1006,24 @@
         // Cargar reportes recientes (usando modelo simplificado)
         async function loadRecentReports() {
             try {
-                // Cargar solo reportes activos (no eliminados)
-                // Nota: Firestore requiere un índice para múltiples orderBy, así que primero intentamos con filtro
-                let finalSnapshot;
-                try {
-                    finalSnapshot = await db.collection('reports')
-                        .where('status', '!=', 'deleted')
-                        .orderBy('status')
-                        .orderBy('createdAt', 'desc')
-                        .limit(50)
-                        .get();
-                } catch (indexError) {
-                    // Si no hay índice, cargar todos y filtrar en memoria
-                    console.warn('Índice no encontrado, filtrando en memoria:', indexError);
-                    const allSnapshot = await db.collection('reports')
-                        .orderBy('createdAt', 'desc')
-                        .limit(100)
-                        .get();
-                    
-                    // Filtrar en memoria
-                    const filteredDocs = allSnapshot.docs.filter(doc => {
-                        const data = doc.data();
-                        return data.status !== 'deleted';
-                    });
-                    
-                    // Crear un snapshot simulado con los docs filtrados
-                    finalSnapshot = {
-                        docs: filteredDocs.slice(0, 50),
-                        empty: filteredDocs.length === 0,
-                        size: filteredDocs.length
-                    };
-                }
+                // Cargar reportes recientes (filtrar eliminados en memoria para evitar problemas de índice)
+                const allSnapshot = await db.collection('reports')
+                    .orderBy('createdAt', 'desc')
+                    .limit(100)
+                    .get();
+                
+                // Filtrar reportes eliminados en memoria
+                const filteredDocs = allSnapshot.docs.filter(doc => {
+                    const data = doc.data();
+                    return data.status !== 'deleted';
+                });
+                
+                // Crear un snapshot simulado con los docs filtrados (máximo 50)
+                const finalSnapshot = {
+                    docs: filteredDocs.slice(0, 50),
+                    empty: filteredDocs.length === 0,
+                    size: filteredDocs.length
+                };
                 
                 const table = `
                     <table>
