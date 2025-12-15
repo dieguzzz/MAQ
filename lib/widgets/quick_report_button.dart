@@ -176,7 +176,12 @@ class _QuickReportButtonState extends State<QuickReportButton> {
           onPressed: _handleStationReport,
           backgroundColor: Colors.blue,
           heroTag: "report_station",
-          child: const Icon(Icons.add_alert, color: Colors.white),
+          child: Image.asset(
+            'assets/icons/train-station_11991245.png',
+            width: 24,
+            height: 24,
+            color: Colors.white,
+          ),
         ),
         const SizedBox(height: 16),
         // Botón para reportar tren
