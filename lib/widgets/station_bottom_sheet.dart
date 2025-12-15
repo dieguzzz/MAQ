@@ -4,7 +4,7 @@ import '../models/station_model.dart';
 import '../models/enhanced_report_model.dart';
 import '../services/enhanced_report_service.dart';
 import '../screens/reports/station_report_flow.dart';
-import '../screens/reports/train_report_flow.dart';
+import 'station_report_sheet.dart';
 
 /// Bottom Sheet mejorado para mostrar información de estación
 class StationBottomSheet extends StatelessWidget {
@@ -261,12 +261,15 @@ class StationBottomSheet extends StatelessWidget {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TrainReportFlowScreen(
-                    station: station,
-                  ),
+              Navigator.pop(context); // Cerrar el bottom sheet actual
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (sheetContext) => StationReportSheet(
+                  station: station,
+                  initialPage: 1, // Abrir directamente en la vista de reporte
+                  initialReportType: 'train', // Abrir directamente en formulario de tren
                 ),
               );
             },
