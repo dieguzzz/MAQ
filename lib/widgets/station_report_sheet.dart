@@ -1450,37 +1450,6 @@ class _StationReportViewState extends State<StationReportView>
           _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
           const SizedBox(height: 12),
           _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
-          const SizedBox(height: 32),
-          // Botón para continuar a la siguiente página
-          if (_crowdLevel != null)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  _goToNextPage();
-                },
-                icon: const Icon(Icons.arrow_forward, size: 24),
-                label: const Text(
-                  'CONTINUAR',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 8,
-                  shadowColor: Colors.blue.withOpacity(0.5),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -2208,7 +2177,14 @@ class _StationReportViewState extends State<StationReportView>
                 onTap: () {
                   HapticFeedback.lightImpact();
                   setState(() => _crowdLevel = level);
-                  // No avanzar automáticamente en la página 2 - el usuario debe presionar CONTINUAR
+                  // Si es la página 2 del formulario de estación, avanzar automáticamente después de un breve delay
+                  if (_reportType == 'station' && _currentFormPage == 1) {
+                    Future.delayed(const Duration(milliseconds: 400), () {
+                      if (mounted && _currentFormPage == 1 && _crowdLevel == level) {
+                        _goToNextPage();
+                      }
+                    });
+                  }
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
