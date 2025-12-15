@@ -290,7 +290,7 @@ class MetroDataProvider with ChangeNotifier {
   }
   
   /// Actualizar estaciones basándose en reportes recientes
-  void _updateStationsFromReports(List<QueryDocumentSnapshot> reportDocs) {
+  void _updateStationsFromReports(List<QueryDocumentSnapshot<Map<String, dynamic>>> reportDocs) {
     if (reportDocs.isEmpty) return;
     
     // Agrupar reportes por estación
