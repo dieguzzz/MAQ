@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -18,7 +19,12 @@ import '../../services/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
 import '../../widgets/location_permission_dialog.dart';
 import '../../widgets/confirm_reports_sheet.dart';
+import '../../widgets/train_arrival_animation.dart';
+import '../../services/simplified_report_service.dart';
+import '../../models/station_model.dart';
+import '../../services/location_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +39,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isCheckingLocation = false;
   bool _lastGpsStatus = true;
   bool _lastPermissionStatus = true;
+  final SimplifiedReportService _reportService = SimplifiedReportService();
+  DateTime? _lastTrainButtonTap;
+  Timer? _trainButtonTimer;
 
   @override
   void initState() {
@@ -49,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _trainButtonTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -237,6 +247,184 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         simulatedTimeService.start();
       } else {
         simulatedTimeService.stop();
+      }
+    }
+  }
+
+  /// Maneja el botón "Ya llegó el metro"
+  void _handleTrainArrival() {
+    final now = DateTime.now();
+    
+    // Si hay un toque previo dentro de 500ms, es doble toque
+    if (_lastTrainButtonTap != null && 
+        now.difference(_lastTrainButtonTap!) < const Duration(milliseconds: 500)) {
+      // Cancelar el timer del primer toque
+      _trainButtonTimer?.cancel();
+      _trainButtonTimer = null;
+      _lastTrainButtonTap = null;
+      
+      // Doble toque: esperar medio segundo antes de enviar reporte
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _sendTrainArrivalReport(showAnimationFirst: true);
+        }
+      });
+      return;
+    }
+    
+    // Registrar este toque
+    _lastTrainButtonTap = now;
+    
+    // Cancelar timer anterior si existe
+    _trainButtonTimer?.cancel();
+    
+    // Esperar 500ms para ver si hay un segundo toque
+    _trainButtonTimer = Timer(const Duration(milliseconds: 500), () {
+      // Si pasó el tiempo sin segundo toque, mostrar diálogo
+      _trainButtonTimer = null;
+      _lastTrainButtonTap = null;
+      
+      if (!mounted) return;
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Debes iniciar sesión para reportar'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('¿Llegó el metro?'),
+          content: const SizedBox(),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // No hacer nada
+              },
+              child: const Text('No'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _sendTrainArrivalReport(showAnimationFirst: true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: const Text('Sí'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Envía el reporte de llegada del tren
+  Future<void> _sendTrainArrivalReport({bool showAnimationFirst = false}) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      if (user == null) return;
+
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final currentPosition = locationProvider.currentPosition;
+
+      // Obtener estación más cercana
+      StationModel? nearestStation;
+      if (currentPosition != null && metroProvider.stations.isNotEmpty) {
+        double minDistance = double.infinity;
+        for (final station in metroProvider.stations) {
+          final distance = Geolocator.distanceBetween(
+            currentPosition.latitude,
+            currentPosition.longitude,
+            station.ubicacion.latitude,
+            station.ubicacion.longitude,
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestStation = station;
+          }
+        }
+      }
+
+      // Si no hay estación cercana, usar la primera disponible
+      if (nearestStation == null && metroProvider.stations.isNotEmpty) {
+        nearestStation = metroProvider.stations.first;
+      }
+
+      if (nearestStation == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo determinar la estación'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final station = nearestStation!;
+      final arrivalTime = DateTime.now();
+
+      // Si showAnimationFirst es true, mostrar animación inmediatamente con 15 puntos
+      if (showAnimationFirst && mounted) {
+        TrainArrivalAnimation.show(
+          context,
+          points: 15, // Siempre 15 puntos
+          onComplete: () {
+            // Ya se cierra automáticamente
+          },
+        );
+      }
+
+      // Crear reporte directo de llegada (siempre 15 puntos)
+      Position? position;
+      try {
+        final locationService = LocationService();
+        final status = await locationService.checkLocationStatus();
+        if (status.hasPermission) {
+          position = await locationService.getCurrentPosition();
+        }
+      } catch (e) {
+        print('No se pudo obtener ubicación: $e');
+      }
+
+      await _reportService.createDirectArrivalReport(
+        stationId: station.id,
+        arrivalTime: arrivalTime,
+        trainLine: station.linea,
+        userPosition: position,
+      );
+
+      // Si no se mostró la animación antes, mostrarla ahora
+      if (!showAnimationFirst && mounted) {
+        TrainArrivalAnimation.show(
+          context,
+          points: 15,
+          onComplete: () {
+            // Ya se cierra automáticamente
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -598,6 +786,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             left: 20,
             child: QuickReportButton(),
           ),
+          // Botón de centrar mapa (más a la izquierda)
+          Positioned(
+            bottom: 80,
+            right: 80,
+            child: Consumer<LocationProvider>(
+              builder: (context, locationProvider, child) {
+                return FloatingActionButton(
+                  heroTag: 'locate_fab',
+                  onPressed: () async {
+                    // Verificar estado antes de obtener ubicación
+                    final status = await locationProvider.checkLocationStatus();
+                    
+                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
+                    if (!status.isGpsEnabled || !status.hasPermission) {
+                      if (mounted) {
+                        final result = await LocationPermissionDialog.show(
+                          context,
+                          isGpsEnabled: status.isGpsEnabled,
+                          hasPermission: status.hasPermission,
+                        );
+                        
+                        if (result == true && mounted) {
+                          await locationProvider.getCurrentLocation();
+                        }
+                      }
+                    } else {
+                      // Si todo está bien, obtener ubicación normalmente
+                      await locationProvider.getCurrentLocation();
+                    }
+                  },
+                  child: const Icon(Icons.my_location),
+                );
+              },
+            ),
+          ),
+          // Medidor de velocidad y botón "Ya llegó el metro" (abajo del medidor)
           Positioned(
             bottom: 80,
             right: 8,
@@ -633,31 +857,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    // Botón "Ya llegó el metro" (abajo del medidor)
                     FloatingActionButton(
-                  heroTag: 'locate_fab',
-                  onPressed: () async {
-                    // Verificar estado antes de obtener ubicación
-                    final status = await locationProvider.checkLocationStatus();
-                    
-                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
-                    if (!status.isGpsEnabled || !status.hasPermission) {
-                      if (mounted) {
-                        final result = await LocationPermissionDialog.show(
-                          context,
-                          isGpsEnabled: status.isGpsEnabled,
-                          hasPermission: status.hasPermission,
-                        );
-                        
-                        if (result == true && mounted) {
-                          await locationProvider.getCurrentLocation();
-                        }
-                      }
-                    } else {
-                      // Si todo está bien, obtener ubicación normalmente
-                      await locationProvider.getCurrentLocation();
-                    }
-                  },
-                  child: const Icon(Icons.my_location),
+                      heroTag: 'train_arrival_fab',
+                      onPressed: _handleTrainArrival,
+                      backgroundColor: Colors.green,
+                      child: Image.asset(
+                        'assets/icons/metro-station_2340498.png',
+                        width: 24,
+                        height: 24,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 );

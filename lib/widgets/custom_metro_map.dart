@@ -15,6 +15,11 @@ import '../services/station_edit_mode_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../widgets/station_position_editor_modal.dart';
+import '../widgets/train_arrival_animation.dart';
+import '../services/simplified_report_service.dart';
+import '../services/location_service.dart';
+import '../providers/location_provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../utils/metro_data.dart';
 
 enum StationStatus {
@@ -58,6 +63,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   final Map<String, int> _nextTrainMinutes = {}; // Minutos para próximo tren
   final TrainSimulationService _trainSimulation = TrainSimulationService();
   final StationPositionEditorService _positionEditor = StationPositionEditorService();
+  final SimplifiedReportService _reportService = SimplifiedReportService();
   List<TrainModel> _simulatedTrains = [];
   Timer? _updateTimer;
   bool _isTestMode = false;
@@ -66,6 +72,8 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   _GeoBounds? _currentBounds;
   bool _hasDragged = false; // Para detectar si hubo movimiento durante el arrastre
   Timer? _tapTimer; // Timer para retrasar el tap y permitir que el pan se active primero
+  DateTime? _lastTrainButtonTap;
+  Timer? _trainButtonTimer;
 
   @override
   void initState() {
@@ -266,6 +274,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
   @override
   void dispose() {
     _updateTimer?.cancel();
+    _trainButtonTimer?.cancel();
     _trainSimulation.stop();
     _trainSimulation.dispose();
     _animationController.dispose();
@@ -295,6 +304,185 @@ class _CustomMetroMapState extends State<CustomMetroMap>
         return '🔴';
       case StationStatus.cerrado:
         return '⚫';
+    }
+  }
+
+  /// Maneja el botón "Ya llegó el metro"
+  void _handleTrainArrival() {
+    final now = DateTime.now();
+    
+    // Si hay un toque previo dentro de 500ms, es doble toque
+    if (_lastTrainButtonTap != null && 
+        now.difference(_lastTrainButtonTap!) < const Duration(milliseconds: 50)) {
+      // Cancelar el timer del primer toque
+      _trainButtonTimer?.cancel();
+      _trainButtonTimer = null;
+      _lastTrainButtonTap = null;
+      
+      // Doble toque: esperar medio segundo antes de enviar reporte
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) {
+          _sendTrainArrivalReport(showAnimationFirst: true);
+        }
+      });
+      return;
+    }
+    
+    // Registrar este toque
+    _lastTrainButtonTap = now;
+    
+    // Cancelar timer anterior si existe
+    _trainButtonTimer?.cancel();
+    
+    // Esperar 500ms para ver si hay un segundo toque
+    _trainButtonTimer = Timer(const Duration(milliseconds: 500), () {
+      // Si pasó el tiempo sin segundo toque, mostrar diálogo
+      _trainButtonTimer = null;
+      _lastTrainButtonTap = null;
+      
+      if (!mounted) return;
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Debes iniciar sesión para reportar'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('¿Llegó el metro?'),
+          content: const SizedBox(),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // No hacer nada
+              },
+              child: const Text('No'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _sendTrainArrivalReport(showAnimationFirst: true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: const Text('Sí'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Envía el reporte de llegada del tren
+  Future<void> _sendTrainArrivalReport({bool showAnimationFirst = false}) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      if (user == null) return;
+
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final currentPosition = locationProvider.currentPosition;
+
+      // Obtener estación más cercana
+      StationModel? nearestStation;
+      if (currentPosition != null && widget.stations.isNotEmpty) {
+        double minDistance = double.infinity;
+        for (final station in widget.stations) {
+          final distance = Geolocator.distanceBetween(
+            currentPosition.latitude,
+            currentPosition.longitude,
+            station.ubicacion.latitude,
+            station.ubicacion.longitude,
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestStation = station;
+          }
+        }
+      }
+
+      // Si no hay estación cercana, usar la primera disponible
+      if (nearestStation == null && widget.stations.isNotEmpty) {
+        nearestStation = widget.stations.first;
+      }
+
+      if (nearestStation == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo determinar la estación'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final station = nearestStation!;
+      final arrivalTime = DateTime.now();
+
+      // Si showAnimationFirst es true, mostrar animación inmediatamente con 15 puntos
+      if (showAnimationFirst && mounted) {
+        TrainArrivalAnimation.show(
+          context,
+          points: 15, // Siempre 15 puntos
+          onComplete: () {
+            // Ya se cierra automáticamente
+          },
+        );
+      }
+
+      // Crear reporte directo de llegada (siempre 15 puntos)
+      Position? position;
+      try {
+        final locationService = LocationService();
+        final status = await locationService.checkLocationStatus();
+        if (status.hasPermission) {
+          position = await locationService.getCurrentPosition();
+        }
+      } catch (e) {
+        print('No se pudo obtener ubicación: $e');
+      }
+
+      await _reportService.createDirectArrivalReport(
+        stationId: station.id,
+        arrivalTime: arrivalTime,
+        trainLine: station.linea,
+        userPosition: position,
+      );
+
+      // Si no se mostró la animación antes, mostrarla ahora
+      if (!showAnimationFirst && mounted) {
+        TrainArrivalAnimation.show(
+          context,
+          points: 15,
+          onComplete: () {
+            // Ya se cierra automáticamente
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -407,6 +595,22 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 line2Points: line2Points,
                 line2AirportPoints: line2AirportPoints,
                 size: size,
+              ),
+              // Botón "Ya llegó el metro" (abajo del medidor de km)
+              Positioned(
+                bottom: 80,
+                right: 8,
+                child: FloatingActionButton(
+                  heroTag: 'train_arrival_fab_custom',
+                  onPressed: _handleTrainArrival,
+                  backgroundColor: Colors.green,
+                  child: Image.asset(
+                    'assets/icons/metro-station_2340498.png',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ],
           ),

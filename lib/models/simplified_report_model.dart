@@ -21,6 +21,7 @@ class SimplifiedReportModel {
   // ETA reported (solo si scope === 'train')
   final String? etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
   final DateTime? etaExpectedAt; // server-side: now + bucket mid-point
+  final DateTime? arrivalTime; // Hora exacta cuando el tren llegó
   
   // Metadata
   final DateTime createdAt;
@@ -51,6 +52,7 @@ class SimplifiedReportModel {
     this.trainStatus,
     this.etaBucket,
     this.etaExpectedAt,
+    this.arrivalTime,
     required this.createdAt,
     this.status = 'active',
     this.confirmations = 0,
@@ -81,6 +83,9 @@ class SimplifiedReportModel {
       etaExpectedAt: data['etaExpectedAt'] != null
           ? (data['etaExpectedAt'] as Timestamp).toDate()
           : null,
+      arrivalTime: data['arrivalTime'] != null
+          ? (data['arrivalTime'] as Timestamp).toDate()
+          : null,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       status: data['status'] ?? 'active',
       confirmations: data['confirmations'] ?? 0,
@@ -108,6 +113,7 @@ class SimplifiedReportModel {
       if (trainStatus != null) 'trainStatus': trainStatus,
       if (etaBucket != null) 'etaBucket': etaBucket,
       if (etaExpectedAt != null) 'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
+      if (arrivalTime != null) 'arrivalTime': Timestamp.fromDate(arrivalTime!),
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status,
       'confirmations': confirmations,

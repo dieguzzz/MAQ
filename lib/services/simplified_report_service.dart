@@ -52,7 +52,7 @@ class SimplifiedReportService {
   /// Crear reporte de tren (simplificado)
   Future<String> createTrainReport({
     required String stationId,
-    required int crowdLevel, // 1-5
+    int? crowdLevel, // 1-5 (opcional - puede ser null si solo se reporta ETA)
     String? trainStatus, // 'normal' | 'slow' | 'stopped' (opcional)
     String? etaBucket, // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' (opcional)
     String? trainLine, // 'L1' | 'L2' (opcional)
@@ -85,7 +85,7 @@ class SimplifiedReportService {
       stationId: stationId,
       userId: userId,
       trainCrowd: crowdLevel,
-      trainStatus: trainStatus ?? 'normal',
+      trainStatus: trainStatus,
       etaBucket: etaBucket,
       etaExpectedAt: etaExpectedAt,
       trainLine: trainLine,
@@ -104,6 +104,133 @@ class SimplifiedReportService {
     await docRef.update({'id': docRef.id});
 
     return docRef.id;
+  }
+
+  /// Actualizar reporte de tren cuando llega (completa con ocupación y estado)
+  Future<void> updateTrainReportOnArrival({
+    required String reportId,
+    required DateTime arrivalTime,
+    int? crowdLevel, // 1-5 (opcional)
+    String? trainStatus, // 'normal' | 'slow' | 'stopped' (opcional)
+  }) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('Usuario no autenticado');
+
+    try {
+      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      if (!reportDoc.exists) {
+        throw Exception('Reporte no encontrado');
+      }
+
+      final report = SimplifiedReportModel.fromFirestore(reportDoc);
+      
+      // Verificar que el reporte pertenece al usuario
+      if (report.userId != userId) {
+        throw Exception('No tienes permiso para actualizar este reporte');
+      }
+
+      // Actualizar el reporte con la hora de llegada y datos adicionales
+      final updates = <String, dynamic>{
+        'arrivalTime': Timestamp.fromDate(arrivalTime),
+      };
+
+      if (crowdLevel != null) {
+        updates['trainCrowd'] = crowdLevel;
+      }
+
+      if (trainStatus != null) {
+        updates['trainStatus'] = trainStatus;
+      }
+
+      await _firestore.collection('reports').doc(reportId).update(updates);
+    } catch (e) {
+      print('Error updating train report on arrival: $e');
+      rethrow;
+    }
+  }
+
+  /// Crear reporte directo de llegada (sin ETA previo) - 15 puntos
+  Future<String> createDirectArrivalReport({
+    required String stationId,
+    required DateTime arrivalTime,
+    int? crowdLevel, // 1-5 (opcional)
+    String? trainStatus, // 'normal' | 'slow' | 'stopped' (opcional)
+    String? trainLine, // 'L1' | 'L2' (opcional)
+    String? direction, // 'A' | 'B' (opcional)
+    Position? userPosition, // Opcional
+  }) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('Usuario no autenticado');
+
+    final now = DateTime.now();
+    final basePoints = 15; // Reporte directo de llegada
+    final bonusPoints = 0;
+
+    final report = SimplifiedReportModel(
+      id: '',
+      scope: 'train',
+      stationId: stationId,
+      userId: userId,
+      trainCrowd: crowdLevel,
+      trainStatus: trainStatus,
+      etaBucket: null, // Sin ETA previo
+      etaExpectedAt: null,
+      arrivalTime: arrivalTime,
+      trainLine: trainLine,
+      direction: direction,
+      createdAt: now,
+      basePoints: basePoints,
+      bonusPoints: bonusPoints,
+      totalPoints: basePoints + bonusPoints,
+      userLocation: userPosition != null
+          ? GeoPoint(userPosition.latitude, userPosition.longitude)
+          : null,
+      accuracy: userPosition?.accuracy,
+    );
+
+    final docRef = await _firestore.collection('reports').add(report.toFirestore());
+    await docRef.update({'id': docRef.id});
+
+    return docRef.id;
+  }
+
+  /// Obtener reporte pendiente del usuario (con ETA pero sin arrivalTime)
+  Future<SimplifiedReportModel?> getPendingTrainReport(String stationId) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return null;
+
+    try {
+      final now = DateTime.now();
+      final oneHourAgo = now.subtract(const Duration(hours: 1));
+
+      final snapshot = await _firestore
+          .collection('reports')
+          .where('userId', isEqualTo: userId)
+          .where('stationId', isEqualTo: stationId)
+          .where('scope', isEqualTo: 'train')
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      // Buscar reporte con ETA pero sin arrivalTime, creado en la última hora
+      for (var doc in snapshot.docs) {
+        try {
+          final report = SimplifiedReportModel.fromFirestore(doc);
+          if (report.etaBucket != null && 
+              report.etaBucket != 'unknown' && 
+              report.arrivalTime == null &&
+              report.createdAt.isAfter(oneHourAgo)) {
+            return report;
+          }
+        } catch (e) {
+          print('Error parsing report ${doc.id}: $e');
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting pending train report: $e');
+      return null;
+    }
   }
 
   /// Obtener reporte por ID

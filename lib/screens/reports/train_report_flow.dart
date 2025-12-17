@@ -19,13 +19,7 @@ class TrainReportFlowScreen extends StatefulWidget {
 }
 
 class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
-  // Ocupación (obligatorio)
-  int? _crowdLevel; // 1-5
-  
-  // Estado (opcional)
-  String? _trainStatus; // 'normal' | 'slow' | 'stopped' | null
-  
-  // ETA bucket (opcional pero recomendado)
+  // ETA bucket (obligatorio)
   String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
   
   final SimplifiedReportService _reportService = SimplifiedReportService();
@@ -57,48 +51,15 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '¿Cómo venía el tren?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          _buildCrowdOption(1, '🟢 VACÍO', 'Asientos libres', Colors.green),
-          const SizedBox(height: 12),
-          _buildCrowdOption(2, '🟡 MODERADO', 'De pie cómodo', Colors.orange),
-          const SizedBox(height: 12),
-          _buildCrowdOption(3, '🔴 LLENO', 'Apretado', Colors.red),
-          const SizedBox(height: 12),
-          _buildCrowdOption(4, '💀 SARDINA', 'Extremo', Colors.purple),
-          
-          const SizedBox(height: 32),
-          
-          const Text(
-            'Estado del tren (opcional)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Si notaste algo especial',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          _buildStatusOption('normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
-          const SizedBox(height: 12),
-          _buildStatusOption('slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
-          const SizedBox(height: 12),
-          _buildStatusOption('stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
-          
-          const SizedBox(height: 32),
-          
-          const Text(
-            '¿Cuánto falta para el próximo tren? (recomendado)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            '¿Cuánto falta para el próximo tren?',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
             'Esto ayuda a calibrar el sistema',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildEtaOption('1-2', '🕐 1-2 MINUTOS', ''),
           const SizedBox(height: 12),
           _buildEtaOption('3-5', '🕑 3-5 MINUTOS', ''),
@@ -163,7 +124,7 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 16),
               child: Text(
-                'Te preguntaremos si el tren realmente llegó',
+                'Cuando el tren llegue, usa el botón "Ya llegó el metro" para completar tu reporte',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
               ),
@@ -174,60 +135,7 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
   }
   
   bool _canSubmit() {
-    return _crowdLevel != null && !_isSubmitting;
-  }
-
-
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
-    final isSelected = _crowdLevel == level;
-    return Card(
-      elevation: isSelected ? 4 : 1,
-      color: isSelected ? color.withOpacity(0.1) : null,
-      child: InkWell(
-        onTap: () => setState(() => _crowdLevel = level),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 16),
-              Expanded(child: Text('$emoji $subtitle')),
-              if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusOption(String status, String emoji, String subtitle, Color color) {
-    final isSelected = _trainStatus == status;
-    return Card(
-      elevation: isSelected ? 4 : 1,
-      color: isSelected ? color.withOpacity(0.1) : null,
-      child: InkWell(
-        onTap: () => setState(() => _trainStatus = status),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(emoji, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  ],
-                ),
-              ),
-              if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
-            ],
-          ),
-        ),
-      ),
-    );
+    return _etaBucket != null && !_isSubmitting;
   }
 
   Widget _buildEtaOption(String bucket, String emoji, String subtitle) {
@@ -272,9 +180,9 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
 
       await _reportService.createTrainReport(
         stationId: widget.station.id,
-        crowdLevel: _crowdLevel!,
-        trainStatus: _trainStatus, // Opcional
-        etaBucket: _etaBucket, // Opcional
+        crowdLevel: null, // Se completará cuando llegue el tren
+        trainStatus: null, // Se completará cuando llegue el tren
+        etaBucket: _etaBucket!,
         trainLine: widget.station.linea,
         userPosition: position, // Opcional
       );
@@ -292,26 +200,15 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
 
       if (!mounted) return;
 
-      // Si necesita validación, mostrar mensaje y volver
-      if (_etaBucket != null && _etaBucket != 'unknown') {
-        Navigator.popUntil(context, (route) => route.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Reporte enviado. Te avisaremos en unos minutos para validar si el tren llegó.'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      } else {
-        // Si no necesita validación, volver al mapa
-        Navigator.popUntil(context, (route) => route.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reporte enviado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      // Volver al mapa
+      Navigator.popUntil(context, (route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reporte enviado. Usa el botón "Ya llegó el metro" cuando el tren llegue.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 4),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
