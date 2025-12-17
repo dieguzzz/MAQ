@@ -4,7 +4,6 @@ import '../models/learning_report_model.dart';
 import '../models/test_scenario_model.dart';
 import 'firebase_service.dart';
 import 'learning_report_service.dart';
-import '../models/station_model.dart';
 
 /// Servicio para operaciones administrativas de testing del sistema de aprendizaje
 class AdminLearningService {
@@ -151,8 +150,8 @@ class AdminLearningService {
   /// Ejecuta análisis inmediato después de agregar datos
   Future<void> _runImmediateAnalysis(String stationId) async {
     try {
-      // Analizar patrones horarios
-      final patterns = await _learningReportService.analyzeHourlyPatterns(
+      // Analizar patrones horarios (análisis ejecutado para efectos secundarios)
+      await _learningReportService.analyzeHourlyPatterns(
         stationId,
         days: 7,
       );

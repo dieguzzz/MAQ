@@ -13,8 +13,6 @@ import '../../widgets/simulated_clock_widget.dart';
 import '../../services/simulated_time_service.dart';
 import '../../services/ad_service.dart';
 import '../../services/ad_session_service.dart';
-import '../reports/report_history_screen.dart';
-import '../admin/learning_admin_panel.dart';
 import '../admin/learning_demo_panel.dart';
 import '../../services/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
@@ -636,30 +634,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 8),
                     FloatingActionButton(
-                      heroTag: 'locate_fab',
-                      onPressed: () async {
-                        // Verificar estado antes de obtener ubicación
-                        final status = await locationProvider.checkLocationStatus();
+                  heroTag: 'locate_fab',
+                  onPressed: () async {
+                    // Verificar estado antes de obtener ubicación
+                    final status = await locationProvider.checkLocationStatus();
+                    
+                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
+                    if (!status.isGpsEnabled || !status.hasPermission) {
+                      if (mounted) {
+                        final result = await LocationPermissionDialog.show(
+                          context,
+                          isGpsEnabled: status.isGpsEnabled,
+                          hasPermission: status.hasPermission,
+                        );
                         
-                        // Si el GPS está desactivado o no hay permisos, mostrar diálogo
-                        if (!status.isGpsEnabled || !status.hasPermission) {
-                          if (mounted) {
-                            final result = await LocationPermissionDialog.show(
-                              context,
-                              isGpsEnabled: status.isGpsEnabled,
-                              hasPermission: status.hasPermission,
-                            );
-                            
-                            if (result == true && mounted) {
-                              await locationProvider.getCurrentLocation();
-                            }
-                          }
-                        } else {
-                          // Si todo está bien, obtener ubicación normalmente
+                        if (result == true && mounted) {
                           await locationProvider.getCurrentLocation();
                         }
-                      },
-                      child: const Icon(Icons.my_location),
+                      }
+                    } else {
+                      // Si todo está bien, obtener ubicación normalmente
+                      await locationProvider.getCurrentLocation();
+                    }
+                  },
+                  child: const Icon(Icons.my_location),
                     ),
                   ],
                 );

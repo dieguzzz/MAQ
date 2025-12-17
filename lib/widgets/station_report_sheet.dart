@@ -8,16 +8,11 @@ import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/report_provider.dart';
 import '../services/learning_report_service.dart';
-import '../services/time_estimation_service.dart';
 import '../services/schedule_service.dart';
-import '../services/firebase_service.dart';
 import '../models/learning_report_model.dart';
-import '../models/report_model.dart';
 import '../models/simplified_report_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../screens/reports/station_report_flow.dart';
 import 'arrival_confirmation_dialog.dart';
 import '../services/simplified_report_service.dart';
 import '../services/location_service.dart';
@@ -3371,16 +3366,4 @@ class _AnimatedReportButtonState extends State<_AnimatedReportButton>
   }
 }
 
-/// Datos de ETA
-class _EtaData {
-  const _EtaData({
-    required this.label,
-    required this.minutes,
-    required this.confidence,
-  });
-
-  final String label;
-  final int minutes;
-  final String confidence;
-}
 

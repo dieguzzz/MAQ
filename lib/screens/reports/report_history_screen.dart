@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../services/firebase_service.dart';
@@ -8,10 +7,7 @@ import '../../services/simplified_report_service.dart';
 import '../../models/report_model.dart';
 import '../../models/simplified_report_model.dart';
 import '../../models/user_model.dart';
-import '../../models/station_model.dart';
-import '../../models/train_model.dart';
 import '../../providers/metro_data_provider.dart';
-import '../../widgets/report_verification_widget.dart';
 import '../../theme/metro_theme.dart';
 
 class ReportHistoryScreen extends StatefulWidget {
@@ -1328,19 +1324,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
         ),
       ],
     );
-  }
-
-  String _getCategoriaText(CategoriaReporte categoria) {
-    switch (categoria) {
-      case CategoriaReporte.aglomeracion:
-        return 'Aglomeración';
-      case CategoriaReporte.retraso:
-        return 'Retraso';
-      case CategoriaReporte.servicioNormal:
-        return 'Servicio Normal';
-      case CategoriaReporte.fallaTecnica:
-        return 'Falla Técnica';
-    }
   }
 
   String _formatDate(DateTime date) {

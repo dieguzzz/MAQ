@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/badge_model.dart';
 import '../data/badges_data.dart';
-import 'achievement_modal.dart';
 
 enum BadgeFilter { all, featured, unlocked, locked }
 
@@ -74,7 +73,6 @@ class BadgeGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: groupedBadges.entries.map((entry) {
-        final category = entry.key;
         final categoryBadges = entry.value;
         final unlockedCount = categoryBadges.where((b) => b.unlocked).length;
         final totalCount = categoryBadges.length;

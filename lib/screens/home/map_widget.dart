@@ -47,7 +47,6 @@ class _MapWidgetState extends State<MapWidget> {
   List<StationModel>? _previousStations;
   List<TrainModel>? _previousTrains;
   String? _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
-  bool _isTestMode = false;
 
   @override
   void initState() {
@@ -806,10 +805,9 @@ class _MapWidgetState extends State<MapWidget> {
         final appModeService = AppModeService();
         isTestMode = await appModeService.isTestMode(user.uid);
         
+        // Test mode verification completed
         if (mounted) {
-          setState(() {
-            _isTestMode = isTestMode;
-          });
+          setState(() {});
         }
       } catch (e) {
         print('Error verificando modo test: $e');

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/station_model.dart';
 import '../../services/simplified_report_service.dart';
-import '../../providers/location_provider.dart';
 import '../../services/location_service.dart';
 import '../../services/report_progress_service.dart';
+import '../../widgets/points_reward_animation.dart';
 
 /// Flujo de reporte de estación (2 pasos)
 class StationReportFlowScreen extends StatefulWidget {
@@ -42,21 +41,40 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
     _loadProgress();
   }
 
+  @override
+  void dispose() {
+    // Guardar progreso cuando se destruye el widget
+    _saveProgress();
+    super.dispose();
+  }
+
   Future<void> _loadProgress() async {
-    final progress = await _progressService.getStationReportProgress(widget.station.id);
-    if (progress != null && mounted) {
-      setState(() {
-        _operational = progress['operational'] as String?;
-        _crowdLevel = progress['crowdLevel'] as int?;
-        _showOptionalDetails = progress['showOptionalDetails'] ?? false;
-        final issues = progress['selectedIssues'] as List<dynamic>?;
-        if (issues != null) {
-          _selectedIssues.clear();
-          _selectedIssues.addAll(issues.map((e) => e.toString()));
+    try {
+      print('🔄 Cargando progreso para estación ${widget.station.id}...');
+      final progress = await _progressService.getStationReportProgress(widget.station.id);
+      if (progress != null && mounted) {
+        print('✅ Progreso encontrado: $progress');
+        setState(() {
+          _operational = progress['operational'] as String?;
+          _crowdLevel = progress['crowdLevel'] as int?;
+          _showOptionalDetails = progress['showOptionalDetails'] ?? false;
+          final issues = progress['selectedIssues'] as List<dynamic>?;
+          if (issues != null) {
+            _selectedIssues.clear();
+            _selectedIssues.addAll(issues.map((e) => e.toString()));
+          }
+          _isLoadingProgress = false;
+        });
+      } else {
+        print('ℹ️ No hay progreso guardado para esta estación');
+        if (mounted) {
+          setState(() {
+            _isLoadingProgress = false;
+          });
         }
-        _isLoadingProgress = false;
-      });
-    } else {
+      }
+    } catch (e) {
+      print('❌ Error al cargar progreso: $e');
       if (mounted) {
         setState(() {
           _isLoadingProgress = false;
@@ -66,13 +84,21 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
   }
 
   Future<void> _saveProgress() async {
-    await _progressService.saveStationReportProgress(
-      stationId: widget.station.id,
-      operational: _operational,
-      crowdLevel: _crowdLevel,
-      selectedIssues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
-      showOptionalDetails: _showOptionalDetails,
-    );
+    try {
+      // Solo guardar si hay algún progreso (al menos una opción seleccionada)
+      if (_operational != null || _crowdLevel != null || _selectedIssues.isNotEmpty) {
+        await _progressService.saveStationReportProgress(
+          stationId: widget.station.id,
+          operational: _operational,
+          crowdLevel: _crowdLevel,
+          selectedIssues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
+          showOptionalDetails: _showOptionalDetails,
+        );
+        print('✅ Progreso guardado para estación ${widget.station.id}: operational=$_operational, crowdLevel=$_crowdLevel, issues=${_selectedIssues.length}');
+      }
+    } catch (e) {
+      print('❌ Error al guardar progreso: $e');
+    }
   }
 
   @override
@@ -82,20 +108,28 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('REPORTAR ESTACIÓN: ${widget.station.nombre}'),
-            Text(
-              _currentStep == 0 ? '1 de 2' : '2 de 2 (Opcional)',
-              style: const TextStyle(fontSize: 12),
-            ),
-          ],
+    return PopScope(
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        // Guardar progreso cuando el usuario sale de la pantalla
+        if (didPop) {
+          await _saveProgress();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('REPORTAR ESTACIÓN: ${widget.station.nombre}'),
+              Text(
+                _currentStep == 0 ? '1 de 2' : '2 de 2 (Opcional)',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
         ),
+        body: _currentStep == 0 ? _buildStep1() : _buildStep2(),
       ),
-      body: _currentStep == 0 ? _buildStep1() : _buildStep2(),
     );
   }
 
@@ -360,13 +394,6 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
     return _operational != null && _crowdLevel != null;
   }
 
-  void _goToStep1() {
-    setState(() => _currentStep = 0);
-  }
-
-  void _goToStep2() {
-    setState(() => _currentStep = 1);
-  }
 
   Future<void> _submitReport() async {
     if (!_canContinueStep1()) return;
@@ -400,6 +427,15 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
 
       if (!mounted) return;
 
+      // Mostrar animación de puntos ganados antes de navegar
+      final totalPoints = 15 + (_selectedIssues.length * 5);
+      PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
+
+      // Esperar un momento para que se vea la animación
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return;
+
       // Mostrar pantalla de éxito y luego volver
       Navigator.pushReplacement(
         context,
@@ -407,7 +443,7 @@ class _StationReportFlowScreenState extends State<StationReportFlowScreen> {
           builder: (context) => ReportSuccessScreen(
             reportId: reportId,
             station: widget.station,
-            points: 15 + (_selectedIssues.length * 5),
+            points: totalPoints,
             issuesCount: _selectedIssues.length,
           ),
         ),

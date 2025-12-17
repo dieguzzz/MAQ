@@ -145,12 +145,6 @@ class TeachersLeaderboardScreen extends StatelessWidget {
                     final teachingReportsCount =
                         user.gamification?.teachingReportsCount ?? 0;
 
-                    // Verificar si tiene badge "Profesor del Metro"
-                    final hasBadge = user.gamification?.badges.any((badge) =>
-                            badge.type.toString() ==
-                            'BadgeType.profesorDelMetro') ??
-                        false;
-
                     return LeaderboardUserCard(
                       user: user,
                       position: position,

@@ -23,7 +23,6 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
   final EnhancedReportService _reportService = EnhancedReportService();
   Timer? _countdownTimer;
   int _secondsRemaining = 240; // 4 minutos por defecto
-  EnhancedReportModel? _report;
   bool _isLoading = true;
   DateTime? _selectedArrivalTime;
 
@@ -38,7 +37,6 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
       final report = await _reportService.getReport(widget.reportId);
       if (report != null && mounted) {
         setState(() {
-          _report = report;
           // Calcular tiempo restante basado en la ventana de validación
           final now = DateTime.now();
           final windowEnd = report.trainData?.etaExpectedAt;

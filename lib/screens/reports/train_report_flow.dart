@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../models/station_model.dart';
 import '../../services/simplified_report_service.dart';
 import '../../services/location_service.dart';
-import 'eta_validation_screen.dart';
+import '../../widgets/points_reward_animation.dart';
 
 /// Flujo de reporte de tren (simplificado - todo en una pantalla)
 class TrainReportFlowScreen extends StatefulWidget {
@@ -270,7 +270,7 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
         print('No se pudo obtener ubicación: $e');
       }
 
-      final reportId = await _reportService.createTrainReport(
+      await _reportService.createTrainReport(
         stationId: widget.station.id,
         crowdLevel: _crowdLevel!,
         trainStatus: _trainStatus, // Opcional
@@ -278,6 +278,17 @@ class _TrainReportFlowScreenState extends State<TrainReportFlowScreen> {
         trainLine: widget.station.linea,
         userPosition: position, // Opcional
       );
+
+      if (!mounted) return;
+
+      // Calcular puntos ganados: 20 base + 10 si hay ETA
+      final totalPoints = 20 + ((_etaBucket != null && _etaBucket != 'unknown') ? 10 : 0);
+      
+      // Mostrar animación de puntos ganados
+      PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
+      
+      // Esperar un momento para que se vea la animación
+      await Future.delayed(const Duration(milliseconds: 500));
 
       if (!mounted) return;
 

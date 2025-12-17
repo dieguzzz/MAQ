@@ -10,6 +10,7 @@ import '../models/report_model.dart';
 import '../models/route_model.dart';
 import '../models/learning_report_model.dart';
 import 'error_handler_service.dart';
+import 'gamification_service.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -181,6 +182,20 @@ class FirebaseService {
           .collection('confirmations')
           .doc(userId);
 
+      // Obtener el reporte primero para validar y obtener el userId del autor
+      final reportDoc = await reportRef.get();
+      if (!reportDoc.exists) {
+        throw Exception('El reporte no existe');
+      }
+
+      final reportData = reportDoc.data()!;
+      final reportUserId = reportData['userId'] ?? reportData['usuario_id'];
+      
+      // Verificar que el usuario no esté confirmando su propio reporte
+      if (reportUserId == userId) {
+        throw Exception('No puedes confirmar tu propio reporte');
+      }
+
       await _firestore.runTransaction((transaction) async {
         // Verificar que el usuario no haya confirmado antes
         final confirmationDoc = await transaction.get(confirmationsRef);
@@ -188,22 +203,16 @@ class FirebaseService {
           throw Exception('Ya confirmaste este reporte');
         }
 
-        // Obtener el reporte
-        final reportDoc = await transaction.get(reportRef);
-        if (!reportDoc.exists) {
+        // Obtener el reporte nuevamente en la transacción
+        final transactionReportDoc = await transaction.get(reportRef);
+        if (!transactionReportDoc.exists) {
           throw Exception('El reporte no existe');
         }
 
-        final reportData = reportDoc.data()!;
-        
-        // Verificar que el usuario no esté confirmando su propio reporte
-        final reportUserId = reportData['userId'] ?? reportData['usuario_id'];
-        if (reportUserId == userId) {
-          throw Exception('No puedes confirmar tu propio reporte');
-        }
+        final transactionReportData = transactionReportDoc.data()!;
         
         // Usar 'confirmations' (modelo simplificado) o 'confirmation_count' (legacy)
-        final currentConfirmations = reportData['confirmations'] ?? reportData['confirmation_count'] ?? 0;
+        final currentConfirmations = transactionReportData['confirmations'] ?? transactionReportData['confirmation_count'] ?? 0;
         final newConfirmations = currentConfirmations + 1;
 
         // Crear la confirmación

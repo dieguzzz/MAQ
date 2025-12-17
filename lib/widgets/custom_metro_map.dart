@@ -132,31 +132,6 @@ class _CustomMetroMapState extends State<CustomMetroMap>
     }
   }
 
-  void _startTrainUpdates(List<TrainModel> originalTrains, {bool isTestMode = false}) {
-    _updateTimer?.cancel();
-    
-    // En modo test, actualizar cada 3 segundos reales (equivalente a 1 minuto simulado)
-    // En modo normal, actualizar cada 1 segundo
-    final updateInterval = isTestMode 
-        ? const Duration(seconds: 3) 
-        : const Duration(milliseconds: 1000);
-    
-    _updateTimer = Timer.periodic(updateInterval, (_) {
-      if (mounted) {
-        setState(() {
-          _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
-        });
-      }
-    });
-    
-    // Actualización inicial
-    if (mounted) {
-      setState(() {
-        _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
-      });
-    }
-  }
-
   @override
   void didUpdateWidget(CustomMetroMap oldWidget) {
     super.didUpdateWidget(oldWidget);

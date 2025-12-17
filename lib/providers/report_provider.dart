@@ -11,9 +11,6 @@ import '../services/error_handler_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/time_estimation_service.dart';
 import '../models/report_model.dart';
-import '../models/train_model.dart';
-import '../models/station_model.dart';
-import '../providers/metro_data_provider.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -22,7 +19,6 @@ class ReportProvider with ChangeNotifier {
   final ConfidenceService _confidenceService = ConfidenceService();
   final AlertService _alertService = AlertService();
   final AccuracyService _accuracyService = AccuracyService();
-  final TimeEstimationService _timeEstimationService = TimeEstimationService();
   
   List<ReportModel> _activeReports = [];
   bool _isLoading = false;

@@ -22,10 +22,7 @@ class LearningAdminPanel extends StatefulWidget {
 
 class _LearningAdminPanelState extends State<LearningAdminPanel> {
   final MetroSimulatorService _simulator = MetroSimulatorService();
-  final AdminLearningService _adminService = AdminLearningService();
   final FirebaseService _firebaseService = FirebaseService();
-  final TimeEstimationService _timeEstimationService = TimeEstimationService();
-  final SimulatedTimeService _simulatedTimeService = SimulatedTimeService();
 
   List<StationModel> _allStations = [];
   final TextEditingController _nextTrainController = TextEditingController();

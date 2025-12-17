@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'station_model.dart';
-import 'train_model.dart';
 
 /// Estado de la estación en el simulador
 enum SimulatorStationStatus {

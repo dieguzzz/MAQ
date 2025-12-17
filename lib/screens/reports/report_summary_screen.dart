@@ -20,7 +20,6 @@ class ReportSummaryScreen extends StatefulWidget {
 
 class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
   final SimplifiedReportService _reportService = SimplifiedReportService();
-  UserModel? _user;
   int _reportsToday = 0;
   int _totalPoints = 0;
   int _level = 1;

@@ -15,23 +15,19 @@ import 'services/station_position_editor_service.dart';
 import 'services/station_edit_mode_service.dart';
 import 'services/notification_service.dart';
 import 'utils/navigation_helper.dart';
-import 'screens/reports/report_summary_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/routes/route_planner.dart';
 import 'screens/leaderboards/leaderboard_screen.dart';
-import 'services/firebase_service.dart';
 import 'services/station_update_service.dart';
-import 'utils/metro_data.dart';
-import 'models/station_model.dart';
 import 'theme/metro_theme.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'services/ad_service.dart';
 import 'services/ad_session_service.dart';
 import 'widgets/dev/floating_dev_window.dart';
 import 'services/dev_service.dart';
+import 'widgets/points_reward_listener.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -118,7 +114,6 @@ Future<void> _ensureFirebaseInitialized() async {
 Future<void> _initializeStations() async {
   try {
     print('🚀 Iniciando inicialización/actualización de estaciones...');
-    final firebaseService = FirebaseService();
     final stationUpdateService = StationUpdateService();
     
     // Usar el servicio de actualización que maneja todo
@@ -209,17 +204,19 @@ class _MetroPTYAppState extends State<MetroPTYApp> {
           final bool isReady = snapshot.connectionState == ConnectionState.done;
           final bool hasCompleted = snapshot.data ?? false;
 
-          return MaterialApp(
-            navigatorKey: NavigationHelper.navigatorKey,
-            title: 'MetroPTY',
-            theme: MetroTheme.light(),
-            themeMode: ThemeMode.light,
-            home: !isReady
-                ? const _SplashScaffold()
-                : hasCompleted
+          return PointsRewardListener(
+            child: MaterialApp(
+              navigatorKey: NavigationHelper.navigatorKey,
+              title: 'MetroPTY',
+              theme: MetroTheme.light(),
+              themeMode: ThemeMode.light,
+              home: !isReady
+                  ? const _SplashScaffold()
+                  : hasCompleted
                     ? const AuthGate()
                     : OnboardingScreen(onFinished: _completeOnboarding),
-            debugShowCheckedModeBanner: false,
+              debugShowCheckedModeBanner: false,
+            ),
           );
         },
       ),

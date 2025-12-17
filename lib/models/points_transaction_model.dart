@@ -54,5 +54,6 @@ class PointsTransaction {
   static const String typeEpicReport = 'epic_report';
   static const String typeTeachingReport = 'teaching_report';
   static const String typeBadge = 'badge';
+  static const String typeReportAuthorBonus = 'report_author_bonus';
 }
 

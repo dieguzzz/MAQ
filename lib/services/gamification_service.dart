@@ -49,11 +49,11 @@ class GamificationService {
       final nuevoNivel = LevelService.calculateLevel(newPuntos);
       
       await userRef.update({
-        'gamification.puntos': newPuntos,
+        'gamification.puntos': FieldValue.increment(puntosPorReporteVerificado),
         'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         'gamification.puntos_por_linea': puntosPorLinea,
         'gamification.reportes_verificados':
-            (gamification?['reportes_verificados'] ?? 0) + 1,
+            FieldValue.increment(1),
       });
 
       // Guardar en historial
@@ -770,8 +770,8 @@ class GamificationService {
       await _pointsHistoryService.saveTransaction(
         userId: authorUserId,
         points: puntosPorReporteConfirmado,
-        type: PointsTransaction.typeReportVerified,
-        description: 'Alguien confirmó tu reporte',
+        type: PointsTransaction.typeReportAuthorBonus,
+        description: 'Tu reporte fue confirmado por otro usuario',
         reportId: reportId,
       );
     } catch (e) {

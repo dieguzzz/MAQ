@@ -4,7 +4,6 @@ import '../services/location_service.dart';
 import '../services/firebase_service.dart';
 import '../services/metro_simulator_service.dart';
 import '../models/simulator_state_model.dart';
-import '../models/station_model.dart';
 import '../utils/metro_data.dart';
 
 class LocationProvider with ChangeNotifier {
@@ -55,7 +54,7 @@ class LocationProvider with ChangeNotifier {
         case SimulatorLocationType.acercandose:
           // Posición a 750m de la estación (entre 500m y 1km)
           // Calcular punto a 750m al norte de la estación
-          final offset = 750.0 / 111000.0; // Aproximadamente 1 grado = 111km
+          const offset = 750.0 / 111000.0; // Aproximadamente 1 grado = 111km
           return Position(
             latitude: station.ubicacion.latitude + offset,
             longitude: station.ubicacion.longitude,
@@ -70,7 +69,7 @@ class LocationProvider with ChangeNotifier {
           );
         case SimulatorLocationType.fuera:
           // Posición a 1.5km de la estación (más de 1km)
-          final offset = 1500.0 / 111000.0;
+          const offset = 1500.0 / 111000.0;
           return Position(
             latitude: station.ubicacion.latitude + offset,
             longitude: station.ubicacion.longitude,

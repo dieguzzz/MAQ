@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/simulator_state_model.dart';
 import '../models/station_model.dart';
-import '../models/train_model.dart';
 import 'simulated_time_service.dart';
 
 /// Servicio para gestionar el estado del simulador de metro

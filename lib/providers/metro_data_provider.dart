@@ -9,7 +9,6 @@ import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../models/simplified_report_model.dart';
 import '../utils/metro_data.dart';
-import '../providers/auth_provider.dart';
 
 class MetroDataProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();

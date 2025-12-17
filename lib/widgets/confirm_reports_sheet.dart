@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:math' as math;
 import '../providers/auth_provider.dart';
 import '../providers/report_provider.dart';
 import '../providers/metro_data_provider.dart';
@@ -10,6 +8,7 @@ import '../services/firebase_service.dart';
 import '../services/simplified_report_service.dart';
 import '../models/simplified_report_model.dart';
 import '../theme/metro_theme.dart';
+import 'points_reward_animation.dart';
 
 /// Bottom sheet para confirmar reportes de otros usuarios
 /// Similar a StationReportSheet pero enfocado en confirmación
@@ -58,7 +57,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
 
@@ -545,21 +543,21 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     ),
                                 ],
                               ),
-                      const SizedBox(height: 16),
-                      // Información del reporte con diseño moderno
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.grey[200]!,
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                              const SizedBox(height: 16),
+                              // Información del reporte con diseño moderno
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.grey[200]!,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                             if (report.scope == 'station') ...[
                               if (report.stationOperational != null) ...[
                                 _buildModernInfoRow(
@@ -677,78 +675,78 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                 ),
                               ],
                             ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Footer moderno con confirmaciones y fecha
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.grey[100]!,
-                              Colors.grey[50]!,
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Footer moderno con confirmaciones y fecha
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.grey[100]!,
+                                    Colors.grey[50]!,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.verified,
+                                        size: 16,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${report.confirmations} confirmaciones',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.access_time,
+                                        size: 16,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _formatDate(report.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.verified,
-                                size: 16,
-                                color: Colors.blue[700],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${report.confirmations} confirmaciones',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.access_time,
-                                size: 16,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatDate(report.createdAt),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-            ),
-          );
-              },
+              );
+            },
             );
           },
         );
@@ -839,31 +837,20 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
 
     try {
       final success = await reportProvider.confirmReport(reportId, userId);
-      if (success && mounted) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('¡Reporte confirmado! +15 puntos'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      if (success) {
+        if (!mounted) return;
+        // Mostrar animación de puntos ganados
+        PointsRewardHelper.showConfirmReportPoints(context, points: 15);
         setState(() {});
       }
     } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

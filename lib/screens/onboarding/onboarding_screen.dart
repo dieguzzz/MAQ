@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../theme/metro_theme.dart';
 import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
