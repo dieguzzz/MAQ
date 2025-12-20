@@ -16,6 +16,7 @@ import '../providers/auth_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../widgets/station_position_editor_modal.dart';
 import '../widgets/train_arrival_animation.dart';
+import '../widgets/pulsing_button.dart';
 import '../services/simplified_report_service.dart';
 import '../services/location_service.dart';
 import '../providers/location_provider.dart';
@@ -596,20 +597,49 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 line2AirportPoints: line2AirportPoints,
                 size: size,
               ),
-              // Botón "Ya llegó el metro" (abajo del medidor de km)
+              // Botón "Ya llegó el metro" (abajo del medidor de km) con animación de pulso
               Positioned(
                 bottom: 80,
                 right: 8,
-                child: FloatingActionButton(
-                  heroTag: 'train_arrival_fab_custom',
-                  onPressed: _handleTrainArrival,
-                  backgroundColor: Colors.green,
-                  child: Image.asset(
-                    'assets/icons/metro-station_2340498.png',
-                    width: 24,
-                    height: 24,
-                    color: Colors.white,
-                  ),
+                child: Consumer<LocationProvider>(
+                  builder: (context, locationProvider, child) {
+                    // Obtener estación más cercana para el pulso
+                    StationModel? nearestStation;
+                    final currentPosition = locationProvider.currentPosition;
+                    if (currentPosition != null && widget.stations.isNotEmpty) {
+                      double minDistance = double.infinity;
+                      for (final station in widget.stations) {
+                        final distance = Geolocator.distanceBetween(
+                          currentPosition.latitude,
+                          currentPosition.longitude,
+                          station.ubicacion.latitude,
+                          station.ubicacion.longitude,
+                        );
+                        if (distance < minDistance) {
+                          minDistance = distance;
+                          nearestStation = station;
+                        }
+                      }
+                    }
+
+                    return PulsingButton(
+                      station: nearestStation,
+                      backgroundColor: Colors.green,
+                      heroTag: 'train_arrival_fab_custom',
+                      onPressed: _handleTrainArrival,
+                      child: FloatingActionButton(
+                        heroTag: 'train_arrival_fab_custom_inner',
+                        onPressed: _handleTrainArrival,
+                        backgroundColor: Colors.green,
+                        child: Image.asset(
+                          'assets/icons/metro-station_2340498.png',
+                          width: 24,
+                          height: 24,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

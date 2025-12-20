@@ -15,6 +15,7 @@ import 'gamification_service.dart';
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   
   FirebaseFirestore get firestore => _firestore;
 
@@ -460,12 +461,28 @@ class FirebaseService {
         googleProvider.addScope('email');
         return await _auth.signInWithPopup(googleProvider);
       } else {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) return null;
-        final googleAuth = await googleUser.authentication;
+        // Inicializar GoogleSignIn (solo la primera vez)
+        await _googleSignIn.initialize();
+        
+        // Autenticar con Google
+        final GoogleSignInAccount account = await _googleSignIn.authenticate(scopeHint: ['email']);
+        
+        // Obtener idToken de la autenticación
+        final GoogleSignInAuthentication auth = account.authentication;
+        final String? idToken = auth.idToken;
+        
+        // Obtener accessToken del cliente de autorización
+        final GoogleSignInClientAuthorization? clientAuth = 
+            await account.authorizationClient.authorizationForScopes(['email']);
+        final String? accessToken = clientAuth?.accessToken;
+        
+        if (idToken == null || accessToken == null) {
+          throw Exception('No se pudieron obtener los tokens de autenticación');
+        }
+        
         final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
+          accessToken: accessToken,
+          idToken: idToken,
         );
         return await _auth.signInWithCredential(credential);
       }
@@ -479,7 +496,7 @@ class FirebaseService {
   Future<void> signOut() async {
     if (!kIsWeb) {
       try {
-        await GoogleSignIn().signOut();
+        await _googleSignIn.signOut();
       } catch (_) {}
     }
     await _auth.signOut();

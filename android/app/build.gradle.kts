@@ -32,6 +32,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Habilitar multiDex si es necesario
+        multiDexEnabled = true
+    }
+    
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     buildTypes {
@@ -49,5 +58,8 @@ flutter {
 
 dependencies {
     // Core library desugaring para flutter_local_notifications
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    
+    // MultiDex support
+    implementation("androidx.multidex:multidex:2.0.1")
 }

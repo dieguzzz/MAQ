@@ -14,6 +14,16 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Configurar Java 11 para todos los proyectos Android
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.BaseExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_11
+                targetCompatibility = JavaVersion.VERSION_11
+            }
+        }
+    }
 }
 
 val newBuildDir: Directory =

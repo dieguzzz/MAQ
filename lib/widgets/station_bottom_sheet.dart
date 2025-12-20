@@ -3,6 +3,7 @@ import '../models/station_model.dart';
 import '../models/enhanced_report_model.dart';
 import '../screens/reports/station_report_flow.dart';
 import 'station_report_sheet.dart';
+import 'train_arrival_indicator.dart';
 
 /// Bottom Sheet mejorado para mostrar información de estación
 class StationBottomSheet extends StatelessWidget {
@@ -174,22 +175,81 @@ class StationBottomSheet extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Próximos trenes:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            // Columna izquierda: Próximos trenes
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Próximos trenes:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTrainInfo('L1', '~3 min', '2 usuarios confirman', Colors.green),
+                  const SizedBox(height: 8),
+                  _buildTrainInfo('L2', '~6 min', 'baja confianza', Colors.orange),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            _buildTrainInfo('L1', '~3 min', '2 usuarios confirman', Colors.green),
-            const SizedBox(height: 8),
-            _buildTrainInfo('L2', '~6 min', 'baja confianza', Colors.orange),
+            const SizedBox(width: 16),
+            // Columna derecha: Ya llegó el Metro!!
+            Expanded(
+              child: _buildTrainArrivalGrid(context),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTrainArrivalGrid(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.green.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Próximos trenes',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ya llegó el Metro!!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Indicador de metro con animación
+          TrainArrivalIndicator(
+            station: station,
+            size: 50.0,
+          ),
+        ],
       ),
     );
   }
