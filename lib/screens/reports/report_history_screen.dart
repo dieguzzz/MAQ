@@ -4,7 +4,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../services/simplified_report_service.dart';
-import '../../models/report_model.dart';
 import '../../models/simplified_report_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/metro_data_provider.dart';
@@ -203,7 +202,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -559,8 +558,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: report.scope == 'station' 
-                                  ? MetroColors.blue.withOpacity(0.1)
-                                  : MetroColors.green.withOpacity(0.1),
+                                  ? MetroColors.blue.withValues(alpha: 0.1)
+                                  : MetroColors.green.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
@@ -676,7 +675,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                                 ),
                                 padding: EdgeInsets.zero,
                                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                backgroundColor: Colors.orange.withOpacity(0.1),
+                                backgroundColor: Colors.orange.withValues(alpha: 0.1),
                               );
                             }).toList(),
                           ),
@@ -759,7 +758,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
           _selectedStatus = selected ? status : null;
         });
       },
-      selectedColor: MetroColors.blue.withOpacity(0.2),
+      selectedColor: MetroColors.blue.withValues(alpha: 0.2),
       checkmarkColor: MetroColors.blue,
       labelStyle: TextStyle(
         color: isSelected ? MetroColors.blue : Colors.grey[700],
@@ -789,8 +788,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: report.scope == 'station'
-                              ? MetroColors.blue.withOpacity(0.1)
-                              : MetroColors.green.withOpacity(0.1),
+                              ? MetroColors.blue.withValues(alpha: 0.1)
+                              : MetroColors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -861,7 +860,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                         ),
                       ),
                       const Spacer(),
-                      Icon(Icons.stars, size: 16, color: Colors.amber),
+                      const Icon(Icons.stars, size: 16, color: Colors.amber),
                       const SizedBox(width: 4),
                       Text(
                         '${report.totalPoints} pts',
@@ -921,9 +920,9 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1019,8 +1018,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: report.scope == 'station' 
-                          ? MetroColors.blue.withOpacity(0.1)
-                          : MetroColors.green.withOpacity(0.1),
+                          ? MetroColors.blue.withValues(alpha: 0.1)
+                          : MetroColors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -1108,7 +1107,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                     children: report.stationIssues.map((issue) {
                       return Chip(
                         label: Text(_getProblemaTexto(issue)),
-                        backgroundColor: MetroColors.energyOrange.withOpacity(0.1),
+                        backgroundColor: MetroColors.energyOrange.withValues(alpha: 0.1),
                       );
                     }).toList(),
                   ),
@@ -1186,7 +1185,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: MetroColors.blue.withOpacity(0.1),
+                      color: MetroColors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -1265,7 +1264,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                   children: report.stationIssues.map((issue) {
                     return Chip(
                       label: Text(_getProblemaTexto(issue)),
-                      backgroundColor: MetroColors.energyOrange.withOpacity(0.1),
+                      backgroundColor: MetroColors.energyOrange.withValues(alpha: 0.1),
                     );
                   }).toList(),
                 ),

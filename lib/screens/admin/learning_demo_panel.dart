@@ -171,7 +171,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
             
             // Dropdown de estaciones
             DropdownButtonFormField<String>(
-              value: _selectedStationId,
+              initialValue: _selectedStationId,
               decoration: const InputDecoration(
                 labelText: 'Estación',
                 border: OutlineInputBorder(),
@@ -371,7 +371,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
           return TableRow(
             children: [
               Text('$hour:00'),
-              Text('${patterns[hour]!.toStringAsFixed(2)}'),
+              Text(patterns[hour]!.toStringAsFixed(2)),
             ],
           );
         }),

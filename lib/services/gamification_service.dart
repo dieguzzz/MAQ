@@ -1,23 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/gamification_model.dart';
 import '../models/learning_report_model.dart';
-import '../models/user_model.dart';
 import 'accuracy_service.dart';
 import 'level_service.dart';
 import 'schedule_service.dart';
 import 'firebase_service.dart';
-import 'points_history_service.dart';
-import '../models/points_transaction_model.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AccuracyService _accuracyService = AccuracyService();
-  final PointsHistoryService _pointsHistoryService = PointsHistoryService();
 
   // Puntos por acciones
   static const int puntosPorReporteVerificado = 10;
-  static const int puntosPorConfirmarReporte = 15; // Cambiado de 5 a 15
-  static const int puntosPorReporteConfirmado = 5; // Para el autor cuando alguien confirma su reporte
+  static const int puntosPorConfirmarReporte = 5;
   static const int puntosPorReporteEpico = 100;
   static const int puntosPorStreak = 2;
 
@@ -49,22 +44,12 @@ class GamificationService {
       final nuevoNivel = LevelService.calculateLevel(newPuntos);
       
       await userRef.update({
-        'gamification.puntos': FieldValue.increment(puntosPorReporteVerificado),
+        'gamification.puntos': newPuntos,
         'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         'gamification.puntos_por_linea': puntosPorLinea,
         'gamification.reportes_verificados':
-            FieldValue.increment(1),
+            (gamification?['reportes_verificados'] ?? 0) + 1,
       });
-
-      // Guardar en historial
-      await _pointsHistoryService.saveTransaction(
-        userId: userId,
-        points: puntosPorReporteVerificado,
-        type: PointsTransaction.typeReportVerified,
-        description: 'Reporte verificado por la comunidad',
-        reportId: reportId,
-        metadata: {'linea': linea},
-      );
 
       // Verificar si desbloquea algún badge
       await _checkAndAwardBadges(userId, newPuntos);
@@ -98,15 +83,6 @@ class GamificationService {
         'gamification.verificaciones_hechas': FieldValue.increment(1),
       });
 
-      // Guardar en historial
-      await _pointsHistoryService.saveTransaction(
-        userId: userId,
-        points: puntosPorConfirmarReporte,
-        type: PointsTransaction.typeConfirmReport,
-        description: 'Confirmaste un reporte de otro usuario',
-        reportId: reportId,
-      );
-
       // Verificar badges de verificación
       final updatedDoc = await userRef.get();
       final updatedGamification = updatedDoc.data()?['gamification'] as Map<String, dynamic>?;
@@ -120,6 +96,59 @@ class GamificationService {
       }
     } catch (e) {
       print('Error awarding verification points: $e');
+    }
+  }
+
+  // Otorgar puntos al autor del reporte cuando alguien lo confirma
+  Future<void> awardPointsToReportAuthor(
+      String reportAuthorId, String reportId) async {
+    try {
+      // Obtener información del reporte para saber la línea
+      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      if (!reportDoc.exists) return;
+
+      final reportData = reportDoc.data()!;
+      final objetivoId = reportData['objetivo_id'] as String?;
+      
+      // Obtener estación para saber la línea
+      String? linea;
+      if (objetivoId != null) {
+        final stationDoc = await _firestore.collection('stations').doc(objetivoId).get();
+        linea = stationDoc.data()?['linea'] as String?;
+      }
+
+      // Si no hay línea, no otorgar puntos
+      if (linea == null) return;
+
+      // Otorgar puntos al autor del reporte (similar a awardPointsForVerifiedReport)
+      // pero solo cuando alguien confirma su reporte
+      final userRef = _firestore.collection('users').doc(reportAuthorId);
+      final userDoc = await userRef.get();
+      
+      if (!userDoc.exists) return;
+
+      final currentData = userDoc.data()!;
+      final gamification = currentData['gamification'] as Map<String, dynamic>?;
+      
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final puntosPorLinea = Map<String, int>.from(
+          gamification?['puntos_por_linea'] ?? {});
+      
+      // Puntos por confirmación (menos que por verificación completa)
+      const puntosPorConfirmacion = 2; // Menos puntos que por verificación completa
+      final newPuntos = currentPuntos + puntosPorConfirmacion;
+      puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + puntosPorConfirmacion;
+
+      // Calcular nuevo nivel
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.puntos_por_linea': puntosPorLinea,
+      });
+    } catch (e) {
+      print('Error awarding points to report author: $e');
     }
   }
 
@@ -157,15 +186,6 @@ class GamificationService {
             'gamification.puntos': FieldValue.increment(puntosPorStreak),
             'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
           });
-
-          // Guardar en historial
-          await _pointsHistoryService.saveTransaction(
-            userId: userId,
-            points: puntosPorStreak,
-            type: PointsTransaction.typeStreak,
-            description: 'Racha de ${currentStreak + 1} días consecutivos',
-            metadata: {'streak': currentStreak + 1},
-          );
         } else if (daysDifference > 1) {
           // Resetear streak
           await userRef.update({
@@ -379,20 +399,19 @@ class GamificationService {
           icono: '🎓',
           desbloqueadoEn: DateTime.now(),
         );
-      // Badges de Fundador
       case BadgeType.fundador:
         return Badge(
           type: type,
           nombre: 'Fundador',
-          descripcion: 'Parte de los primeros usuarios de MetroPTY',
-          icono: '🌟',
+          descripcion: 'Usuario de primera semana',
+          icono: '🏛️',
           desbloqueadoEn: DateTime.now(),
         );
       case BadgeType.fundadorPlatino:
         return Badge(
           type: type,
           nombre: 'Fundador Platino',
-          descripcion: 'Completaste todas las misiones de la primera semana',
+          descripcion: 'Completaste todas las misiones',
           icono: '💎',
           desbloqueadoEn: DateTime.now(),
         );
@@ -400,15 +419,15 @@ class GamificationService {
         return Badge(
           type: type,
           nombre: 'Pionero de Estación',
-          descripcion: 'Primero en reportar en una estación',
-          icono: '🏆',
+          descripcion: 'Primero en reportar una estación',
+          icono: '🚩',
           desbloqueadoEn: DateTime.now(),
         );
       case BadgeType.mejoradorDatos:
         return Badge(
           type: type,
           nombre: 'Mejorador de Datos',
-          descripcion: 'Subiste la confianza de una estación',
+          descripcion: 'Subiste confianza de baja a media',
           icono: '📈',
           desbloqueadoEn: DateTime.now(),
         );
@@ -416,7 +435,7 @@ class GamificationService {
         return Badge(
           type: type,
           nombre: 'Confirmador Confiable',
-          descripcion: 'Confirmaste 5 reportes de otros',
+          descripcion: 'Realizaste 5 confirmaciones',
           icono: '✅',
           desbloqueadoEn: DateTime.now(),
         );
@@ -432,22 +451,22 @@ class GamificationService {
         return Badge(
           type: type,
           nombre: 'Héroe de Hora Pico',
-          descripcion: 'Reportaste durante hora pico (7-9 AM)',
-          icono: '🌅',
+          descripcion: 'Reportaste en hora pico (7-9 AM)',
+          icono: '⏰',
           desbloqueadoEn: DateTime.now(),
         );
       case BadgeType.verificadorElite:
         return Badge(
           type: type,
-          nombre: 'Verificador Élite',
-          descripcion: 'Confirmaste 10 reportes',
-          icono: '🔍',
+          nombre: 'Verificador Elite',
+          descripcion: 'Realizaste 10 confirmaciones',
+          icono: '⭐',
           desbloqueadoEn: DateTime.now(),
         );
       case BadgeType.maestroL1:
         return Badge(
           type: type,
-          nombre: 'Maestro de L1',
+          nombre: 'Maestro Línea 1',
           descripcion: 'Reportaste en todas las estaciones de Línea 1',
           icono: '🔵',
           desbloqueadoEn: DateTime.now(),
@@ -455,7 +474,7 @@ class GamificationService {
       case BadgeType.maestroL2:
         return Badge(
           type: type,
-          nombre: 'Maestro de L2',
+          nombre: 'Maestro Línea 2',
           descripcion: 'Reportaste en todas las estaciones de Línea 2',
           icono: '🟢',
           desbloqueadoEn: DateTime.now(),
@@ -464,63 +483,11 @@ class GamificationService {
         return Badge(
           type: type,
           nombre: 'Leyenda Fundadora',
-          descripcion: '20 reportes en la primera semana',
+          descripcion: 'Realizaste 20 reportes en la primera semana',
           icono: '👑',
           desbloqueadoEn: DateTime.now(),
         );
     }
-  }
-  
-  // Verificar si usuario es fundador (primeros 7 días)
-  Future<bool> isFounder(String userId) async {
-    try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final createdAt = userDoc.data()?['creado_en'] as Timestamp?;
-      if (createdAt == null) return false;
-      
-      final daysSinceCreation = DateTime.now().difference(createdAt.toDate()).inDays;
-      return daysSinceCreation <= 7;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  // Otorgar badge de fundador al crear cuenta
-  Future<void> awardFounderBadge(String userId) async {
-    if (await isFounder(userId)) {
-      await _awardBadge(userId, BadgeType.fundador);
-    }
-  }
-  
-  // Verificar badge "Pionero de Estación"
-  Future<void> checkPioneerBadge(String userId, String stationId) async {
-    try {
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
-      
-      final reportsToday = await _firestore
-          .collection('reports')
-          .where('objetivo_id', isEqualTo: stationId)
-          .where('tipo', isEqualTo: 'estacion')
-          .where('creado_en', isGreaterThan: Timestamp.fromDate(startOfDay))
-          .orderBy('creado_en')
-          .limit(1)
-          .get();
-      
-      if (reportsToday.docs.isNotEmpty) {
-        final firstReport = reportsToday.docs.first;
-        if (firstReport.data()['usuario_id'] == userId) {
-          await _awardBadge(userId, BadgeType.pioneroEstacion);
-        }
-      }
-    } catch (e) {
-      print('Error checking pioneer badge: $e');
-    }
-  }
-  
-  // Verificar badge "Mejorador de Datos"
-  Future<void> checkDataImproverBadge(String userId) async {
-    await _awardBadge(userId, BadgeType.mejoradorDatos);
   }
 
   // Verificar y otorgar badges
@@ -624,15 +591,6 @@ class GamificationService {
           'gamification.puntos': FieldValue.increment(puntosPorReporteEpico),
           'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         });
-
-        // Guardar en historial
-        await _pointsHistoryService.saveTransaction(
-          userId: userId,
-          points: puntosPorReporteEpico,
-          type: PointsTransaction.typeEpicReport,
-          description: 'Reporte épico - Ayudaste a $personasAyudadas personas',
-          metadata: {'personas_ayudadas': personasAyudadas},
-        );
       } catch (e) {
         print('Error awarding epic report: $e');
       }
@@ -720,20 +678,6 @@ class GamificationService {
         'gamification.teaching_score': newTeachingScore,
       });
 
-      // Guardar en historial
-      await _pointsHistoryService.saveTransaction(
-        userId: userId,
-        points: totalPuntos,
-        type: PointsTransaction.typeTeachingReport,
-        description: 'Reporte de enseñanza${bonusPrecision > 0 ? ' + bonus precisión' : ''}${bonusHoraCritica > 0 ? ' + bonus hora crítica' : ''}',
-        reportId: report.id,
-        metadata: {
-          'puntos_base': puntosBase,
-          'bonus_precision': bonusPrecision,
-          'bonus_hora_critica': bonusHoraCritica,
-        },
-      );
-
       // Verificar si otorgar badge "Profesor del Metro"
       if (newTeachingReportsCount >= 10) {
         await _awardTeachingBadge(userId);
@@ -746,37 +690,6 @@ class GamificationService {
   /// Otorga el badge "Profesor del Metro"
   Future<void> _awardTeachingBadge(String userId) async {
     await _awardBadge(userId, BadgeType.profesorDelMetro);
-  }
-
-  /// Otorga puntos al autor del reporte cuando alguien lo confirma
-  Future<void> awardPointsToReportAuthor(String authorUserId, String reportId) async {
-    try {
-      final userRef = _firestore.collection('users').doc(authorUserId);
-      final userDoc = await userRef.get();
-      
-      if (!userDoc.exists) return;
-      
-      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
-      final currentPuntos = gamification?['puntos'] ?? 0;
-      final newPuntos = currentPuntos + puntosPorReporteConfirmado;
-      final nuevoNivel = LevelService.calculateLevel(newPuntos);
-      
-      await userRef.update({
-        'gamification.puntos': FieldValue.increment(puntosPorReporteConfirmado),
-        'gamification.nivel': nuevoNivel,
-      });
-
-      // Guardar en historial del autor
-      await _pointsHistoryService.saveTransaction(
-        userId: authorUserId,
-        points: puntosPorReporteConfirmado,
-        type: PointsTransaction.typeReportAuthorBonus,
-        description: 'Tu reporte fue confirmado por otro usuario',
-        reportId: reportId,
-      );
-    } catch (e) {
-      print('Error awarding points to report author: $e');
-    }
   }
 }
 

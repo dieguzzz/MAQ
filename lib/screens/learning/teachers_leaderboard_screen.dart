@@ -103,7 +103,7 @@ class TeachersLeaderboardScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: MetroColors.blue.withOpacity(0.1),
+                color: MetroColors.blue.withValues(alpha: 0.1),
                 child: Column(
                   children: [
                     Row(
@@ -150,7 +150,7 @@ class TeachersLeaderboardScreen extends StatelessWidget {
                       position: position,
                       isCurrentUser: isCurrentUser,
                       displayValue:
-                          '$teachingScore pts (${teachingReportsCount} reportes)',
+                          '$teachingScore pts ($teachingReportsCount reportes)',
                     );
                   },
                 ),

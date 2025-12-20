@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../services/enhanced_report_service.dart';
-import '../../models/enhanced_report_model.dart';
 
 /// Pantalla de validación ETA para confirmar si el tren llegó
 class ETAValidationScreen extends StatefulWidget {
