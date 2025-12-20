@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
-import '../../models/user_model.dart';
-import '../../services/simplified_report_service.dart';
 
 /// Pantalla de resumen que se muestra al volver a la app después de confirmar reportes
 class ReportSummaryScreen extends StatefulWidget {
@@ -19,7 +17,6 @@ class ReportSummaryScreen extends StatefulWidget {
 }
 
 class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
-  final SimplifiedReportService _reportService = SimplifiedReportService();
   int _reportsToday = 0;
   int _totalPoints = 0;
   int _level = 1;
@@ -158,7 +155,7 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Has ayudado a ${_reportsToday} personas hoy',
+                        'Has ayudado a $_reportsToday personas hoy',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 14),
                       ),

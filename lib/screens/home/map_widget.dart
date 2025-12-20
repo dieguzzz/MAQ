@@ -9,7 +9,6 @@ import '../../services/map_service.dart';
 import '../../services/train_simulation_service.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
-import '../../theme/metro_theme.dart';
 import '../../widgets/station_report_sheet.dart';
 import '../../widgets/enhanced_report_modal.dart';
 import '../../widgets/station_position_editor_modal.dart';
@@ -51,21 +50,13 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void initState() {
     super.initState();
-    // Animación de trenes deshabilitada - los trenes no se moverán
+    // Inicializar simulación cuando el widget se monta
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final metroProvider = context.read<MetroDataProvider>();
       if (metroProvider.stations.isNotEmpty) {
-        // _trainSimulation.initialize(metroProvider.stations);
-        // _trainSimulation.start();
-        // _startTrainUpdates(metroProvider.trains);
-        
-        // Usar los trenes originales sin simulación
-        if (mounted) {
-          setState(() {
-            _simulatedTrains = metroProvider.trains;
-          });
-          _updateTrainMarkers(metroProvider.trains);
-        }
+        _trainSimulation.initialize(metroProvider.stations);
+        _trainSimulation.start();
+        _startTrainUpdates(metroProvider.trains);
       }
     });
     
@@ -86,23 +77,23 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   void _startTrainUpdates(List<TrainModel> originalTrains) {
-    // Animación de trenes deshabilitada - los trenes no se moverán
-    // _updateTimer?.cancel();
-    // _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
-    //   if (mounted) {
-    //     setState(() {
-    //       _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
-    //     });
-    //     // Actualizar marcadores
-    //     _updateTrainMarkers(_simulatedTrains);
-    //   }
-    // });
-    // Actualización inicial - usar trenes originales sin simulación
+    // Actualizar trenes cada 500ms para movimiento más fluido
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
+      if (mounted) {
+        setState(() {
+          _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
+        });
+        // Actualizar marcadores
+        _updateTrainMarkers(_simulatedTrains);
+      }
+    });
+    // Actualización inicial
     if (mounted) {
       setState(() {
-        _simulatedTrains = originalTrains;
+        _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
       });
-      _updateTrainMarkers(originalTrains);
+      _updateTrainMarkers(_simulatedTrains);
     }
   }
 
@@ -176,10 +167,9 @@ class _MapWidgetState extends State<MapWidget> {
           print('🧪 Marker drag end: ${station.nombre} -> [${newPosition.latitude}, ${newPosition.longitude}]');
           _positionEditor.updatePosition(station.id, newGeoPoint);
           
-          // Notificar al provider para refrescar
-          Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
-          
           // Actualizar los marcadores para reflejar la nueva posición
+          final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+          metroProvider.refresh();
           _updateStationMarkers(stations);
         };
       }(),
@@ -290,21 +280,15 @@ class _MapWidgetState extends State<MapWidget> {
             _previousTrains!.length != trains.length ||
             !_listsEqualTrains(_previousTrains!, trains);
 
-        // Animación de trenes deshabilitada - los trenes no se moverán
+        // Inicializar o reinicializar simulación si las estaciones cambiaron
         if (stations.isNotEmpty) {
           if (_simulatedTrains.isEmpty || stationsChanged) {
             // Usar addPostFrameCallback para evitar setState durante build
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                // _trainSimulation.initialize(stations);
-                // _trainSimulation.start();
-                // _startTrainUpdates(trains);
-                
-                // Usar los trenes originales sin simulación
-                setState(() {
-                  _simulatedTrains = trains;
-                });
-                _updateTrainMarkers(trains);
+                _trainSimulation.initialize(stations);
+                _trainSimulation.start();
+                _startTrainUpdates(trains);
               }
             });
           }
@@ -329,20 +313,14 @@ class _MapWidgetState extends State<MapWidget> {
             _previousStations = null;
             _previousTrains = null;
             
-            // Animación de trenes deshabilitada - usar trenes originales sin simulación
+            // Reinicializar simulación con todas las estaciones
             if (stations.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  print('🔍 MapWidget: Usando trenes originales sin simulación');
-                  // _trainSimulation.initialize(stations);
-                  // _trainSimulation.start();
-                  // _startTrainUpdates(trains);
-                  
-                  // Usar los trenes originales sin simulación
-                  setState(() {
-                    _simulatedTrains = trains;
-                  });
-                  _updateTrainMarkers(trains);
+                  print('🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
+                  _trainSimulation.initialize(stations);
+                  _trainSimulation.start();
+                  _startTrainUpdates(trains);
                 }
               });
             }
@@ -382,16 +360,12 @@ class _MapWidgetState extends State<MapWidget> {
           if (_trainMarkers.isEmpty && trainsToDisplay.isNotEmpty) {
             _updateTrainMarkers(trainsToDisplay);
             _previousTrains = trainsToDisplay.map((t) => t).toList();
-            if (_previousSelectedLinea == null) {
-              _previousSelectedLinea = selectedLinea;
-            }
+            _previousSelectedLinea ??= selectedLinea;
           }
           if (_stationMarkers.isEmpty && stations.isNotEmpty) {
             _updateStationMarkers(stations);
             _previousStations = stations.map((s) => s).toList();
-            if (_previousSelectedLinea == null) {
-              _previousSelectedLinea = selectedLinea;
-            }
+            _previousSelectedLinea ??= selectedLinea;
           }
         }
 
@@ -693,48 +667,9 @@ class _MapWidgetState extends State<MapWidget> {
       );
     }
 
-    // Dibujar interconexión entre L1 y L2 en San Miguelito
-    StationModel? l1SanMiguelito;
-    StationModel? l2SanMiguelito;
-    
-    try {
-      l1SanMiguelito = linea1Stations.firstWhere((s) => s.id == 'l1_san_miguelito');
-    } catch (e) {
-      // Estación no encontrada
-    }
-    
-    // l2_san_miguelito fue eliminado - no hay interconexión en San Miguelito
-    l2SanMiguelito = null;
-
     // No dibujar interconexión ya que l2_san_miguelito fue eliminado
-    if (false && l1SanMiguelito != null && l2SanMiguelito != null) {
-      final l1Edited = _positionEditor.getPosition(l1SanMiguelito.id);
-      final l2Edited = _positionEditor.getPosition(l2SanMiguelito.id);
-      
-      final l1Point = l1Edited != null
-          ? LatLng(l1Edited.latitude, l1Edited.longitude)
-          : LatLng(l1SanMiguelito.ubicacion.latitude, l1SanMiguelito.ubicacion.longitude);
-      final l2Point = l2Edited != null
-          ? LatLng(l2Edited.latitude, l2Edited.longitude)
-          : LatLng(l2SanMiguelito.ubicacion.latitude, l2SanMiguelito.ubicacion.longitude);
-
-      connections.add(
-        Polyline(
-          polylineId: const PolylineId('interconnection_l1_l2'),
-          color: Colors.orange,
-          width: 4,
-          points: [l1Point, l2Point],
-        ),
-      );
-    }
 
     return connections;
-  }
-
-  double _distanceBetween(StationModel a, StationModel b) {
-    final dLat = (a.ubicacion.latitude - b.ubicacion.latitude).abs();
-    final dLng = (a.ubicacion.longitude - b.ubicacion.longitude).abs();
-    return dLat + dLng;
   }
 
   void _showCoordinatesDialog(StationModel station) {
@@ -793,7 +728,6 @@ class _MapWidgetState extends State<MapWidget> {
 
   Future<void> _showStationBottomSheet(StationModel station) async {
     if (!mounted) return;
-    final navigatorContext = context;
     
     // Verificar si estamos en modo test
     bool isTestMode = false;
@@ -805,19 +739,18 @@ class _MapWidgetState extends State<MapWidget> {
         final appModeService = AppModeService();
         isTestMode = await appModeService.isTestMode(user.uid);
         
-        // Test mode verification completed
-        if (mounted) {
-          setState(() {});
-        }
+        // isTestMode se usa para decidir qué modal mostrar
       } catch (e) {
         print('Error verificando modo test: $e');
       }
     }
     
+    if (!mounted) return;
+    
     // En modo test, mostrar modal de edición de coordenadas
     if (isTestMode) {
       await showModalBottomSheet<void>(
-        context: navigatorContext,
+        context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         isDismissible: true, // Permitir cerrar tocando fuera
@@ -826,11 +759,13 @@ class _MapWidgetState extends State<MapWidget> {
       );
     } else {
       // Modo normal: mostrar bottom sheet de reporte
+      if (!mounted) return;
       final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
       final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
       
+      if (!mounted) return;
       await showModalBottomSheet<void>(
-        context: navigatorContext,
+        context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (sheetContext) => StationReportSheet(

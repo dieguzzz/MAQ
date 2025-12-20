@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/metro_simulator_service.dart';
-import '../../services/admin_learning_service.dart';
 import '../../services/firebase_service.dart';
-import '../../services/time_estimation_service.dart';
-import '../../services/simulated_time_service.dart';
 import '../../models/simulator_state_model.dart';
 import '../../models/station_model.dart';
-import '../../models/train_model.dart';
 import '../../theme/metro_theme.dart';
 import '../../utils/metro_data.dart';
 
@@ -55,15 +51,6 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
     return _allStations.where((s) => s.linea == selectedLinea).toList();
   }
 
-  StationModel? get _selectedStation {
-    final stationId = _simulator.state.stationId;
-    if (stationId == null) return null;
-    try {
-      return _allStations.firstWhere((s) => s.id == stationId);
-    } catch (e) {
-      return null;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +163,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: state.stationId,
+              initialValue: state.stationId,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.train),
@@ -201,7 +188,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: state.destinationStationId,
+              initialValue: state.destinationStationId,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.place),
@@ -477,7 +464,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<SimulatorIncidentType>(
-              value: state.incidentType,
+              initialValue: state.incidentType,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.warning),
@@ -678,7 +665,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: color.withOpacity(0.3),
+      selectedColor: color.withValues(alpha: 0.3),
       checkmarkColor: color,
       labelStyle: TextStyle(
         color: selected ? color : MetroColors.grayDark,
@@ -697,7 +684,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: selected ? color : color.withOpacity(0.3),
+          backgroundColor: selected ? color : color.withValues(alpha: 0.3),
           foregroundColor: selected ? Colors.white : color,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -729,10 +716,10 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: color.withOpacity(0.3),
+      selectedColor: color.withValues(alpha: 0.3),
       checkmarkColor: color,
       avatar: CircleAvatar(
-        backgroundColor: color.withOpacity(0.2),
+        backgroundColor: color.withValues(alpha: 0.2),
         radius: 12,
         child: Icon(
           _getLoadIcon(label),

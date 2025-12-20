@@ -190,7 +190,12 @@ class FirebaseService {
       }
 
       final reportData = reportDoc.data()!;
-      final reportUserId = reportData['userId'] ?? reportData['usuario_id'];
+      final reportUserId = (reportData['userId'] ?? reportData['usuario_id']) as String?;
+      
+      // Validar que el reporte tenga un usuario_id
+      if (reportUserId == null || reportUserId.isEmpty) {
+        throw Exception('El reporte no tiene un usuario_id válido');
+      }
       
       // Verificar que el usuario no esté confirmando su propio reporte
       if (reportUserId == userId) {

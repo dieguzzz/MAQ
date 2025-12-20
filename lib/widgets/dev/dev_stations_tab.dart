@@ -107,6 +107,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
 
     if (estado == null) return;
 
+    if (!mounted) return;
+
     // Obtener usuario actual
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
@@ -118,6 +120,7 @@ class _DevStationsTabState extends State<DevStationsTab> {
     // Crear reporte de prueba
     setState(() => _isLoading = true);
     try {
+      if (!mounted) return;
       final reportProvider = Provider.of<ReportProvider>(context, listen: false);
       
       // Mapear estado a string
@@ -286,7 +289,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedLinea,
+                  key: ValueKey(_selectedLinea),
+                  initialValue: _selectedLinea,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
