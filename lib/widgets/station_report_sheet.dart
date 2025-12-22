@@ -6,10 +6,7 @@ import '../models/train_model.dart';
 import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
-import '../providers/auth_provider.dart';
-import '../services/learning_report_service.dart';
 import '../services/schedule_service.dart';
-import '../models/learning_report_model.dart';
 import 'station_report_flow_widget.dart';
 import 'arrival_confirmation_dialog.dart';
 
@@ -109,15 +106,6 @@ class _StationReportSheetState extends State<StationReportSheet> {
                           curve: Curves.easeInOut,
                         );
                       },
-                      onReportTrain: (train) {
-                        // Cambiar a página de reporte de tren (si existe)
-                        // Por ahora, usar la estación actual para el reporte
-                        _pageController.animateToPage(
-                          1,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
                     ),
                     // Página 2: Widget de reporte de estación
                     StationReportFlowWidget(
@@ -141,15 +129,12 @@ class StationInfoView extends StatelessWidget {
   final List<TrainModel>? trains;
   final ScrollController? scrollController;
   final VoidCallback? onReportPressed;
-  final Function(TrainModel)? onReportTrain;
-
   const StationInfoView({
     super.key,
     required this.station,
     this.trains,
     this.scrollController,
     this.onReportPressed,
-    this.onReportTrain,
   });
 
   @override
@@ -167,7 +152,6 @@ class StationInfoView extends StatelessWidget {
             station: station,
             trains: trains,
             onReportStation: onReportPressed,
-            onReportTrain: onReportTrain,
             scrollController: scrollController,
           ),
           const SizedBox(height: 24),
@@ -451,14 +435,12 @@ class _QuickActions extends StatefulWidget {
     required this.station,
     this.trains,
     this.onReportStation,
-    this.onReportTrain,
     this.scrollController,
   });
 
   final StationModel station;
   final List<TrainModel>? trains;
   final VoidCallback? onReportStation;
-  final Function(TrainModel)? onReportTrain;
   final ScrollController? scrollController;
 
   @override
@@ -466,170 +448,6 @@ class _QuickActions extends StatefulWidget {
 }
 
 class _QuickActionsState extends State<_QuickActions> {
-  Future<void> _showTimeReportDialog() async {
-    final timeController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final learningService = LearningReportService();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    if (authProvider.currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes iniciar sesión para reportar'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.schedule, color: MetroColors.blue),
-            SizedBox(width: 8),
-            Text('Reportar Tiempo de Pantalla'),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '¿Cuántos minutos muestra la pantalla de la estación?',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: timeController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Minutos',
-                  hintText: 'Ej: 5',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.timer),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingresa el tiempo';
-                  }
-                  final time = int.tryParse(value);
-                  if (time == null) {
-                    return 'Debe ser un número';
-                  }
-                  if (time < 1 || time > 30) {
-                    return 'Debe estar entre 1 y 30 minutos';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(dialogContext).pop(true);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: MetroColors.blue,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Reportar'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != true) {
-      timeController.dispose();
-      return;
-    }
-
-    final timeValue = int.tryParse(timeController.text);
-    if (timeValue == null || timeValue < 1 || timeValue > 30) {
-      timeController.dispose();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tiempo inválido'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Mostrar indicador de carga
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (loadingContext) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    try {
-      final now = DateTime.now();
-      final report = LearningReportModel(
-        id: '', // Se generará al guardar
-        usuarioId: authProvider.currentUser!.uid,
-        estacionId: widget.station.id,
-        linea: widget.station.linea,
-        horaLlegadaReal: now,
-        tiempoEstimadoMostrado: timeValue,
-        retrasoMinutos: 0, // Se actualizará cuando el usuario confirme llegada real
-        llegadaATiempo: true, // Inicial
-        creadoEn: now,
-        calidadReporte: 1.0, // Reportes de pantalla tienen calidad máxima
-      );
-
-      await learningService.createLearningReport(report);
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('¡Tiempo reportado exitosamente!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al reportar: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      timeController.dispose();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -642,85 +460,27 @@ class _QuickActionsState extends State<_QuickActions> {
               ),
         ),
         const SizedBox(height: 16),
-        // Dos botones: tiempo de pantalla y reporte de estación
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // Botón 1: Reportar tiempo de pantalla (PRIMERO)
-            _buildActionButton(
-              icon: Icons.schedule,
-              label: 'Reportar tiempo',
-              subtitle: 'Tiempo de pantalla',
-              color: MetroColors.blue,
-              onTap: _showTimeReportDialog,
+        // Botón único: Reportar estación (nuevo formulario)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => widget.onReportStation?.call(),
+            icon: const Icon(Icons.add_alert, size: 24),
+            label: const Text(
+              'REPORTAR ESTACIÓN',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            // Botón 2: Reportar estación
-            _buildActionButton(
-              icon: Icons.campaign_outlined,
-              label: 'Reportar estación',
-              subtitle: 'Estado y problemas',
-              color: MetroColors.blue,
-              onTap: () => widget.onReportStation?.call(),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: MetroColors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ],
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: MetroColors.grayDark,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: MetroColors.grayDark,
-                  fontSize: 11,
-                ),
-          ),
-        ],
-      ),
     );
   }
 }
