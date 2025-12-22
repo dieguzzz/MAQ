@@ -3,7 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/simplified_report_model.dart';
-import 'firebase_service.dart';
 
 /// Servicio simplificado para reportes según nuevo diseño
 class SimplifiedReportService {
@@ -52,7 +51,7 @@ class SimplifiedReportService {
   /// Crear reporte de tren (simplificado)
   Future<String> createTrainReport({
     required String stationId,
-    required String operational, // 'yes' | 'partial' | 'no'
+    required String etaBucket, // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' (tiempo del panel)
     required int crowdLevel, // 1-5
     List<String>? issues, // ['recharge', 'atm', 'ac', 'escalator', 'elevator']
     String? trainLine, // 'L1' | 'L2' (opcional)
@@ -63,19 +62,37 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     final now = DateTime.now();
-    final basePoints = 15;
+    
+    // Calcular etaExpectedAt basado en el bucket (punto medio del rango)
+    DateTime? etaExpectedAt;
+    if (etaBucket != 'unknown') {
+      final timingConfig = {
+        '1-2': 1.5, // minutos (punto medio de 1-2)
+        '3-5': 4.0, // minutos (punto medio de 3-5)
+        '6-8': 7.0, // minutos (punto medio de 6-8)
+        '9+': 10.0, // minutos (estimación conservadora)
+      };
+      final minutes = timingConfig[etaBucket] ?? 4.0;
+      etaExpectedAt = now.add(Duration(minutes: minutes.toInt()));
+    }
+
+    // Sistema de puntos: 10 base por copiar panel + 5 por cada problema
+    final basePoints = 10;
     final bonusPoints = (issues?.length ?? 0) * 5;
+    // Nota: +20 puntos adicionales se otorgan cuando el usuario valida la llegada
 
     final report = SimplifiedReportModel(
       id: '',
       scope: 'train',
       stationId: stationId,
       userId: userId,
-      trainOperational: operational,
       trainCrowd: crowdLevel,
       trainIssues: issues ?? [],
       trainLine: trainLine,
       direction: direction,
+      etaBucket: etaBucket,
+      etaExpectedAt: etaExpectedAt,
+      isPanelTime: true, // Marcar que viene del panel digital oficial
       createdAt: now,
       basePoints: basePoints,
       bonusPoints: bonusPoints,
@@ -93,6 +110,7 @@ class SimplifiedReportService {
   }
 
   /// Actualizar reporte de tren cuando llega (completa con ocupación y estado)
+  /// Calcula el error del panel y otorga puntos basados en precisión
   Future<void> updateTrainReportOnArrival({
     required String reportId,
     required DateTime arrivalTime,
@@ -115,6 +133,25 @@ class SimplifiedReportService {
         throw Exception('No tienes permiso para actualizar este reporte');
       }
 
+      // Calcular error del panel si hay etaExpectedAt
+      int? errorMinutes;
+      int precisionBonus = 0;
+      if (report.etaExpectedAt != null && report.isPanelTime == true) {
+        final error = arrivalTime.difference(report.etaExpectedAt!).inMinutes;
+        errorMinutes = error;
+        
+        // Sistema de puntos por precisión:
+        // ±1 min = +15 puntos (panel preciso)
+        // ±2-3 min = +5 puntos (error pequeño)
+        // Mayor error = +0 puntos (pero igual ayuda al sistema)
+        final absError = error.abs();
+        if (absError <= 1) {
+          precisionBonus = 15;
+        } else if (absError <= 3) {
+          precisionBonus = 5;
+        }
+      }
+
       // Actualizar el reporte con la hora de llegada y datos adicionales
       final updates = <String, dynamic>{
         'arrivalTime': Timestamp.fromDate(arrivalTime),
@@ -128,10 +165,76 @@ class SimplifiedReportService {
         updates['trainStatus'] = trainStatus;
       }
 
+      // Actualizar puntos: +20 base por validar + bonus por precisión
+      final validationPoints = 20;
+      final newBonusPoints = (report.bonusPoints) + precisionBonus;
+      final newTotalPoints = report.basePoints + validationPoints + newBonusPoints;
+      
+      updates['bonusPoints'] = newBonusPoints;
+      updates['totalPoints'] = newTotalPoints;
+
       await _firestore.collection('reports').doc(reportId).update(updates);
+      
+      // Actualizar calibración de la estación si es reporte del panel
+      if (report.isPanelTime == true && errorMinutes != null) {
+        await _updateStationCalibration(
+          report.stationId,
+          errorMinutes,
+          report.etaBucket ?? 'unknown',
+        );
+      }
     } catch (e) {
       print('Error updating train report on arrival: $e');
       rethrow;
+    }
+  }
+
+  /// Actualizar calibración del panel por estación
+  Future<void> _updateStationCalibration(
+    String stationId,
+    int errorMinutes,
+    String etaBucket,
+  ) async {
+    try {
+      final stationRef = _firestore.collection('stations').doc(stationId);
+      final calibrationRef = stationRef.collection('panelCalibration').doc('latest');
+      
+      final calibrationDoc = await calibrationRef.get();
+      final now = DateTime.now();
+      
+      if (calibrationDoc.exists) {
+        final data = calibrationDoc.data()!;
+        final totalReports = (data['totalReports'] ?? 0) + 1;
+        final currentAvgError = (data['avgError'] ?? 0.0).toDouble();
+        final newAvgError = ((currentAvgError * (totalReports - 1)) + errorMinutes) / totalReports;
+        
+        // Calcular precisión (porcentaje de reportes con error ≤ 1 minuto)
+        final accurateReports = (data['accurateReports'] ?? 0) + (errorMinutes.abs() <= 1 ? 1 : 0);
+        final accuracy = (accurateReports / totalReports) * 100;
+        
+        await calibrationRef.update({
+          'totalReports': totalReports,
+          'avgError': newAvgError,
+          'accurateReports': accurateReports,
+          'accuracy': accuracy,
+          'lastUpdated': Timestamp.fromDate(now),
+          'lastError': errorMinutes,
+        });
+      } else {
+        // Crear nueva calibración
+        await calibrationRef.set({
+          'totalReports': 1,
+          'avgError': errorMinutes.toDouble(),
+          'accurateReports': errorMinutes.abs() <= 1 ? 1 : 0,
+          'accuracy': errorMinutes.abs() <= 1 ? 100.0 : 0.0,
+          'lastUpdated': Timestamp.fromDate(now),
+          'lastError': errorMinutes,
+          'createdAt': Timestamp.fromDate(now),
+        });
+      }
+    } catch (e) {
+      print('Error updating station calibration: $e');
+      // No lanzar error, solo loggear - la calibración es opcional
     }
   }
 

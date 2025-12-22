@@ -26,8 +26,10 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   late PageController _pageController;
   int _currentPage = 0;
   
-  // Pregunta 1: Información básica
-  String? _operational; // 'yes' | 'partial' | 'no'
+  // Pregunta 1: Tiempo del panel digital
+  String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown'
+  
+  // Pregunta 2: Aglomeración
   int? _crowdLevel; // 1-5
   
   // Pregunta 3: Problemas específicos (opcional)
@@ -131,7 +133,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
     );
   }
 
-  // Página 1: ¿El tren está operativo?
+  // Página 1: ¿Qué dice el panel digital?
   Widget _buildPage1() {
     return SingleChildScrollView(
       controller: widget.scrollController,
@@ -140,48 +142,73 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '1. ¿El tren está operativo?',
+            '1. ¿Qué dice el panel digital?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: MetroColors.grayDark,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Mira el panel oficial de la estación y copia el tiempo que muestra',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: MetroColors.grayDark,
+            ),
+          ),
           const SizedBox(height: 24),
-          _buildOptionCard(
-            value: 'yes',
-            icon: Icons.check_circle,
-            iconColor: Colors.green,
-            title: '✅ SÍ - Todo funciona',
-            isSelected: _operational == 'yes',
-            onTap: () {
-              setState(() => _operational = 'yes');
-            },
+          // Simulación visual del panel
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!, width: 2),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'PRÓXIMO TREN',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _etaBucket != null && _etaBucket != 'unknown'
+                      ? _getPanelDisplayTime(_etaBucket!)
+                      : '--',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'minutos',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
-          _buildOptionCard(
-            value: 'partial',
-            icon: Icons.warning,
-            iconColor: Colors.orange,
-            title: '⚠️ PARCIAL - Algo falla',
-            isSelected: _operational == 'partial',
-            onTap: () {
-              setState(() => _operational = 'partial');
-            },
-          ),
-          _buildOptionCard(
-            value: 'no',
-            icon: Icons.cancel,
-            iconColor: Colors.red,
-            title: '🚫 NO - Detenido / grave',
-            isSelected: _operational == 'no',
-            onTap: () {
-              setState(() => _operational = 'no');
-            },
-          ),
+          const SizedBox(height: 24),
+          _buildEtaOption('1-2', '🕐 1-2 MINUTOS', Colors.green),
+          _buildEtaOption('3-5', '🕑 3-5 MINUTOS', Colors.orange),
+          _buildEtaOption('6-8', '🕒 6-8 MINUTOS', Colors.deepOrange),
+          _buildEtaOption('9+', '🕓 9+ MINUTOS', Colors.red),
+          _buildEtaOption('unknown', '🚫 APAGADO / NO FUNCIONA', Colors.grey),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _operational != null
+              onPressed: _etaBucket != null
                 ? () {
                     HapticFeedback.lightImpact();
                     _nextPage();
@@ -201,6 +228,112 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
           const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+
+  String _getPanelDisplayTime(String bucket) {
+    switch (bucket) {
+      case '1-2':
+        return '2';
+      case '3-5':
+        return '4';
+      case '6-8':
+        return '7';
+      case '9+':
+        return '10';
+      default:
+        return '--';
+    }
+  }
+
+  Widget _buildEtaOption(String bucket, String label, Color color) {
+    final isSelected = _etaBucket == bucket;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 - (value * 0.02),
+          child: GestureDetector(
+            onTap: () {
+              setState(() => _etaBucket = bucket);
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? LinearGradient(
+                        colors: [
+                          color.withValues(alpha: 0.15),
+                          color.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: !isSelected ? Colors.grey[50] : null,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.5)
+                      : Colors.grey[300]!,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: Row(
+                children: [
+                  Text(label.split(' ')[0], style: const TextStyle(fontSize: 28)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? color : Colors.grey[800],
+                      ),
+                    ),
+                  ),
+                  AnimatedScale(
+                    scale: isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.elasticOut,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -304,11 +437,26 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
               children: [
                 const Icon(Icons.stars, color: Colors.green),
                 const SizedBox(width: 8),
-                Text(
-                  'Ganas: +${15 + (_selectedIssues.length * 5)} puntos',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ganas: +${10 + (_selectedIssues.length * 5)} puntos',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      if (_etaBucket != null && _etaBucket != 'unknown')
+                        Text(
+                          '+20 puntos al validar llegada',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -410,100 +558,6 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
     );
   }
 
-  Widget _buildOptionCard({
-    required String value,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 1.0 - (value * 0.02),
-          child: GestureDetector(
-            onTap: onTap,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [
-                          iconColor.withValues(alpha: 0.15),
-                          iconColor.withValues(alpha: 0.05),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: !isSelected ? Colors.grey[50] : null,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected
-                      ? iconColor.withValues(alpha: 0.5)
-                      : Colors.grey[300]!,
-                  width: isSelected ? 2 : 1,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: iconColor.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: Row(
-                children: [
-                  Icon(icon, color: iconColor, size: 28),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? iconColor : Colors.grey[800],
-                      ),
-                    ),
-                  ),
-                  AnimatedScale(
-                    scale: isSelected ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.elasticOut,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
     final isSelected = _crowdLevel == level;
@@ -682,7 +736,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   }
 
   bool _canSubmit() {
-    return _operational != null && _crowdLevel != null && !_isSubmitting;
+    return _etaBucket != null && _crowdLevel != null && !_isSubmitting;
   }
 
   Future<void> _submitReport() async {
@@ -704,7 +758,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
 
       await _reportService.createTrainReport(
         stationId: widget.station.id,
-        operational: _operational!,
+        etaBucket: _etaBucket!,
         crowdLevel: _crowdLevel!,
         issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
         trainLine: widget.station.linea,
@@ -713,7 +767,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
 
       if (!mounted) return;
 
-      final totalPoints = 15 + (_selectedIssues.length * 5);
+      final totalPoints = 10 + (_selectedIssues.length * 5);
       PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -721,10 +775,24 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       if (!mounted) return;
 
       Navigator.of(context).pop();
+      
+      // Mostrar mensaje informando sobre la validación
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Reporte enviado. Ganaste +$totalPoints puntos'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('✅ Reporte enviado. Ganaste +$totalPoints puntos'),
+              const SizedBox(height: 4),
+              Text(
+                'Te avisaremos para confirmar cuando llegue el tren',
+                style: TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+            ],
+          ),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
         ),
       );
     } catch (e) {

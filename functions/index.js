@@ -684,8 +684,10 @@ exports.onReportCreated = functions.firestore
         basePoints = 15; // Reporte de estación básico
         bonusPoints = (report.stationIssues?.length || 0) * 5;
       } else if (report.scope === 'train') {
-        basePoints = 20; // Reporte de tren básico
-        bonusPoints = report.etaBucket && report.etaBucket !== 'unknown' ? 10 : 0;
+        // Sistema nuevo: 10 base por copiar panel + 5 por cada problema
+        // +20 puntos adicionales se otorgan cuando se valida la llegada
+        basePoints = 10; // Reporte de tren (copiar del panel)
+        bonusPoints = (report.trainIssues?.length || 0) * 5;
       }
       
       // 2. Actualizar reporte con puntos
@@ -726,33 +728,53 @@ exports.onReportCreated = functions.firestore
 
 // Función auxiliar: Programar validación ETA
 async function scheduleETAValidation(reportId, report) {
-  // Configurar tiempos según bucket
-  const timingConfig = {
-    '<1': { waitMinutes: 1, windowMinutes: 2 },
-    '1-2': { waitMinutes: 2, windowMinutes: 4 },
-    '3-5': { waitMinutes: 3, windowMinutes: 6 },
-    '6-10': { waitMinutes: 5, windowMinutes: 10 },
-    '10+': { waitMinutes: 8, windowMinutes: 15 }
-  };
-  
-  const config = timingConfig[report.etaBucket];
-  if (!config) return;
-  
-  // Calcular hora esperada de llegada
-  const now = admin.firestore.Timestamp.now();
-  const waitSeconds = config.waitMinutes * 60;
-  const expectedArrival = new Date(now.toDate().getTime() + (waitSeconds * 1000));
-  const windowEnd = new Date(expectedArrival.getTime() + (config.windowMinutes * 60000));
-  
-  // Actualizar reporte con información de validación (modelo simplificado)
-  await db.collection('reports').doc(reportId).update({
-    'etaExpectedAt': admin.firestore.Timestamp.fromDate(expectedArrival),
-    'validationWindowEnd': admin.firestore.Timestamp.fromDate(windowEnd),
-    'needsValidation': true,
-    'validationStatus': 'pending'
-  });
-  
-  console.log(`Validation scheduled for report ${reportId} at ${expectedArrival}`);
+  try {
+    // El etaExpectedAt ya viene calculado desde el cliente
+    // Solo necesitamos programar la notificación push
+    if (!report.etaExpectedAt) {
+      console.log(`No etaExpectedAt for report ${reportId}, skipping validation scheduling`);
+      return;
+    }
+
+    const expectedArrival = report.etaExpectedAt.toDate();
+    const now = new Date();
+    
+    // Calcular cuándo enviar la notificación (etaBucket + 1 minuto de tolerancia)
+    const timingConfig = {
+      '1-2': 1.5, // minutos (punto medio)
+      '3-5': 4.0,
+      '6-8': 7.0,
+      '9+': 10.0,
+    };
+    
+    const bucketMinutes = timingConfig[report.etaBucket] || 4.0;
+    const notificationDelay = (bucketMinutes + 1) * 60 * 1000; // +1 minuto de tolerancia
+    const notificationTime = new Date(now.getTime() + notificationDelay);
+    
+    // Crear tarea programada para notificación
+    // Nota: Firebase no tiene programación nativa, usaremos un enfoque alternativo
+    // Guardar en una colección de notificaciones pendientes que se procesa periódicamente
+    await db.collection('pendingValidations').add({
+      reportId: reportId,
+      userId: report.userId,
+      stationId: report.stationId,
+      etaBucket: report.etaBucket,
+      expectedArrival: report.etaExpectedAt,
+      notificationTime: admin.firestore.Timestamp.fromDate(notificationTime),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending'
+    });
+    
+    // Marcar reporte como que necesita validación
+    await db.collection('reports').doc(reportId).update({
+      'needsValidation': true,
+      'validationStatus': 'pending'
+    });
+    
+    console.log(`Validation scheduled for report ${reportId}, notification at ${notificationTime}`);
+  } catch (error) {
+    console.error(`Error scheduling ETA validation for report ${reportId}:`, error);
+  }
 }
 
 // Cloud Function: Procesar respuesta de validación ETA
@@ -778,70 +800,75 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
       throw new functions.https.HttpsError('permission-denied', 'No puedes validar este reporte');
     }
     
-    if (report.trainData?.validationStatus !== 'pending') {
+    // Verificar que el reporte necesita validación (nuevo modelo simplificado)
+    if (report.scope !== 'train' || !report.etaBucket || report.etaBucket === 'unknown') {
+      throw new functions.https.HttpsError('failed-precondition', 'Este reporte no requiere validación');
+    }
+    
+    if (report.arrivalTime) {
       throw new functions.https.HttpsError('failed-precondition', 'Validación ya procesada');
     }
     
-    // 2. Calcular puntos por validación
-    let validationPoints = 0;
-    let timeErrorSeconds = null;
-    let accuracyBucket = 'wrong';
+    // 2. Calcular puntos por validación y error del panel
+    let validationPoints = 20; // Base por validar
+    let timeErrorMinutes = null;
+    let precisionBonus = 0;
     
-    if (result === 'arrived' && actualArrivalTime) {
+    if (result === 'arrived' && actualArrivalTime && report.etaExpectedAt) {
       const expectedArrival = report.etaExpectedAt.toDate();
       const actualArrival = new Date(actualArrivalTime);
       
-      timeErrorSeconds = Math.abs((actualArrival - expectedArrival) / 1000);
+      timeErrorMinutes = Math.round((actualArrival - expectedArrival) / (1000 * 60));
+      const absError = Math.abs(timeErrorMinutes);
       
-      // Determinar precisión
-      if (timeErrorSeconds <= 60) { // ±1 minuto
-        accuracyBucket = 'exact';
-        validationPoints = 40; // 10 base + 30 extra
-      } else if (timeErrorSeconds <= 120) { // ±2 minutos
-        accuracyBucket = 'close';
-        validationPoints = 35;
-      } else if (timeErrorSeconds <= 300) { // ±5 minutos
-        accuracyBucket = 'far';
-        validationPoints = 25;
-      } else {
-        accuracyBucket = 'wrong';
-        validationPoints = 10; // Solo puntos base
+      // Sistema de puntos por precisión del panel:
+      // ±1 min = +15 puntos (panel preciso)
+      // ±2-3 min = +5 puntos (error pequeño)
+      // Mayor error = +0 puntos (pero igual ayuda al sistema)
+      if (absError <= 1) {
+        precisionBonus = 15;
+      } else if (absError <= 3) {
+        precisionBonus = 5;
+      }
+      
+      validationPoints += precisionBonus;
+      
+      // Actualizar calibración de la estación si es reporte del panel
+      if (report.isPanelTime === true && report.stationId) {
+        await updateStationPanelCalibration(report.stationId, timeErrorMinutes, report.etaBucket);
       }
     } else if (result === 'not_arrived') {
       validationPoints = 15;
-      accuracyBucket = 'corrected';
     } else if (result === 'cant_confirm') {
       validationPoints = 0;
-      accuracyBucket = 'unconfirmed';
     }
     
-    // 3. Actualizar reporte
+    // 3. Actualizar reporte con arrivalTime y puntos
     const batch = db.batch();
     
     const reportRef = db.collection('reports').doc(reportId);
-    batch.update(reportRef, {
-      'validationStatus': result === 'cant_confirm' ? 'expired' : 'validated',
-      'actualArrivalTime': actualArrivalTime ? 
+    const updates = {
+      'arrivalTime': actualArrivalTime ? 
         admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      'timeErrorSeconds': timeErrorSeconds,
-      'accuracyBucket': accuracyBucket,
-      'validationPoints': validationPoints,
-      totalPoints: admin.firestore.FieldValue.increment(validationPoints),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      'bonusPoints': admin.firestore.FieldValue.increment(precisionBonus),
+      'totalPoints': admin.firestore.FieldValue.increment(validationPoints),
+    };
+    
+    batch.update(reportRef, updates);
     
     // Crear registro en subcolección de validaciones ETA
-    const validationRef = reportRef.collection('eta_validations').doc(userId);
-    batch.set(validationRef, {
-      userId: userId,
-      result: result,
-      answeredAt: admin.firestore.FieldValue.serverTimestamp(),
-      actualArrival: actualArrivalTime ? 
-        admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      expectedArrival: report.etaExpectedAt,
-      deltaSeconds: timeErrorSeconds,
-      pointsAwarded: validationPoints
-    });
+    if (actualArrivalTime && report.etaExpectedAt) {
+      const validationRef = reportRef.collection('eta_validations').doc(userId);
+      batch.set(validationRef, {
+        userId: userId,
+        result: result,
+        answeredAt: admin.firestore.FieldValue.serverTimestamp(),
+        actualArrival: admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)),
+        expectedArrival: report.etaExpectedAt,
+        deltaMinutes: timeErrorMinutes,
+        pointsAwarded: validationPoints
+      });
+    }
     
     // 4. Actualizar estadísticas del usuario
     const userRef = db.collection('users').doc(userId);
@@ -1164,5 +1191,83 @@ function getWeightedAverageTrainEstado(reports, estados) {
   }
 
   return maxEstado;
+}
+
+// Función auxiliar: Actualizar calibración del panel por estación
+async function updateStationPanelCalibration(stationId, errorMinutes, etaBucket) {
+  try {
+    const stationRef = db.collection('stations').doc(stationId);
+    const calibrationRef = stationRef.collection('panelCalibration').doc('latest');
+    
+    const calibrationDoc = await calibrationRef.get();
+    const now = admin.firestore.Timestamp.now();
+    
+    if (calibrationDoc.exists) {
+      const data = calibrationDoc.data();
+      const totalReports = (data.totalReports || 0) + 1;
+      const currentAvgError = data.avgError || 0.0;
+      
+      // Calcular nuevo error promedio
+      const newAvgError = ((currentAvgError * (totalReports - 1)) + errorMinutes) / totalReports;
+      
+      // Calcular precisión (porcentaje de reportes con error ≤ 1 minuto)
+      const accurateReports = (data.accurateReports || 0) + (Math.abs(errorMinutes) <= 1 ? 1 : 0);
+      const accuracy = (accurateReports / totalReports) * 100;
+      
+      // Calcular precisión por hora del día
+      const hourOfDay = new Date().getHours();
+      const hourKey = `hour_${hourOfDay}`;
+      const hourData = data.byHour || {};
+      const hourReports = (hourData[hourKey]?.reports || 0) + 1;
+      const hourAvgError = hourData[hourKey]?.avgError || 0.0;
+      const newHourAvgError = ((hourAvgError * (hourReports - 1)) + errorMinutes) / hourReports;
+      const hourAccurate = (hourData[hourKey]?.accurate || 0) + (Math.abs(errorMinutes) <= 1 ? 1 : 0);
+      const hourAccuracy = (hourAccurate / hourReports) * 100;
+      
+      hourData[hourKey] = {
+        reports: hourReports,
+        avgError: newHourAvgError,
+        accurate: hourAccurate,
+        accuracy: hourAccuracy,
+      };
+      
+      await calibrationRef.update({
+        totalReports: totalReports,
+        avgError: newAvgError,
+        accurateReports: accurateReports,
+        accuracy: accuracy,
+        lastUpdated: now,
+        lastError: errorMinutes,
+        byHour: hourData,
+      });
+    } else {
+      // Crear nueva calibración
+      const hourOfDay = new Date().getHours();
+      const hourKey = `hour_${hourOfDay}`;
+      
+      await calibrationRef.set({
+        totalReports: 1,
+        avgError: errorMinutes,
+        accurateReports: Math.abs(errorMinutes) <= 1 ? 1 : 0,
+        accuracy: Math.abs(errorMinutes) <= 1 ? 100.0 : 0.0,
+        lastUpdated: now,
+        lastError: errorMinutes,
+        createdAt: now,
+        byHour: {
+          [hourKey]: {
+            reports: 1,
+            avgError: errorMinutes,
+            accurate: Math.abs(errorMinutes) <= 1 ? 1 : 0,
+            accuracy: Math.abs(errorMinutes) <= 1 ? 100.0 : 0.0,
+          },
+        },
+      });
+    }
+    
+    console.log(`Panel calibration updated for station ${stationId}: error ${errorMinutes} min, accuracy ${Math.abs(errorMinutes) <= 1 ? 'high' : 'low'}`);
+  } catch (error) {
+    console.error(`Error updating station panel calibration for ${stationId}:`, error);
+    // No lanzar error, solo loggear - la calibración es opcional
+  }
 }
 

@@ -4,7 +4,6 @@ import '../models/station_model.dart';
 import '../models/simplified_report_model.dart';
 import 'station_report_flow_widget.dart';
 import '../services/simplified_report_service.dart';
-import 'station_report_sheet.dart';
 import 'train_arrival_indicator.dart';
 
 /// Bottom Sheet mejorado para mostrar información de estación
@@ -283,7 +282,7 @@ class StationBottomSheet extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
-        // Botón A: Reportar ESTACIÓN (grande, destacado)
+        // Botón: Reportar ESTACIÓN (con nuevo sistema)
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -320,39 +319,6 @@ class StationBottomSheet extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20),
               backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Botón B: Reportar TREN (grande, destacado)
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context); // Cerrar el bottom sheet actual
-              showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (sheetContext) => StationReportSheet(
-                  station: station,
-                  initialPage: 1, // Abrir directamente en la vista de reporte
-                  initialReportType: 'train', // Abrir directamente en formulario de tren
-                ),
-              );
-            },
-            icon: const Icon(Icons.train, size: 28),
-            label: const Text(
-              'REPORTAR TREN',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

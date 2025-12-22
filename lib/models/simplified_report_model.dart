@@ -24,6 +24,7 @@ class SimplifiedReportModel {
   final String? etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
   final DateTime? etaExpectedAt; // server-side: now + bucket mid-point
   final DateTime? arrivalTime; // Hora exacta cuando el tren llegó
+  final bool? isPanelTime; // true si el tiempo viene del panel digital oficial
   
   // Metadata
   final DateTime createdAt;
@@ -57,6 +58,7 @@ class SimplifiedReportModel {
     this.etaBucket,
     this.etaExpectedAt,
     this.arrivalTime,
+    this.isPanelTime,
     required this.createdAt,
     this.status = 'active',
     this.confirmations = 0,
@@ -92,6 +94,7 @@ class SimplifiedReportModel {
       arrivalTime: data['arrivalTime'] != null
           ? (data['arrivalTime'] as Timestamp).toDate()
           : null,
+      isPanelTime: data['isPanelTime'] as bool?,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       status: data['status'] ?? 'active',
       confirmations: data['confirmations'] ?? 0,
@@ -122,6 +125,7 @@ class SimplifiedReportModel {
       if (etaBucket != null) 'etaBucket': etaBucket,
       if (etaExpectedAt != null) 'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
       if (arrivalTime != null) 'arrivalTime': Timestamp.fromDate(arrivalTime!),
+      if (isPanelTime != null) 'isPanelTime': isPanelTime,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status,
       'confirmations': confirmations,
