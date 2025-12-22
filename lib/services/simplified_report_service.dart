@@ -52,9 +52,9 @@ class SimplifiedReportService {
   /// Crear reporte de tren (simplificado)
   Future<String> createTrainReport({
     required String stationId,
-    int? crowdLevel, // 1-5 (opcional - puede ser null si solo se reporta ETA)
-    String? trainStatus, // 'normal' | 'slow' | 'stopped' (opcional)
-    String? etaBucket, // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' (opcional)
+    required String operational, // 'yes' | 'partial' | 'no'
+    required int crowdLevel, // 1-5
+    List<String>? issues, // ['recharge', 'atm', 'ac', 'escalator', 'elevator']
     String? trainLine, // 'L1' | 'L2' (opcional)
     String? direction, // 'A' | 'B' (opcional)
     Position? userPosition, // Opcional
@@ -63,31 +63,17 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     final now = DateTime.now();
-    final basePoints = 20;
-    final bonusPoints = etaBucket != null && etaBucket != 'unknown' ? 10 : 0;
-
-    // Calcular etaExpectedAt si hay bucket
-    DateTime? etaExpectedAt;
-    if (etaBucket != null && etaBucket != 'unknown') {
-      final timingConfig = {
-        '1-2': 1.5, // minutos
-        '3-5': 4,
-        '6-8': 7,
-        '9+': 10,
-      };
-      final minutes = timingConfig[etaBucket] ?? 4;
-      etaExpectedAt = now.add(Duration(minutes: minutes.toInt()));
-    }
+    final basePoints = 15;
+    final bonusPoints = (issues?.length ?? 0) * 5;
 
     final report = SimplifiedReportModel(
       id: '',
       scope: 'train',
       stationId: stationId,
       userId: userId,
+      trainOperational: operational,
       trainCrowd: crowdLevel,
-      trainStatus: trainStatus,
-      etaBucket: etaBucket,
-      etaExpectedAt: etaExpectedAt,
+      trainIssues: issues ?? [],
       trainLine: trainLine,
       direction: direction,
       createdAt: now,
@@ -276,10 +262,10 @@ class SimplifiedReportService {
   Future<List<SimplifiedReportModel>> getRecentStationReports(
     String stationId, {
     int limit = 10,
+    DateTime? since,
   }) async {
     try {
-      final now = DateTime.now();
-      final oneHourAgo = now.subtract(const Duration(hours: 1));
+      final cutoffDate = since ?? DateTime.now().subtract(const Duration(hours: 1));
 
       // Consulta sin orderBy para evitar índice compuesto
       final snapshot = await _firestore
@@ -292,7 +278,7 @@ class SimplifiedReportService {
       // Filtrar por fecha y ordenar en memoria
       final reports = snapshot.docs
           .map((doc) => SimplifiedReportModel.fromFirestore(doc))
-          .where((report) => report.createdAt.isAfter(oneHourAgo))
+          .where((report) => report.createdAt.isAfter(cutoffDate))
           .toList();
       
       // Ordenar por fecha (más reciente primero) y limitar
@@ -327,6 +313,38 @@ class SimplifiedReportService {
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
     });
+  }
+
+  /// Obtener reportes recientes de trenes para una estación
+  Future<List<SimplifiedReportModel>> getRecentTrainReports(
+    String stationId, {
+    int limit = 10,
+    DateTime? since,
+  }) async {
+    try {
+      final cutoffDate = since ?? DateTime.now().subtract(const Duration(hours: 1));
+
+      // Consulta sin orderBy para evitar índice compuesto
+      final snapshot = await _firestore
+          .collection('reports')
+          .where('stationId', isEqualTo: stationId)
+          .where('scope', isEqualTo: 'train')
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      // Filtrar por fecha y ordenar en memoria
+      final reports = snapshot.docs
+          .map((doc) => SimplifiedReportModel.fromFirestore(doc))
+          .where((report) => report.createdAt.isAfter(cutoffDate))
+          .toList();
+      
+      // Ordenar por fecha (más reciente primero) y limitar
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports.take(limit).toList();
+    } catch (e) {
+      print('Error getting recent train reports: $e');
+      return [];
+    }
   }
 
   /// Stream de reportes activos (todos los usuarios)

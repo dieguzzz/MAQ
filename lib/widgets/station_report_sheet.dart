@@ -8,10 +8,9 @@ import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/learning_report_service.dart';
-import '../services/time_estimation_service.dart';
 import '../services/schedule_service.dart';
 import '../models/learning_report_model.dart';
-import 'enhanced_report_modal.dart';
+import 'station_report_flow_widget.dart';
 import 'arrival_confirmation_dialog.dart';
 
 /// Widget que combina la información de la estación y el modal de reporte
@@ -111,22 +110,20 @@ class _StationReportSheetState extends State<StationReportSheet> {
                         );
                       },
                       onReportTrain: (train) {
-                        // Cerrar el bottom sheet actual y abrir modal de reporte de tren
-                        Navigator.of(context).pop();
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          if (context.mounted) {
-                            showModalBottomSheet<void>(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (modalContext) => EnhancedReportModal(train: train),
-                            );
-                          }
-                        });
+                        // Cambiar a página de reporte de tren (si existe)
+                        // Por ahora, usar la estación actual para el reporte
+                        _pageController.animateToPage(
+                          1,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
                       },
                     ),
-                    // Página 2: Modal de reporte
-                    EnhancedReportModal(station: widget.station),
+                    // Página 2: Widget de reporte de estación
+                    StationReportFlowWidget(
+                      station: widget.station,
+                      scrollController: scrollController,
+                    ),
                   ],
                 ),
               ),
@@ -787,10 +784,10 @@ class _ArrivalConfirmationSection extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: MetroColors.blue.withOpacity(0.1),
+                    color: MetroColors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: MetroColors.blue.withOpacity(0.3),
+                      color: MetroColors.blue.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),

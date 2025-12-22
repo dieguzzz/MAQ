@@ -3,6 +3,8 @@ import '../services/firebase_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/metro_simulator_service.dart';
 import '../services/station_position_editor_service.dart';
+import '../services/station_status_aggregator.dart';
+import '../services/train_status_aggregator.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../utils/metro_data.dart';
@@ -12,6 +14,8 @@ class MetroDataProvider with ChangeNotifier {
   final AppModeService _appModeService = AppModeService();
   final MetroSimulatorService _simulator = MetroSimulatorService();
   final StationPositionEditorService _positionEditor = StationPositionEditorService();
+  final StationStatusAggregator _statusAggregator = StationStatusAggregator();
+  final TrainStatusAggregator _trainStatusAggregator = TrainStatusAggregator();
   
   List<StationModel> _stations = [];
   List<TrainModel> _trains = [];
@@ -19,6 +23,7 @@ class MetroDataProvider with ChangeNotifier {
   String _selectedLinea = 'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
   bool _streamInitialized = false;
   bool _isTestMode = false;
+  bool _reportsListenerInitialized = false;
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
@@ -142,6 +147,9 @@ class MetroDataProvider with ChangeNotifier {
           notifyListeners();
         },
       );
+
+      // Listen to reports stream para actualizar estados de estaciones
+      _initReportsListener();
     } else {
       // En modo test, usar solo datos estáticos
       print('🧪 Modo Test: Usando datos estáticos sin streams de Firestore');
@@ -263,6 +271,104 @@ class MetroDataProvider with ChangeNotifier {
 
   List<StationModel> getStationsByLinea(String linea) {
     return _stations.where((s) => s.linea == linea).toList();
+  }
+
+  /// Inicializa listener de reportes para recalcular estados de estaciones
+  void _initReportsListener() {
+    if (_reportsListenerInitialized || _isTestMode) return;
+    _reportsListenerInitialized = true;
+
+    // Escuchar cambios en reportes de estaciones
+    // Usar debounce para no recalcular demasiado frecuentemente
+    DateTime? lastUpdate;
+    _firebaseService.firestore
+        .collection('reports')
+        .where('scope', isEqualTo: 'station')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        // Debounce: solo actualizar si pasaron al menos 5 segundos desde la última actualización
+        final now = DateTime.now();
+        if (lastUpdate != null &&
+            now.difference(lastUpdate!).inSeconds < 5) {
+          return;
+        }
+        lastUpdate = now;
+
+        // Obtener stationIds únicos de los reportes que cambiaron
+        final stationIds = snapshot.docChanges
+            .map((change) {
+              final data = change.doc.data();
+              return data != null ? data['stationId'] as String? : null;
+            })
+            .whereType<String>()
+            .toSet();
+
+        // Recalcular estado para cada estación afectada
+        for (final stationId in stationIds) {
+          _statusAggregator.updateStationFromReports(stationId).catchError((e) {
+            print('Error actualizando estado de estación $stationId: $e');
+          });
+        }
+      },
+      onError: (error) {
+        print('Error en listener de reportes: $error');
+      },
+    );
+
+    // Escuchar cambios en reportes de trenes
+    // Usar debounce para no recalcular demasiado frecuentemente
+    DateTime? lastTrainUpdate;
+    _firebaseService.firestore
+        .collection('reports')
+        .where('scope', isEqualTo: 'train')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        // Debounce: solo actualizar si pasaron al menos 5 segundos desde la última actualización
+        final now = DateTime.now();
+        if (lastTrainUpdate != null &&
+            now.difference(lastTrainUpdate!).inSeconds < 5) {
+          return;
+        }
+        lastTrainUpdate = now;
+
+        // Obtener stationIds únicos de los reportes que cambiaron
+        // Nota: Por ahora usamos stationId, pero en el futuro deberíamos usar trainId
+        final stationIds = snapshot.docChanges
+            .map((change) {
+              final data = change.doc.data();
+              return data != null ? data['stationId'] as String? : null;
+            })
+            .whereType<String>()
+            .toSet();
+
+        // Recalcular estado para cada tren afectado
+        // Por ahora, actualizamos todos los trenes de las estaciones afectadas
+        // TODO: Mejorar cuando tengamos trainId en los reportes
+        for (final stationId in stationIds) {
+          // Obtener la línea del reporte para actualizar los trenes correctos
+          final reportData = snapshot.docChanges.first.doc.data();
+          final trainLine = reportData?['trainLine'];
+          
+          if (trainLine != null) {
+            // Buscar trenes de esa línea y actualizar su estado
+            // Por simplicidad, actualizamos todos los trenes de la línea
+            // En producción, esto debería ser más específico
+            _trains.where((t) => t.linea == trainLine).forEach((train) {
+              _trainStatusAggregator.updateTrainFromReports(train.id).catchError((e) {
+                print('Error actualizando estado de tren ${train.id}: $e');
+              });
+            });
+          }
+        }
+      },
+      onError: (error) {
+        print('Error en listener de reportes de trenes: $error');
+      },
+    );
   }
 }
 

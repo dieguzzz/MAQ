@@ -15,7 +15,9 @@ class SimplifiedReportModel {
   final List<String> stationIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
   
   // Train core (solo si scope === 'train')
+  final String? trainOperational; // 'yes' | 'partial' | 'no' | null
   final int? trainCrowd; // 1..5 | null
+  final List<String> trainIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
   final String? trainStatus; // 'normal' | 'slow' | 'stopped' | null
   
   // ETA reported (solo si scope === 'train')
@@ -48,7 +50,9 @@ class SimplifiedReportModel {
     this.stationOperational,
     this.stationCrowd,
     this.stationIssues = const [],
+    this.trainOperational,
     this.trainCrowd,
+    this.trainIssues = const [],
     this.trainStatus,
     this.etaBucket,
     this.etaExpectedAt,
@@ -77,7 +81,9 @@ class SimplifiedReportModel {
       stationOperational: data['stationOperational'],
       stationCrowd: data['stationCrowd'] as int?,
       stationIssues: List<String>.from(data['stationIssues'] ?? []),
+      trainOperational: data['trainOperational'],
       trainCrowd: data['trainCrowd'] as int?,
+      trainIssues: List<String>.from(data['trainIssues'] ?? []),
       trainStatus: data['trainStatus'],
       etaBucket: data['etaBucket'],
       etaExpectedAt: data['etaExpectedAt'] != null
@@ -109,7 +115,9 @@ class SimplifiedReportModel {
       if (stationOperational != null) 'stationOperational': stationOperational,
       if (stationCrowd != null) 'stationCrowd': stationCrowd,
       'stationIssues': stationIssues,
+      if (trainOperational != null) 'trainOperational': trainOperational,
       if (trainCrowd != null) 'trainCrowd': trainCrowd,
+      'trainIssues': trainIssues,
       if (trainStatus != null) 'trainStatus': trainStatus,
       if (etaBucket != null) 'etaBucket': etaBucket,
       if (etaExpectedAt != null) 'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),

@@ -463,7 +463,7 @@ exports.processReportConfirmation = functions.firestore
       if (!reportDoc.exists) return null;
 
       const report = reportDoc.data();
-      const confirmationCount = report.confirmation_count || 0;
+      const confirmationCount = report.confirmations || report.confirmation_count || 0;
 
       // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
       if (confirmationCount >= 3) {
@@ -472,8 +472,13 @@ exports.processReportConfirmation = functions.firestore
           'confidence': 0.9,
         });
 
-        // Actualizar estado de estación/tren
-        await updateStationStatus(report);
+        // Actualizar estado de estación/tren con agregación completa
+        if (report.scope === 'station' && report.stationId) {
+          await updateStationStatus(report.stationId, report);
+        } else if (report.scope === 'train' && report.stationId) {
+          // Actualizar estado de tren cuando alcanza 3 confirmaciones
+          await updateTrainStatusAggregated(report.stationId, report);
+        }
 
         // Notificar al creador del reporte
         const creatorId = report.usuario_id;
@@ -699,9 +704,16 @@ exports.onReportCreated = functions.firestore
       // 4. Actualizar estadísticas de usuario
       await updateUserStats(report.userId, basePoints + bonusPoints);
       
-      // 5. Actualizar estado de estación si aplica
-      if (report.scope === 'station') {
+      // 5. Actualizar estado de estación si aplica (con agregación completa)
+      if (report.scope === 'station' && report.stationId) {
         await updateStationStatus(report.stationId, report);
+      }
+      
+      // 6. Actualizar estado de tren si aplica (con agregación completa)
+      if (report.scope === 'train' && report.stationId) {
+        // Nota: Para trenes, necesitamos el trainId. Por ahora usamos stationId como referencia
+        // TODO: Mejorar cuando tengamos trainId en los reportes
+        await updateTrainStatusAggregated(report.stationId, report);
       }
       
       console.log(`Report ${reportId} processed: ${basePoints + bonusPoints} points`);
@@ -878,25 +890,279 @@ async function updateUserStats(userId, points) {
   }
 }
 
-// Función auxiliar: Actualizar estado de estación
+// Función auxiliar: Actualizar estado de estación con agregación de múltiples reportes
 async function updateStationStatus(stationId, newReport) {
   try {
     const stationRef = db.collection('stations').doc(stationId);
     const now = admin.firestore.Timestamp.now();
+    const thirtyMinutesAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 30 * 60 * 1000)
+    );
+
+    // Obtener todos los reportes activos de la estación de los últimos 30 minutos
+    const reportsSnapshot = await db.collection('reports')
+      .where('stationId', '==', stationId)
+      .where('scope', '==', 'station')
+      .where('status', '==', 'active')
+      .get();
+
+    // Filtrar reportes de los últimos 30 minutos y que tengan datos relevantes
+    const recentReports = reportsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(report => {
+        const createdAt = report.createdAt?.toDate();
+        return createdAt && createdAt >= thirtyMinutesAgo.toDate() &&
+               (report.stationOperational || report.stationCrowd);
+      });
+
+    if (recentReports.length === 0) {
+      // No hay reportes recientes, usar solo el nuevo reporte si tiene datos
+      if (!newReport.stationOperational || !newReport.stationCrowd) return;
+      
+      await stationRef.update({
+        'estado_actual': mapOperationalToEstado(newReport.stationOperational, newReport.stationCrowd),
+        'aglomeracion': newReport.stationCrowd,
+        'confidence': 'low',
+        'ultima_actualizacion': now,
+        'is_estimated': false,
+      });
+      return;
+    }
+
+    // Calcular estado agregado
+    const estados = recentReports
+      .map(r => mapOperationalToEstado(r.stationOperational, r.stationCrowd))
+      .filter(e => e !== null);
+
+    if (estados.length === 0) return;
+
+    let estadoActual;
+    if (estados.length === 1) {
+      estadoActual = estados[0];
+    } else if (estados.length <= 4) {
+      // Moda (más común)
+      estadoActual = getMostCommon(estados);
+    } else {
+      // Promedio ponderado por confirmaciones
+      estadoActual = getWeightedAverageEstado(recentReports, estados);
+    }
+
+    // Calcular aglomeracion promedio
+    const crowdLevels = recentReports
+      .filter(r => r.stationCrowd)
+      .map(r => r.stationCrowd);
+    const aglomeracion = crowdLevels.length > 0
+      ? Math.round(crowdLevels.reduce((a, b) => a + b, 0) / crowdLevels.length)
+      : 1;
+    const aglomeracionClamped = Math.max(1, Math.min(5, aglomeracion));
+
+    // Calcular confidence
+    const reportCountScore = Math.min(0.4, recentReports.length / 10);
+    const totalConfirmations = recentReports.reduce((sum, r) => sum + (r.confirmations || 0), 0);
+    const confirmationScore = Math.min(0.3, totalConfirmations / 20);
     
-    if (!newReport.stationOperational || !newReport.stationCrowd) return;
-    
+    // Recency score (reportes más recientes pesan más)
+    let recencyScore = 0;
+    const nowDate = new Date();
+    for (const report of recentReports) {
+      const ageMinutes = (nowDate - report.createdAt.toDate()) / (1000 * 60);
+      const weight = Math.max(0, (30 - ageMinutes) / 30);
+      recencyScore += weight;
+    }
+    recencyScore = Math.min(0.3, recencyScore / recentReports.length);
+
+    const confidenceValue = Math.min(1.0, reportCountScore + confirmationScore + recencyScore);
+    const confidence = confidenceValue >= 0.7 ? 'high' : confidenceValue >= 0.4 ? 'medium' : 'low';
+
+    // Actualizar estación
     await stationRef.update({
-      'estado_actual': newReport.stationOperational === 'yes' ? 'normal' : 
-                      newReport.stationOperational === 'partial' ? 'moderado' : 'cerrado',
-      'aglomeracion': newReport.stationCrowd,
-      'confidence': 'medium',
+      'estado_actual': estadoActual,
+      'aglomeracion': aglomeracionClamped,
+      'confidence': confidence,
       'ultima_actualizacion': now,
+      'is_estimated': false,
     });
-    
-    console.log(`Station ${stationId} status updated`);
+
+    console.log(`Station ${stationId} status updated from ${recentReports.length} reports`);
   } catch (error) {
     console.error(`Error updating station status for ${stationId}:`, error);
   }
+}
+
+// Función auxiliar: Mapear operational + crowd a estado
+function mapOperationalToEstado(operational, crowd) {
+  if (!operational) return null;
+  
+  if (operational === 'no') return 'cerrado';
+  if (operational === 'partial') return 'moderado';
+  if (operational === 'yes') {
+    if (!crowd) return 'normal';
+    if (crowd <= 2) return 'normal';
+    if (crowd === 3) return 'moderado';
+    return 'lleno'; // crowd >= 4
+  }
+  return null;
+}
+
+// Función auxiliar: Obtener promedio ponderado por confirmaciones
+function getWeightedAverageEstado(reports, estados) {
+  const weights = {};
+  
+  for (let i = 0; i < reports.length && i < estados.length; i++) {
+    const report = reports[i];
+    const estado = estados[i];
+    const weight = 1.0 + (report.confirmations || 0) * 0.5;
+    weights[estado] = (weights[estado] || 0) + weight;
+  }
+
+  let maxWeight = 0;
+  let maxEstado = estados[0];
+  for (const [estado, weight] of Object.entries(weights)) {
+    if (weight > maxWeight) {
+      maxWeight = weight;
+      maxEstado = estado;
+    }
+  }
+
+  return maxEstado;
+}
+
+// Función auxiliar: Actualizar estado de tren con agregación de múltiples reportes
+async function updateTrainStatusAggregated(stationId, newReport) {
+  try {
+    // Nota: Por ahora usamos stationId para buscar reportes de trenes
+    // En el futuro, deberíamos tener trainId en los reportes
+    const now = admin.firestore.Timestamp.now();
+    const thirtyMinutesAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 30 * 60 * 1000)
+    );
+
+    // Obtener todos los reportes activos de trenes de los últimos 30 minutos
+    // Filtrar por stationId y scope === 'train'
+    const reportsSnapshot = await db.collection('reports')
+      .where('stationId', '==', stationId)
+      .where('scope', '==', 'train')
+      .where('status', '==', 'active')
+      .get();
+
+    // Filtrar reportes de los últimos 30 minutos y que tengan datos relevantes
+    const recentReports = reportsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(report => {
+        const createdAt = report.createdAt?.toDate();
+        return createdAt && createdAt >= thirtyMinutesAgo.toDate() &&
+               (report.trainStatus || report.trainCrowd);
+      });
+
+    if (recentReports.length === 0) {
+      // No hay reportes recientes, no actualizar
+      return;
+    }
+
+    // Calcular estado agregado (normal/slow/stopped)
+    const estados = recentReports
+      .map(r => mapTrainStatusToEstado(r.trainStatus, r.trainCrowd))
+      .filter(e => e !== null);
+
+    if (estados.length === 0) return;
+
+    let estadoTren;
+    if (estados.length === 1) {
+      estadoTren = estados[0];
+    } else if (estados.length <= 4) {
+      // Moda (más común)
+      estadoTren = getMostCommon(estados);
+    } else {
+      // Promedio ponderado por confirmaciones
+      estadoTren = getWeightedAverageTrainEstado(recentReports, estados);
+    }
+
+    // Calcular aglomeracion promedio
+    const crowdLevels = recentReports
+      .filter(r => r.trainCrowd)
+      .map(r => r.trainCrowd);
+    const aglomeracion = crowdLevels.length > 0
+      ? Math.round(crowdLevels.reduce((a, b) => a + b, 0) / crowdLevels.length)
+      : 1;
+    const aglomeracionClamped = Math.max(1, Math.min(5, aglomeracion));
+
+    // Calcular confidence (similar a estaciones)
+    const reportCountScore = Math.min(0.4, recentReports.length / 10);
+    const totalConfirmations = recentReports.reduce((sum, r) => sum + (r.confirmations || 0), 0);
+    const confirmationScore = Math.min(0.3, totalConfirmations / 20);
+    
+    // Recency score (reportes más recientes pesan más)
+    let recencyScore = 0;
+    const nowDate = new Date();
+    for (const report of recentReports) {
+      const ageMinutes = (nowDate - report.createdAt.toDate()) / (1000 * 60);
+      const weight = Math.max(0, (30 - ageMinutes) / 30);
+      recencyScore += weight;
+    }
+    recencyScore = Math.min(0.3, recencyScore / recentReports.length);
+
+    const confidenceValue = Math.min(1.0, reportCountScore + confirmationScore + recencyScore);
+    const confidence = confidenceValue >= 0.7 ? 'high' : confidenceValue >= 0.4 ? 'medium' : 'low';
+
+    // Buscar trenes que correspondan a esta estación
+    // Por ahora, actualizamos todos los trenes de la misma línea
+    // TODO: Mejorar cuando tengamos mejor asociación tren-estación
+    const trainLine = newReport.trainLine || recentReports[0]?.trainLine;
+    if (trainLine) {
+      const trainsSnapshot = await db.collection('trains')
+        .where('linea', '==', trainLine)
+        .get();
+
+      const batch = db.batch();
+      trainsSnapshot.docs.forEach(doc => {
+        batch.update(doc.ref, {
+          'estado': estadoTren,
+          'aglomeracion': aglomeracionClamped,
+          'confidence': confidence,
+          'ultima_actualizacion': now,
+          'is_estimated': false,
+        });
+      });
+
+      await batch.commit();
+      console.log(`Train status updated for ${trainsSnapshot.size} trains from ${recentReports.length} reports`);
+    }
+  } catch (error) {
+    console.error(`Error updating train status:`, error);
+  }
+}
+
+// Función auxiliar: Mapear trainStatus + trainCrowd a estado de tren
+function mapTrainStatusToEstado(trainStatus, trainCrowd) {
+  if (!trainStatus) return null;
+  
+  if (trainStatus === 'stopped') return 'detenido';
+  if (trainStatus === 'slow') return 'retrasado';
+  if (trainStatus === 'normal') return 'normal';
+  
+  return null;
+}
+
+// Función auxiliar: Obtener promedio ponderado por confirmaciones para trenes
+function getWeightedAverageTrainEstado(reports, estados) {
+  const weights = {};
+  
+  for (let i = 0; i < reports.length && i < estados.length; i++) {
+    const report = reports[i];
+    const estado = estados[i];
+    const weight = 1.0 + (report.confirmations || 0) * 0.5;
+    weights[estado] = (weights[estado] || 0) + weight;
+  }
+
+  let maxWeight = 0;
+  let maxEstado = estados[0];
+  for (const [estado, weight] of Object.entries(weights)) {
+    if (weight > maxWeight) {
+      maxWeight = weight;
+      maxEstado = estado;
+    }
+  }
+
+  return maxEstado;
 }
 

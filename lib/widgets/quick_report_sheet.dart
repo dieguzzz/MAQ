@@ -9,7 +9,6 @@ import '../providers/auth_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../providers/report_provider.dart';
-import '../screens/reports/report_screen.dart';
 import '../theme/metro_theme.dart';
 import '../services/ad_service.dart';
 import '../services/ad_session_service.dart';
@@ -161,17 +160,6 @@ class _QuickReportSheetState extends State<QuickReportSheet>
                         child: const Text('Enviar'),
                       ),
                     ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const ReportScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text('Ver formulario completo'),
-                      ),
                     ],
                   ),
                 ),

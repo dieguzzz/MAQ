@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../widgets/custom_metro_map.dart';
-import '../../widgets/enhanced_report_modal.dart';
+import '../../widgets/train_report_flow_widget.dart';
 import '../../widgets/station_report_sheet.dart';
 import '../../widgets/station_coordinates_log.dart';
 import '../../models/station_model.dart';
@@ -130,13 +130,44 @@ class CustomMapScreen extends StatelessWidget {
         ),
       );
     } else if (train != null) {
-      // Para trenes: abrir directamente el modal de reporte
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => EnhancedReportModal(train: train),
-      );
+      // Para trenes: abrir pantalla de reporte de tren
+      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final stations = metroProvider.stations;
+      
+      // Buscar una estación de la misma línea
+      StationModel? station;
+      if (stations.isNotEmpty) {
+        station = stations.firstWhere(
+          (s) => s.linea == train.linea,
+          orElse: () => stations.first,
+        );
+      }
+      
+      if (station != null) {
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.75,
+            minChildSize: 0.5,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: TrainReportFlowWidget(
+                  station: station!,
+                  scrollController: scrollController,
+                ),
+              );
+            },
+          ),
+        );
+      }
     }
   }
 }

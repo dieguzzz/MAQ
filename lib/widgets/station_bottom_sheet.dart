@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/station_model.dart';
-import '../models/enhanced_report_model.dart';
-import '../screens/reports/station_report_flow.dart';
+import '../models/simplified_report_model.dart';
+import 'station_report_flow_widget.dart';
+import '../services/simplified_report_service.dart';
 import 'station_report_sheet.dart';
 import 'train_arrival_indicator.dart';
 
 /// Bottom Sheet mejorado para mostrar información de estación
 class StationBottomSheet extends StatelessWidget {
   final StationModel station;
-  final List<EnhancedReportModel>? recentReports;
 
   const StationBottomSheet({
     super.key,
     required this.station,
-    this.recentReports,
   });
 
   @override
@@ -100,8 +100,7 @@ class StationBottomSheet extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // Últimos reportes
-                      if (recentReports != null && recentReports!.isNotEmpty)
-                        _buildRecentReports(context),
+                      _buildRecentReports(context),
                     ],
                   ),
                 ),
@@ -292,8 +291,23 @@ class StationBottomSheet extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => StationReportFlowScreen(
-                    station: station,
+                  builder: (context) => DraggableScrollableSheet(
+                    expand: false,
+                    initialChildSize: 0.75,
+                    minChildSize: 0.5,
+                    maxChildSize: 0.9,
+                    builder: (sheetContext, scrollController) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                        ),
+                        child: StationReportFlowWidget(
+                          station: station,
+                          scrollController: scrollController,
+                        ),
+                      );
+                    },
                   ),
                 ),
               );
@@ -351,26 +365,80 @@ class StationBottomSheet extends StatelessWidget {
   }
 
   Widget _buildRecentReports(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Últimos reportes:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...recentReports!.take(3).map((report) => _buildReportItem(report)),
-      ],
+    final reportService = SimplifiedReportService();
+    
+    return StreamBuilder<List<SimplifiedReportModel>>(
+      stream: _getRecentReportsStream(reportService),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+
+        final reports = snapshot.data ?? [];
+        if (reports.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Últimos reportes:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...reports.take(3).map((report) => _buildReportItem(report)),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildReportItem(EnhancedReportModel report) {
+  Stream<List<SimplifiedReportModel>> _getRecentReportsStream(
+    SimplifiedReportService reportService,
+  ) {
+    // Usar Firestore stream para actualizaciones en tiempo real
+    return FirebaseFirestore.instance
+        .collection('reports')
+        .where('stationId', isEqualTo: station.id)
+        .where('scope', isEqualTo: 'station')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final now = DateTime.now();
+      final oneHourAgo = now.subtract(const Duration(hours: 1));
+      
+      final reports = snapshot.docs
+          .map((doc) => SimplifiedReportModel.fromFirestore(doc))
+          .where((report) => report.createdAt.isAfter(oneHourAgo))
+          .toList();
+      
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports.take(3).toList();
+    });
+  }
+
+  Widget _buildReportItem(SimplifiedReportModel report) {
     final minutos = DateTime.now().difference(report.createdAt).inMinutes;
-    final estado = report.stationData?.operational ?? 'yes';
+    final estado = report.stationOperational ?? 'yes';
+    final crowd = report.stationCrowd;
     final emoji = estado == 'yes' ? '🟢' : estado == 'partial' ? '🟡' : '🔴';
+    final confirmaciones = report.confirmations;
+    
+    String estadoTexto = _getEstadoTextoFromOperational(estado);
+    if (crowd != null) {
+      estadoTexto += ' (Crowd: $crowd/5)';
+    }
+    if (confirmaciones > 0) {
+      estadoTexto += ' ✓$confirmaciones';
+    }
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -380,7 +448,7 @@ class StationBottomSheet extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Usuario: $emoji ${_getEstadoTextoFromOperational(estado)} ($minutos min)',
+              '$estadoTexto ($minutos min)',
               style: const TextStyle(fontSize: 14),
             ),
           ),

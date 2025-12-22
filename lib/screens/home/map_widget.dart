@@ -10,7 +10,7 @@ import '../../services/train_simulation_service.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 import '../../widgets/station_report_sheet.dart';
-import '../../widgets/enhanced_report_modal.dart';
+import '../../widgets/train_report_flow_widget.dart';
 import '../../widgets/station_position_editor_modal.dart';
 import '../../services/app_mode_service.dart';
 import '../../providers/auth_provider.dart';
@@ -111,12 +111,45 @@ class _MapWidgetState extends State<MapWidget> {
 
   Future<void> _showTrainReportModal(TrainModel train) async {
     if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EnhancedReportModal(train: train),
-    );
+    // Obtener la estación más cercana al tren o usar la estación actual
+    final metroDataProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final stations = metroDataProvider.stations;
+    
+    // Buscar la estación más cercana al tren o usar la primera estación de la línea
+    StationModel? station;
+    if (stations.isNotEmpty) {
+      // Intentar encontrar una estación de la misma línea
+      station = stations.firstWhere(
+        (s) => s.linea == train.linea,
+        orElse: () => stations.first,
+      );
+    }
+    
+    if (station != null && mounted) {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: TrainReportFlowWidget(
+                station: station!,
+                scrollController: scrollController,
+              ),
+            );
+          },
+        ),
+      );
+    }
   }
 
   Future<void> _updateStationMarkers(List<StationModel> stations) async {
