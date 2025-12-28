@@ -28,6 +28,7 @@ import 'services/ad_session_service.dart';
 import 'widgets/dev/floating_dev_window.dart';
 import 'services/dev_service.dart';
 import 'widgets/points_reward_listener.dart';
+import 'services/simplified_report_service.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
@@ -75,6 +76,15 @@ void main() async {
     print('❌ Error inicializando AdSessionService (no crítico): $e');
   });
   print('📊 Inicialización de AdSessionService iniciada (asíncrona)');
+  
+  // Inicializar limpieza automática de reportes
+  try {
+    final reportService = SimplifiedReportService();
+    reportService.startAutoCleanup();
+    print('🧹 Limpieza automática de reportes iniciada');
+  } catch (e) {
+    print('❌ Error iniciando limpieza automática (no crítico): $e');
+  }
   
   try {
     // Set up background message handler

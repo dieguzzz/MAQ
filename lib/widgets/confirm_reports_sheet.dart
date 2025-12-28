@@ -197,7 +197,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           // Lista de reportes
           Expanded(
             child: StreamBuilder<List<SimplifiedReportModel>>(
-              stream: _reportService.getActiveReportsStream(),
+              stream: _reportService.getReportsForConfirmationStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -217,22 +217,20 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 }
 
                 final allReports = snapshot.data ?? [];
-                // Filtrar reportes de otros usuarios y por tipo
-                var otherUsersReports = allReports
-                    .where((report) => report.userId != user.uid)
-                    .toList();
+                // Mostrar todos los reportes (propios y de otros)
+                var filteredReports = allReports.toList();
 
                 // Filtrar por tipo si está seleccionado
                 if (_selectedReportType != null) {
-                  otherUsersReports = otherUsersReports
+                  filteredReports = filteredReports
                       .where((report) => report.scope == _selectedReportType)
                       .toList();
                 }
 
                 // Ordenar por más recientes primero
-                otherUsersReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                filteredReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                if (otherUsersReports.isEmpty) {
+                if (filteredReports.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -279,7 +277,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                         const SizedBox(height: 8),
                         Text(
                           _selectedReportType == null
-                              ? 'Los reportes de otros usuarios aparecerán aquí'
+                              ? 'Los reportes aparecerán aquí'
                               : 'No hay reportes de ${_selectedReportType == 'station' ? 'estaciones' : 'trenes'} para confirmar',
                           style: TextStyle(
                             fontSize: 14,
@@ -294,9 +292,9 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: otherUsersReports.length,
+                  itemCount: filteredReports.length,
                   itemBuilder: (context, index) {
-                    final report = otherUsersReports[index];
+                    final report = filteredReports[index];
                     return TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0.0, end: 1.0),
                       duration: Duration(milliseconds: 300 + (index * 50)),
@@ -326,8 +324,12 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     SimplifiedReportModel report,
     String currentUserId,
   ) {
+    final isOwnReport = report.userId == currentUserId;
+    
     return FutureBuilder<bool>(
-      future: _firebaseService.hasUserConfirmedReport(report.id, currentUserId),
+      future: isOwnReport 
+          ? Future.value(false) 
+          : _firebaseService.hasUserConfirmedReport(report.id, currentUserId),
       builder: (context, confirmationSnapshot) {
         final isVerified = confirmationSnapshot.data ?? false;
 
@@ -456,7 +458,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                       ],
                                     ),
                                   ),
-                                  if (!isVerified)
+                                  if (!isVerified && !isOwnReport)
                                     TweenAnimationBuilder<double>(
                                       tween: Tween(begin: 0.0, end: 1.0),
                                       duration: const Duration(milliseconds: 400),
@@ -634,6 +636,18 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                 ),
                               ],
                             ] else if (report.scope == 'train') ...[
+                              // Si es un reporte de llegada directa (tiene arrivalTime pero no etaBucket)
+                              if (report.arrivalTime != null && 
+                                  (report.etaBucket == null || report.etaBucket == 'unknown')) ...[
+                                _buildModernInfoRow(
+                                  Icons.check_circle,
+                                  'Llegada confirmada',
+                                  'Llegó a las ${_formatTime(report.arrivalTime!)}',
+                                  Colors.green,
+                                ),
+                                if (report.trainCrowd != null || report.trainStatus != null)
+                                  const SizedBox(height: 12),
+                              ],
                               if (report.trainCrowd != null) ...[
                                 _buildModernInfoRow(
                                   Icons.people,
@@ -827,6 +841,10 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     }
   }
 
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _confirmReport(
     BuildContext context,
     String reportId,
@@ -861,6 +879,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     MetroDataProvider metroProvider,
     String currentUserId,
   ) {
+    final isOwnReport = report.userId == currentUserId;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1000,6 +1020,16 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   ),
                 ],
               ] else if (report.scope == 'train') ...[
+                // Si es un reporte de llegada directa
+                if (report.arrivalTime != null && 
+                    (report.etaBucket == null || report.etaBucket == 'unknown')) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    Icons.check_circle,
+                    'Llegada confirmada',
+                    'Llegó a las ${_formatTime(report.arrivalTime!)}',
+                  ),
+                ],
                 if (report.trainCrowd != null) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
@@ -1031,52 +1061,75 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 ],
               ],
               const SizedBox(height: 24),
-              FutureBuilder<bool>(
-                future: _firebaseService.hasUserConfirmedReport(
-                    report.id, currentUserId),
-                builder: (context, snapshot) {
-                  final isConfirmed = snapshot.data ?? false;
-                  if (!isConfirmed) {
-                    return SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          Navigator.of(context).pop(); // Cerrar bottom sheet
-                          await _confirmReport(context, report.id, currentUserId);
-                        },
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Confirmar este reporte'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: MetroColors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    );
-                  }
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text(
-                          'Ya confirmaste este reporte',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
+              if (!isOwnReport)
+                FutureBuilder<bool>(
+                  future: _firebaseService.hasUserConfirmedReport(
+                      report.id, currentUserId),
+                  builder: (context, snapshot) {
+                    final isConfirmed = snapshot.data ?? false;
+                    if (!isConfirmed) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.of(context).pop(); // Cerrar bottom sheet
+                            await _confirmReport(context, report.id, currentUserId);
+                          },
+                          icon: const Icon(Icons.check_circle),
+                          label: const Text('Confirmar este reporte'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MetroColors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      );
+                    }
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          SizedBox(width: 8),
+                          Text(
+                            'Ya confirmaste este reporte',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.grey),
+                      SizedBox(width: 8),
+                      Text(
+                        'No puedes confirmar tu propio reporte',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

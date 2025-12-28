@@ -2,101 +2,81 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/station_model.dart';
-import '../services/simplified_report_service.dart';
+import '../services/train_time_report_service.dart';
 import '../services/location_service.dart';
-import '../services/report_progress_service.dart';
+import '../utils/train_direction_helper.dart';
 import '../widgets/points_reward_animation.dart';
 import '../theme/metro_theme.dart';
 
-/// Widget de flujo de reporte de estación para usar en bottom sheet
-class StationReportFlowWidget extends StatefulWidget {
+/// Widget de flujo para reportar tiempos de tren desde la pantalla de la estación
+class TrainTimeReportFlowWidget extends StatefulWidget {
   final StationModel station;
   final ScrollController? scrollController;
 
-  const StationReportFlowWidget({
+  const TrainTimeReportFlowWidget({
     super.key,
     required this.station,
     this.scrollController,
   });
 
   @override
-  State<StationReportFlowWidget> createState() => _StationReportFlowWidgetState();
+  State<TrainTimeReportFlowWidget> createState() => _TrainTimeReportFlowWidgetState();
 }
 
-class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
+class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
   late PageController _pageController;
   int _currentPage = 0;
-  
-  // Pregunta 1: Información básica
-  String? _operational; // 'yes' | 'partial' | 'no'
-  int? _crowdLevel; // 1-5
-  
-  // Pregunta 3: Problemas específicos (opcional)
-  final Set<String> _selectedIssues = {};
-  
-  final SimplifiedReportService _reportService = SimplifiedReportService();
-  final ReportProgressService _progressService = ReportProgressService();
+
+  // Estado del formulario
+  String? _selectedDirection; // Nombre de destino: 'Villa Zaita', 'Albrook', etc.
+  String? _nextTrainRange; // '0-1', '2', '3', '4', '5', '5+', 'no-appears'
+  String? _followingTrainRange; // '3-4', '5-6', '7-8', '10+', 'not-seen' (opcional)
+
+  final TrainTimeReportService _reportService = TrainTimeReportService();
   bool _isSubmitting = false;
-  bool _isLoadingProgress = true;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _loadProgress();
+    _checkLocationAndProximity();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _saveProgress();
     super.dispose();
   }
 
-  Future<void> _loadProgress() async {
+  /// Verifica ubicación y proximidad a la estación (en segundo plano, sin bloquear UI)
+  Future<void> _checkLocationAndProximity() async {
+    // Verificar en segundo plano sin bloquear la UI
     try {
-      final progress = await _progressService.getStationReportProgress(widget.station.id);
-      if (progress != null && mounted) {
-        setState(() {
-          _operational = progress['operational'] as String?;
-          _crowdLevel = progress['crowdLevel'] as int?;
-          final issues = progress['selectedIssues'] as List<dynamic>?;
-          if (issues != null) {
-            _selectedIssues.clear();
-            _selectedIssues.addAll(issues.map((e) => e.toString()));
+      final locationService = LocationService();
+      
+      // Intentar obtener permisos (solicitará si están denegados)
+      final hasPermission = await locationService.checkLocationPermission();
+      
+      if (hasPermission) {
+        final position = await locationService.getCurrentPosition();
+        if (position != null) {
+          final distance = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            widget.station.ubicacion.latitude,
+            widget.station.ubicacion.longitude,
+          );
+
+          // Si está fuera de 150 metros, mostrar advertencia pero permitir continuar
+          if (distance > 150) {
+            print('Advertencia: Usuario fuera de la estación (${distance.toStringAsFixed(0)}m)');
           }
-          _isLoadingProgress = false;
-        });
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoadingProgress = false;
-          });
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingProgress = false;
-        });
-      }
+      print('Error verificando ubicación: $e');
     }
-  }
-
-  Future<void> _saveProgress() async {
-    try {
-      if (_operational != null || _crowdLevel != null || _selectedIssues.isNotEmpty) {
-        await _progressService.saveStationReportProgress(
-          stationId: widget.station.id,
-          operational: _operational,
-          crowdLevel: _crowdLevel,
-          selectedIssues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
-          showOptionalDetails: false,
-        );
-      }
-    } catch (e) {
-      print('❌ Error al guardar progreso: $e');
-    }
+    // No cambiar _isCheckingLocation, la UI ya está visible
   }
 
   void _nextPage() {
@@ -119,15 +99,11 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingProgress) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return Column(
       children: [
         // Header con título y progreso
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -135,7 +111,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Reportar: ${widget.station.nombre}',
+                      'Próximos trenes',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: MetroColors.grayDark,
                         fontWeight: FontWeight.w700,
@@ -149,6 +125,13 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.station.nombre,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: MetroColors.grayDark.withValues(alpha: 0.7),
+                ),
               ),
               const SizedBox(height: 12),
               // Indicadores de página
@@ -176,9 +159,9 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
               });
             },
             children: [
-              _buildPage1(),
-              _buildPage2(),
-              _buildPage3(),
+              _buildPage1(), // Dirección
+              _buildPage2(), // Próximo tren
+              _buildPage3(), // Siguiente tren (opcional) + confirmación
             ],
           ),
         ),
@@ -186,8 +169,10 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  // Página 1: ¿La estación está funcionando?
+  // Página 1: ¿Hacia dónde vas?
   Widget _buildPage1() {
+    final directions = TrainDirectionHelper.getAvailableDirections(widget.station.linea);
+
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -195,7 +180,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '1. ¿La estación está funcionando?',
+            '1. ¿Hacia dónde vas?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: MetroColors.grayDark,
@@ -203,56 +188,30 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Piensa en lo básico: entrar, pasar torniquetes, movilidad y servicio.',
+            'Selecciona la dirección del tren que estás esperando',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: MetroColors.grayMedium,
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 24),
-          _buildOptionCard(
-            value: 'yes',
-            icon: Icons.check_circle,
-            iconColor: Colors.green,
-            title: '✅ Sí, todo normal',
-            isSelected: _operational == 'yes',
+          ...directions.map((direction) => _buildDirectionCard(
+            direction: direction,
+            isSelected: _selectedDirection == direction,
             onTap: () {
-              setState(() => _operational = 'yes');
-              _saveProgress();
+              setState(() => _selectedDirection = direction);
             },
-          ),
-          _buildOptionCard(
-            value: 'partial',
-            icon: Icons.warning,
-            iconColor: Colors.orange,
-            title: '⚠️ Sí, pero con fallas',
-            isSelected: _operational == 'partial',
-            onTap: () {
-              setState(() => _operational = 'partial');
-              _saveProgress();
-            },
-          ),
-          _buildOptionCard(
-            value: 'no',
-            icon: Icons.cancel,
-            iconColor: Colors.red,
-            title: '🚫 No / cerrada',
-            isSelected: _operational == 'no',
-            onTap: () {
-              setState(() => _operational = 'no');
-              _saveProgress();
-            },
-          ),
+          )),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _operational != null
-                ? () {
-                    HapticFeedback.lightImpact();
-                    _nextPage();
-                  }
-                : null,
+              onPressed: _selectedDirection != null
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      _nextPage();
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: MetroColors.blue,
@@ -270,8 +229,18 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  // Página 2: ¿Qué tan llena está la estación ahora?
+  // Página 2: ¿En cuántos minutos llega el próximo tren?
   Widget _buildPage2() {
+    final timeRanges = [
+      {'value': '0-1', 'label': '0-1 min', 'color': Colors.green},
+      {'value': '2', 'label': '2 min', 'color': Colors.green},
+      {'value': '3', 'label': '3 min', 'color': Colors.orange},
+      {'value': '4', 'label': '4 min', 'color': Colors.orange},
+      {'value': '5', 'label': '5 min', 'color': Colors.orange},
+      {'value': '5+', 'label': '5+ min', 'color': Colors.red},
+      {'value': 'no-appears', 'label': 'No aparece / No llegó', 'color': Colors.grey},
+    ];
+
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -279,42 +248,57 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '2. ¿Qué tan llena está la estación ahora?',
+            '2. ¿En cuántos minutos llega el próximo tren?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: MetroColors.grayDark,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Copia exactamente lo que ves en la pantalla de la estación',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: MetroColors.grayMedium,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 24),
-          _buildCrowdOption(1, '🟢 Baja', 'Caminas fácil', Colors.green),
-          _buildCrowdOption(2, '🟡 Moderada', 'Hay fila / se siente', Colors.orange),
-          _buildCrowdOption(3, '🟠 Llena', 'Cuesta moverse', Colors.deepOrange),
-          _buildCrowdOption(4, '🔴 Muy llena', 'Apretado', Colors.red),
-          _buildCrowdOption(5, '💀 Sardina', 'No se puede avanzar', Colors.purple),
+          ...timeRanges.map((range) {
+            final isSelected = _nextTrainRange == range['value'];
+            final color = range['color'] as Color;
+            return _buildTimeOptionCard(
+              label: range['label'] as String,
+              isSelected: isSelected,
+              color: color,
+              onTap: () {
+                setState(() => _nextTrainRange = range['value'] as String);
+              },
+            );
+          }),
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _previousPage();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text('ANTERIOR'),
+                child: OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _previousPage();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
+                  child: const Text('ANTERIOR'),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _crowdLevel != null
-                        ? () {
-                            HapticFeedback.lightImpact();
-                            _nextPage();
-                          }
-                        : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _nextTrainRange != null
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _nextPage();
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: MetroColors.blue,
@@ -334,8 +318,20 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  // Página 3: ¿Qué está fallando? (opcional)
+  // Página 3: ¿Y el siguiente tren? (opcional) + confirmación
   Widget _buildPage3() {
+    const followingRanges = [
+      {'value': '3-4', 'label': '3-4 min'},
+      {'value': '5-6', 'label': '5-6 min'},
+      {'value': '7-8', 'label': '7-8 min'},
+      {'value': '10+', 'label': '10+ min'},
+      {'value': 'not-seen', 'label': 'No lo vi'},
+    ];
+
+    const basePoints = 10;
+    final followingBonus = _followingTrainRange != null ? 5 : 0;
+    final totalPoints = basePoints + followingBonus;
+
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -343,7 +339,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '3. ¿Qué está fallando? (opcional)',
+            '3. ¿Y el siguiente tren? (opcional)',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: MetroColors.grayDark,
@@ -351,17 +347,33 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Marca solo lo que NO está funcionando.',
+            'Si también viste el tiempo del siguiente tren, compártelo',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: MetroColors.grayMedium,
               fontSize: 13,
             ),
           ),
-          const SizedBox(height: 16),
-          _buildOptionalDetails(),
+          const SizedBox(height: 24),
+          ...followingRanges.map((range) {
+            final isSelected = _followingTrainRange == range['value'];
+            return _buildTimeOptionCard(
+              label: range['label'] as String,
+              isSelected: isSelected,
+              color: Colors.blue,
+              onTap: () {
+                setState(() {
+                  if (_followingTrainRange == range['value']) {
+                    _followingTrainRange = null; // Deseleccionar
+                  } else {
+                    _followingTrainRange = range['value'] as String;
+                  }
+                });
+              },
+            );
+          }),
           const SizedBox(height: 24),
           // Resumen antes de enviar
-          if (_operational != null && _crowdLevel != null) ...[
+          if (_selectedDirection != null && _nextTrainRange != null) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -393,6 +405,8 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
             ),
             const SizedBox(height: 16),
           ],
+          const SizedBox(height: 24),
+          // Puntos
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -411,10 +425,11 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                 const Icon(Icons.stars, color: Colors.green),
                 const SizedBox(width: 8),
                 Text(
-                  'Ganas: +${15 + (_selectedIssues.length * 5)} puntos',
+                  'Ganas: +$totalPoints puntos',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
+                    fontSize: 16,
                   ),
                 ),
               ],
@@ -452,12 +467,11 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                     ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: Colors.green,
+                backgroundColor: MetroColors.blue,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 8,
               ),
             ),
           ),
@@ -467,60 +481,8 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  Widget _buildOptionalDetails() {
-    final issues = [
-      {'id': 'recharge', 'icon': '🎫', 'title': 'Recarga / máquina dañada'},
-      {'id': 'atm', 'icon': '💵', 'title': 'Cajero sin servicio'},
-      {'id': 'ac', 'icon': '❄️', 'title': 'Aire acondicionado no funciona (solo estaciones subterráneas)'},
-      {'id': 'escalator', 'icon': '⬆️', 'title': 'Escaleras eléctricas dañadas'},
-      {'id': 'elevator', 'icon': '♿', 'title': 'Elevador fuera de servicio'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ...issues.map((issue) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildIssueCheckbox(
-            issue['id']!,
-            issue['icon']!,
-            issue['title']!,
-          ),
-        )),
-        if (_selectedIssues.isNotEmpty) ...[
-          const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.blue, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+${_selectedIssues.length * 5} puntos por problemas',
-                    style: TextStyle(
-                      color: Colors.blue[800],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildOptionCard({
-    required String value,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
+  Widget _buildDirectionCard({
+    required String direction,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -535,13 +497,13 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
             onTap: onTap,
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
                         colors: [
-                          iconColor.withValues(alpha: 0.15),
-                          iconColor.withValues(alpha: 0.05),
+                          MetroColors.blue.withValues(alpha: 0.15),
+                          MetroColors.blue.withValues(alpha: 0.05),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -551,14 +513,14 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
-                      ? iconColor.withValues(alpha: 0.5)
+                      ? MetroColors.blue.withValues(alpha: 0.5)
                       : Colors.grey[300]!,
                   width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: iconColor.withValues(alpha: 0.3),
+                          color: MetroColors.blue.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -573,15 +535,15 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
               ),
               child: Row(
                 children: [
-                  Icon(icon, color: iconColor, size: 28),
+                  const Text('🚇', style: TextStyle(fontSize: 32)),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
-                      title,
+                      direction,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? iconColor : Colors.grey[800],
+                        color: isSelected ? MetroColors.blue : Colors.grey[800],
                       ),
                     ),
                   ),
@@ -590,9 +552,9 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.elasticOut,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(
-                        color: Colors.blue,
+                        color: MetroColors.blue,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -611,168 +573,200 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
-    final isSelected = _crowdLevel == level;
-    
-    // Mapear emoji a icono para consistencia con página 1
-    IconData icon;
-    switch (level) {
-      case 1:
-        icon = Icons.check_circle;
-        break;
-      case 2:
-        icon = Icons.info;
-        break;
-      case 3:
-        icon = Icons.warning;
-        break;
-      case 4:
-        icon = Icons.error;
-        break;
-      case 5:
-        icon = Icons.cancel;
-        break;
-      default:
-        icon = Icons.circle;
-    }
-    
-    return _buildOptionCard(
-      value: level.toString(),
-      icon: icon,
-      iconColor: color,
-      title: '$emoji $subtitle',
-      isSelected: isSelected,
-      onTap: () {
-        setState(() => _crowdLevel = level);
-        _saveProgress();
-      },
-    );
-  }
-
-  Widget _buildIssueCheckbox(String id, String icon, String title) {
-    final isSelected = _selectedIssues.contains(id);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blue[50] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? Colors.blue : Colors.grey[300]!,
-          width: isSelected ? 2 : 1,
+  Widget _buildTimeChip({
+    required String label,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
         ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                _selectedIssues.remove(id);
-              } else {
-                _selectedIssues.add(id);
-              }
-            });
-            _saveProgress();
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.blue.withValues(alpha: 0.1) : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      icon,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? Colors.blue[800] : Colors.grey[800],
-                    ),
-                  ),
-                ),
-                AnimatedScale(
-                  scale: isSelected ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.elasticOut,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? color : Colors.grey[800],
           ),
         ),
       ),
     );
   }
 
+  Widget _buildTimeOptionCard({
+    required String label,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    // Mapear label a icono
+    IconData icon = Icons.access_time;
+    if (label.contains('min')) {
+      icon = Icons.schedule;
+    } else if (label.contains('No')) {
+      icon = Icons.cancel;
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 - (value * 0.02),
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? LinearGradient(
+                        colors: [
+                          color.withValues(alpha: 0.15),
+                          color.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: !isSelected ? Colors.grey[50] : null,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.5)
+                      : Colors.grey[300]!,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: isSelected ? color : Colors.grey[600],
+                    size: 24,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? color : Colors.grey[800],
+                      ),
+                    ),
+                  ),
+                  AnimatedScale(
+                    scale: isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.elasticOut,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   String _buildSummaryText() {
     final parts = <String>[];
     
-    // Estado operativo
-    if (_operational == 'yes') {
-      parts.add('Funciona ✅');
-    } else if (_operational == 'partial') {
-      parts.add('Funciona con fallas ⚠️');
-    } else if (_operational == 'no') {
-      parts.add('No funciona / cerrada 🚫');
+    // Dirección
+    if (_selectedDirection != null) {
+      parts.add('🚇 $_selectedDirection');
     }
     
-    // Nivel de llenura
-    if (_crowdLevel != null) {
-      final crowdLabels = {
-        1: 'Baja 🟢',
-        2: 'Moderada 🟡',
-        3: 'Llena 🟠',
-        4: 'Muy llena 🔴',
-        5: 'Sardina 💀',
-      };
-      parts.add(crowdLabels[_crowdLevel] ?? '');
+    // Próximo tren
+    if (_nextTrainRange != null) {
+      parts.add('Próximo: ${_getNextTrainLabel()}');
     }
     
-    // Fallas
-    if (_selectedIssues.isNotEmpty) {
-      final issueLabels = {
-        'recharge': 'Recarga',
-        'atm': 'Cajero',
-        'ac': 'Aire acondicionado',
-        'escalator': 'Escaleras',
-        'elevator': 'Elevador',
-      };
-      final issuesList = _selectedIssues.map((id) => issueLabels[id] ?? id).join(', ');
-      parts.add('Fallas: $issuesList');
-    } else {
-      parts.add('Sin fallas reportadas');
+    // Siguiente tren (si existe)
+    if (_followingTrainRange != null) {
+      parts.add('Siguiente: ${_getFollowingTrainLabel()}');
     }
     
     return parts.join(' • ');
   }
 
+  String _getNextTrainLabel() {
+    if (_nextTrainRange == null) return '';
+    final labels = {
+      '0-1': '0-1 min',
+      '2': '2 min',
+      '3': '3 min',
+      '4': '4 min',
+      '5': '5 min',
+      '5+': '5+ min',
+      'no-appears': 'No aparece',
+    };
+    return labels[_nextTrainRange] ?? _nextTrainRange!;
+  }
+
+  String _getFollowingTrainLabel() {
+    if (_followingTrainRange == null) return '';
+    final labels = {
+      '3-4': '3-4 min',
+      '5-6': '5-6 min',
+      '7-8': '7-8 min',
+      '10+': '10+ min',
+      'not-seen': 'No lo vi',
+    };
+    return labels[_followingTrainRange] ?? _followingTrainRange!;
+  }
+
   bool _canSubmit() {
-    return _operational != null && _crowdLevel != null && !_isSubmitting;
+    return _selectedDirection != null &&
+        _nextTrainRange != null &&
+        !_isSubmitting;
   }
 
   Future<void> _submitReport() async {
@@ -781,6 +775,20 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     setState(() => _isSubmitting = true);
 
     try {
+      // Verificar si puede reportar (no duplicado reciente)
+      final canReport = await _reportService.canUserReport(widget.station.id);
+      if (!canReport) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ya reportaste recientemente. Espera unos minutos.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
       Position? position;
       try {
         final locationService = LocationService();
@@ -792,19 +800,20 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         print('No se pudo obtener ubicación: $e');
       }
 
-      await _reportService.createStationReport(
+      await _reportService.createTrainTimeReport(
         stationId: widget.station.id,
-        operational: _operational!,
-        crowdLevel: _crowdLevel!,
-        issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
+        line: widget.station.linea,
+        direction: _selectedDirection!,
+        nextTrainRange: _nextTrainRange!,
+        followingTrainRange: _followingTrainRange,
         userPosition: position,
       );
 
-      await _progressService.clearStationReportProgress(widget.station.id);
-
       if (!mounted) return;
 
-      final totalPoints = 15 + (_selectedIssues.length * 5);
+      final totalPoints = 10 + (_followingTrainRange != null ? 5 : 0);
+      
+      // Mostrar animación de puntos
       PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -814,14 +823,18 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Reporte enviado. Ganaste +$totalPoints puntos'),
+          content: Text('✅ Tiempos confirmados. Ganaste +$totalPoints puntos'),
           backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {

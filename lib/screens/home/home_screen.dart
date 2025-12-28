@@ -22,11 +22,11 @@ import '../../widgets/confirm_reports_sheet.dart';
 import '../../widgets/train_arrival_animation.dart';
 import '../../widgets/pulsing_button.dart';
 import '../../services/simplified_report_service.dart';
+import '../../widgets/train_time_report_flow_widget.dart';
 import '../../models/station_model.dart';
 import '../../services/location_service.dart';
-import '../../providers/metro_data_provider.dart';
+import '../../widgets/nearest_station_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,11 +44,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final SimplifiedReportService _reportService = SimplifiedReportService();
   DateTime? _lastTrainButtonTap;
   Timer? _trainButtonTimer;
+  final GlobalKey<MapWidgetState> _mapWidgetKey = GlobalKey<MapWidgetState>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Verificar permisos de ubicación al iniciar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLocationPermission();
+    });
     // Verificar si se debe mostrar intersticial al reabrir la app
     _checkReopenInterstitial();
     // Verificar modo test cuando se carga la pantalla
@@ -123,11 +129,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _lastGpsStatus = status.isGpsEnabled;
     _lastPermissionStatus = status.hasPermission;
     
+    // Si el GPS está desactivado, mostrar diálogo para activarlo
+    if (!status.isGpsEnabled) {
+      if (mounted) {
+        final result = await LocationPermissionDialog.show(
+          context,
+          isGpsEnabled: status.isGpsEnabled,
+          hasPermission: status.hasPermission,
+        );
+        
+        // Después de que el usuario cierre el diálogo, verificar de nuevo
+        if (mounted) {
+          final newStatus = await locationProvider.checkLocationStatus();
+          if (newStatus.isGpsEnabled) {
+            // Si ahora el GPS está activado, intentar obtener permisos
+            if (!newStatus.hasPermission) {
+              await locationProvider.getCurrentLocation();
+            }
+            // Si tiene permisos, obtener ubicación y activar tracking
+            if (locationProvider.hasPermission) {
+              await locationProvider.getCurrentLocation();
+              locationProvider.startTracking();
+            }
+          }
+        }
+      }
+      _isCheckingLocation = false;
+      return;
+    }
+    
+    // Si tiene permisos, obtener ubicación y activar tracking
+    if (status.hasPermission && status.isGpsEnabled) {
+      await locationProvider.getCurrentLocation();
+      // Iniciar tracking para actualización continua
+      locationProvider.startTracking();
+    } else if (!status.hasPermission && status.isGpsEnabled) {
+      // Si el GPS está activado pero no hay permisos, mostrar diálogo
+      if (mounted) {
+        final result = await LocationPermissionDialog.show(
+          context,
+          isGpsEnabled: status.isGpsEnabled,
+          hasPermission: status.hasPermission,
+        );
+        
+        if (result == true && mounted) {
+          await locationProvider.getCurrentLocation();
+          if (locationProvider.hasPermission) {
+            locationProvider.startTracking();
+          }
+        }
+      }
+    }
+    
     final prefs = await SharedPreferences.getInstance();
     final hasShownNotification = prefs.getBool(_locationDialogShownKey) ?? false;
     
     // Solo mostrar notificación si YA rechazó los permisos permanentemente
-    // NO pedir permisos aquí - eso se hace en el onboarding
     if (status.permission == LocationPermission.deniedForever && !hasShownNotification) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -135,9 +192,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             content: const Text('💡 La ubicación ayuda a mejorar los reportes'),
             action: SnackBarAction(
               label: 'Configurar',
-              onPressed: () {
-                // TODO: Abrir configuración del sistema
-                // Geolocator.openLocationSettings();
+              onPressed: () async {
+                await Geolocator.openLocationSettings();
               },
             ),
             duration: const Duration(seconds: 4),
@@ -339,9 +395,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       final locationProvider = Provider.of<LocationProvider>(context, listen: false);
       final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-      final currentPosition = locationProvider.currentPosition;
+      
+      // Obtener ubicación actual (sin esperar mucho)
+      Position? currentPosition = locationProvider.currentPosition;
+      if (currentPosition == null && locationProvider.hasPermission) {
+        try {
+          await locationProvider.getCurrentLocation().timeout(
+            const Duration(seconds: 2),
+          );
+          currentPosition = locationProvider.currentPosition;
+        } catch (e) {
+          // En caso de timeout o error, usar la posición actual (puede ser null)
+          currentPosition = locationProvider.currentPosition;
+        }
+      }
 
-      // Obtener estación más cercana
+      // Obtener estación más cercana (siempre, sin límite de distancia)
       StationModel? nearestStation;
       if (currentPosition != null && metroProvider.stations.isNotEmpty) {
         double minDistance = double.infinity;
@@ -359,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
       }
 
-      // Si no hay estación cercana, usar la primera disponible
+      // Si no hay ubicación o estación cercana, usar la primera disponible
       if (nearestStation == null && metroProvider.stations.isNotEmpty) {
         nearestStation = metroProvider.stations.first;
       }
@@ -775,7 +844,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           );
                   },
                 )
-              : const MapWidget(),
+              : MapWidget(
+                  key: _mapWidgetKey,
+                ),
               ),
               // Banner de publicidad
               const SafeArea(
@@ -783,10 +854,121 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ],
           ),
+          // Widget de estación más cercana - parte superior central
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Center(
+                child: const NearestStationWidget(),
+              ),
+            ),
+          ),
           const Positioned(
             bottom: 80,
             left: 20,
             child: QuickReportButton(),
+          ),
+          // Botón para reportar tiempos de tren
+          Positioned(
+            bottom: 80,
+            left: 80,
+            child: Consumer<LocationProvider>(
+              builder: (context, locationProvider, child) {
+                return Consumer<MetroDataProvider>(
+                  builder: (context, metroProvider, child) {
+                    return FloatingActionButton(
+                      heroTag: 'report_train_time',
+                      onPressed: () async {
+                        // Intentar obtener ubicación rápidamente (con timeout corto)
+                        Position? userPosition = locationProvider.currentPosition;
+                        if (userPosition == null && locationProvider.hasPermission) {
+                          try {
+                            await locationProvider.getCurrentLocation().timeout(
+                              const Duration(milliseconds: 800),
+                            );
+                            userPosition = locationProvider.currentPosition;
+                          } catch (e) {
+                            // Si falla, continuar sin ubicación
+                            userPosition = locationProvider.currentPosition;
+                          }
+                        }
+                        
+                        // Determinar estación a usar
+                        StationModel? selectedStation;
+                        final stations = metroProvider.stations;
+                        
+                        if (stations.isEmpty) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('No hay estaciones disponibles'),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                        
+                        // Si hay ubicación, buscar la más cercana
+                        if (userPosition != null) {
+                          double minDistance = double.infinity;
+                          for (final station in stations) {
+                            final distance = Geolocator.distanceBetween(
+                              userPosition.latitude,
+                              userPosition.longitude,
+                              station.ubicacion.latitude,
+                              station.ubicacion.longitude,
+                            );
+                            if (distance < minDistance) {
+                              minDistance = distance;
+                              selectedStation = station;
+                            }
+                          }
+                        }
+                        
+                        // Si no hay estación seleccionada, usar la primera de L1 como fallback
+                        if (selectedStation == null) {
+                          selectedStation = stations.firstWhere(
+                            (s) => s.linea == 'linea1' || s.linea == 'L1',
+                            orElse: () => stations.first,
+                          );
+                        }
+                        
+                        // Mostrar bottom sheet con la estación seleccionada
+                        if (context.mounted) {
+                          showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (sheetContext) => DraggableScrollableSheet(
+                              expand: false,
+                              initialChildSize: 0.85,
+                              minChildSize: 0.5,
+                              maxChildSize: 0.95,
+                              builder: (context, scrollController) => Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                                ),
+                                child: TrainTimeReportFlowWidget(
+                                  station: selectedStation!,
+                                  scrollController: scrollController,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      backgroundColor: Colors.blue,
+                      child: const Icon(Icons.schedule, color: Colors.white),
+                    );
+                  },
+                );
+              },
+            ),
           ),
           // Botón de centrar mapa (más a la izquierda)
           Positioned(
@@ -800,22 +982,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     // Verificar estado antes de obtener ubicación
                     final status = await locationProvider.checkLocationStatus();
                     
-                    // Si el GPS está desactivado o no hay permisos, mostrar diálogo
-                    if (!status.isGpsEnabled || !status.hasPermission) {
+                    // Si el GPS está activado pero no hay permisos, intentar solicitarlos
+                    if (!status.hasPermission && status.isGpsEnabled) {
+                      await locationProvider.getCurrentLocation();
+                      // Verificar de nuevo después de intentar solicitar
+                      final newStatus = await locationProvider.checkLocationStatus();
+                      if (!newStatus.hasPermission && mounted) {
+                        final result = await LocationPermissionDialog.show(
+                          context,
+                          isGpsEnabled: newStatus.isGpsEnabled,
+                          hasPermission: newStatus.hasPermission,
+                        );
+                        if (result == true && mounted) {
+                          await locationProvider.getCurrentLocation();
+                        }
+                        return;
+                      }
+                    } else if (!status.isGpsEnabled || !status.hasPermission) {
+                      // Si el GPS está desactivado o no hay permisos, mostrar diálogo
                       if (mounted) {
                         final result = await LocationPermissionDialog.show(
                           context,
                           isGpsEnabled: status.isGpsEnabled,
                           hasPermission: status.hasPermission,
                         );
-                        
                         if (result == true && mounted) {
                           await locationProvider.getCurrentLocation();
                         }
                       }
+                      return;
                     } else {
-                      // Si todo está bien, obtener ubicación normalmente
+                      // Si ya tiene permisos, obtener ubicación más reciente
                       await locationProvider.getCurrentLocation();
+                      // Asegurar que el tracking esté activo
+                      if (!locationProvider.isTracking && locationProvider.hasPermission) {
+                        locationProvider.startTracking();
+                      }
+                    }
+                    
+                    // Esperar un momento para que la ubicación se actualice
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    
+                    // Centrar el mapa en la ubicación del usuario
+                    if (_mapWidgetKey.currentState != null) {
+                      await _mapWidgetKey.currentState!.centerOnUserLocation();
                     }
                   },
                   child: const Icon(Icons.my_location),

@@ -100,8 +100,17 @@ class LocationProvider with ChangeNotifier {
     _isGpsEnabled = status.isGpsEnabled;
     _hasPermission = status.hasPermission;
     notifyListeners();
+    
+    // Si el GPS está activado pero no hay permisos, intentar solicitarlos
+    if (!_hasPermission && _isGpsEnabled) {
+      _hasPermission = await _locationService.checkLocationPermission();
+      notifyListeners();
+    }
+    
     if (_hasPermission) {
       await getCurrentLocation();
+      // Iniciar tracking para actualización continua
+      startTracking();
     }
   }
 
@@ -109,8 +118,18 @@ class LocationProvider with ChangeNotifier {
     final status = await _locationService.checkLocationStatus();
     _isGpsEnabled = status.isGpsEnabled;
     _hasPermission = status.hasPermission;
+    
+    // Si el GPS está activado pero no hay permisos, intentar solicitarlos
+    if (!_hasPermission && _isGpsEnabled) {
+      _hasPermission = await _locationService.checkLocationPermission();
+    }
+    
     notifyListeners();
-    return status;
+    return LocationPermissionStatus(
+      isGpsEnabled: _isGpsEnabled,
+      permission: status.permission,
+      hasPermission: _hasPermission,
+    );
   }
 
   Future<void> getCurrentLocation() async {
@@ -118,31 +137,39 @@ class LocationProvider with ChangeNotifier {
     _isGpsEnabled = status.isGpsEnabled;
     _hasPermission = status.hasPermission;
     
+    // Si no tiene permisos pero el GPS está activado, intentar solicitarlos
+    if (!_hasPermission && _isGpsEnabled) {
+      _hasPermission = await _locationService.checkLocationPermission();
+      notifyListeners();
+    }
+    
+    // Si aún no tiene permisos después de intentar, salir
     if (!_hasPermission) {
       notifyListeners();
       return;
     }
 
-    // Si no tiene permisos pero el GPS está activado, solicitar permisos
-    if (!_hasPermission && _isGpsEnabled) {
-      _hasPermission = await _locationService.checkLocationPermission();
-      if (!_hasPermission) {
-        notifyListeners();
-        return;
-      }
-    }
-
     try {
       _currentPosition = await _locationService.getCurrentPosition();
       if (_currentPosition != null && _firebaseService.getCurrentUser() != null) {
-        // Actualizar ubicación del usuario en Firestore
-        final geoPoint = _locationService.positionToGeoPoint(_currentPosition!);
-        await _firebaseService.updateUser(
-          _firebaseService.getCurrentUser()!.uid,
-          {'ultima_ubicacion': geoPoint},
-        );
+        // Actualizar ubicación del usuario en Firestore (con manejo de errores)
+        try {
+          final geoPoint = _locationService.positionToGeoPoint(_currentPosition!);
+          await _firebaseService.updateUser(
+            _firebaseService.getCurrentUser()!.uid,
+            {'ultima_ubicacion': geoPoint},
+          );
+        } catch (e) {
+          // Si falla actualizar en Firestore, solo loguear el error pero continuar
+          print('Error actualizando ubicación en Firestore: $e');
+        }
       }
       notifyListeners();
+      
+      // Iniciar tracking si no está activo
+      if (!_isTracking && _hasPermission) {
+        startTracking();
+      }
     } catch (e) {
       print('Error getting location: $e');
     }
@@ -157,13 +184,20 @@ class LocationProvider with ChangeNotifier {
     _locationService.getPositionStream().listen((Position position) {
       _currentPosition = position;
       
-      // Actualizar ubicación del usuario en Firestore
+      // Actualizar ubicación del usuario en Firestore (con manejo de errores)
       if (_firebaseService.getCurrentUser() != null) {
-        final geoPoint = _locationService.positionToGeoPoint(position);
-        _firebaseService.updateUser(
-          _firebaseService.getCurrentUser()!.uid,
-          {'ultima_ubicacion': geoPoint},
-        );
+        try {
+          final geoPoint = _locationService.positionToGeoPoint(position);
+          _firebaseService.updateUser(
+            _firebaseService.getCurrentUser()!.uid,
+            {'ultima_ubicacion': geoPoint},
+          ).catchError((e) {
+            // Si falla, solo loguear el error pero continuar
+            print('Error actualizando ubicación en Firestore (stream): $e');
+          });
+        } catch (e) {
+          print('Error procesando ubicación: $e');
+        }
       }
       
       notifyListeners();

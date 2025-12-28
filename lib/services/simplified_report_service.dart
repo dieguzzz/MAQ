@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/simplified_report_model.dart';
+import 'gamification_service.dart';
 
 /// Servicio simplificado para reportes según nuevo diseño
 class SimplifiedReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  Timer? _cleanupTimer;
+  static const Duration _cleanupInterval = Duration(minutes: 5); // Ejecutar cada 5 minutos
 
   /// Crear reporte de estación (simplificado)
   Future<String> createStationReport({
@@ -106,6 +110,15 @@ class SimplifiedReportService {
     final docRef = await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
 
+    // Otorgar puntos al usuario
+    final gamificationService = GamificationService();
+    await gamificationService.awardPointsForSimplifiedReport(
+      userId: userId,
+      points: basePoints + bonusPoints,
+      stationId: stationId,
+      reportId: docRef.id,
+    );
+
     return docRef.id;
   }
 
@@ -174,6 +187,14 @@ class SimplifiedReportService {
       updates['totalPoints'] = newTotalPoints;
 
       await _firestore.collection('reports').doc(reportId).update(updates);
+      
+      // Otorgar puntos adicionales al usuario (20 + bonus precisión)
+      final gamificationService = GamificationService();
+      await gamificationService.awardPointsForArrivalValidation(
+        userId: userId,
+        additionalPoints: validationPoints + precisionBonus,
+        stationId: report.stationId,
+      );
       
       // Actualizar calibración de la estación si es reporte del panel
       if (report.isPanelTime == true && errorMinutes != null) {
@@ -279,6 +300,15 @@ class SimplifiedReportService {
 
     final docRef = await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
+
+    // Otorgar puntos al usuario
+    final gamificationService = GamificationService();
+    await gamificationService.awardPointsForSimplifiedReport(
+      userId: userId,
+      points: basePoints + bonusPoints,
+      stationId: stationId,
+      reportId: docRef.id,
+    );
 
     return docRef.id;
   }
@@ -451,16 +481,37 @@ class SimplifiedReportService {
   }
 
   /// Stream de reportes activos (todos los usuarios)
+  /// Filtra reportes muy antiguos (más de 15 minutos) para eficiencia
+  /// Solo filtra por status en Firestore para evitar problemas de índice compuesto
   Stream<List<SimplifiedReportModel>> getActiveReportsStream() {
+    final cutoffTime = DateTime.now().subtract(const Duration(minutes: 15));
+    
     return _firestore
         .collection('reports')
         .where('status', isEqualTo: 'active')
         .snapshots()
         .map((snapshot) {
+      final now = DateTime.now();
       final reports = snapshot.docs
           .map((doc) {
             try {
-              return SimplifiedReportModel.fromFirestore(doc);
+              final report = SimplifiedReportModel.fromFirestore(doc);
+              
+              // Filtrar reportes muy antiguos en memoria (más de 15 minutos)
+              if (report.createdAt.isBefore(cutoffTime)) {
+                return null;
+              }
+              
+              // Validar expiración de ETAs futuros
+              // Si tiene etaExpectedAt pero ya pasó y no tiene arrivalTime, excluirlo
+              if (report.etaExpectedAt != null && 
+                  report.arrivalTime == null &&
+                  now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 5)))) {
+                // ETA expirado (más de 5 min después del tiempo esperado)
+                return null;
+              }
+              
+              return report;
             } catch (e) {
               print('Error parsing report ${doc.id}: $e');
               return null;
@@ -473,5 +524,142 @@ class SimplifiedReportService {
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(100).toList();
     });
+  }
+
+  /// Stream de reportes activos para confirmar (sin filtro de tiempo en query)
+  /// Usado en la pantalla de confirmar reportes para evitar problemas de índice
+  /// Solo filtra por status='active' en Firestore, el resto del filtrado se hace en memoria
+  Stream<List<SimplifiedReportModel>> getReportsForConfirmationStream() {
+    return _firestore
+        .collection('reports')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .map((snapshot) {
+      final now = DateTime.now();
+      final reports = snapshot.docs
+          .map((doc) {
+            try {
+              final report = SimplifiedReportModel.fromFirestore(doc);
+              
+              // Filtrar ETAs expirados en memoria (no en query)
+              if (report.etaExpectedAt != null && 
+                  report.arrivalTime == null &&
+                  now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 5)))) {
+                // ETA expirado (más de 5 min después del tiempo esperado)
+                return null;
+              }
+              
+              return report;
+            } catch (e) {
+              print('Error parsing report ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<SimplifiedReportModel>()
+          .toList();
+      
+      // Ordenar por fecha (más reciente primero)
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports;
+    });
+  }
+  
+  /// Limpia reportes obsoletos marcándolos como 'resolved'
+  /// Reportes con arrivalTime > 15 min o ETAs expirados > 20 min
+  Future<int> cleanupOldReports() async {
+    try {
+      final now = DateTime.now();
+      final cutoffTime = now.subtract(const Duration(minutes: 15));
+      final etaExpiredTime = now.subtract(const Duration(minutes: 20));
+      
+      // Buscar reportes obsoletos
+      final oldReportsQuery = await _firestore
+          .collection('reports')
+          .where('status', isEqualTo: 'active')
+          .where('createdAt', isLessThan: Timestamp.fromDate(cutoffTime))
+          .limit(50) // Procesar en lotes
+          .get();
+      
+      int cleanedCount = 0;
+      final batch = _firestore.batch();
+      
+      for (final doc in oldReportsQuery.docs) {
+        try {
+          final report = SimplifiedReportModel.fromFirestore(doc);
+          
+          bool shouldClean = false;
+          
+          // Caso 1: Reporte con arrivalTime muy antiguo (>15 min)
+          if (report.arrivalTime != null) {
+            final ageMin = now.difference(report.arrivalTime!).inMinutes;
+            if (ageMin > 15) {
+              shouldClean = true;
+            }
+          }
+          // Caso 2: ETA futuro expirado (etaExpectedAt pasó hace >20 min y no tiene arrivalTime)
+          else if (report.etaExpectedAt != null && report.arrivalTime == null) {
+            if (now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 20)))) {
+              shouldClean = true;
+            }
+          }
+          // Caso 3: Reporte muy antiguo sin arrivalTime ni etaExpectedAt (>15 min desde creación)
+          else {
+            final ageMin = now.difference(report.createdAt).inMinutes;
+            if (ageMin > 15) {
+              shouldClean = true;
+            }
+          }
+          
+          if (shouldClean) {
+            batch.update(doc.reference, {'status': 'resolved'});
+            cleanedCount++;
+          }
+        } catch (e) {
+          print('Error processing report ${doc.id} for cleanup: $e');
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        await batch.commit();
+        print('🧹 Limpiados $cleanedCount reportes obsoletos');
+      }
+      
+      return cleanedCount;
+    } catch (e) {
+      print('Error en cleanupOldReports: $e');
+      return 0;
+    }
+  }
+  
+  /// Inicia el timer de limpieza automática
+  void startAutoCleanup() {
+    // Cancelar timer existente si hay uno
+    _cleanupTimer?.cancel();
+    
+    // Ejecutar limpieza inmediatamente la primera vez
+    cleanupOldReports().catchError((e) {
+      print('Error en limpieza automática inicial: $e');
+    });
+    
+    // Configurar timer periódico
+    _cleanupTimer = Timer.periodic(_cleanupInterval, (timer) {
+      cleanupOldReports().catchError((e) {
+        print('Error en limpieza automática periódica: $e');
+      });
+    });
+    
+    print('🧹 Limpieza automática de reportes iniciada (cada ${_cleanupInterval.inMinutes} min)');
+  }
+  
+  /// Detiene el timer de limpieza automática
+  void stopAutoCleanup() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
+    print('🧹 Limpieza automática de reportes detenida');
+  }
+  
+  /// Dispose: cancelar timer al destruir el servicio
+  void dispose() {
+    stopAutoCleanup();
   }
 }

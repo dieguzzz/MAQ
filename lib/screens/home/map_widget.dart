@@ -22,17 +22,19 @@ import 'package:flutter/services.dart';
 
 class MapWidget extends StatefulWidget {
   final List<StationModel>? highlightedRoute;
+  final VoidCallback? onCenterLocationRequested;
 
   const MapWidget({
     super.key,
     this.highlightedRoute,
+    this.onCenterLocationRequested,
   });
 
   @override
-  State<MapWidget> createState() => _MapWidgetState();
+  State<MapWidget> createState() => MapWidgetState();
 }
 
-class _MapWidgetState extends State<MapWidget> {
+class MapWidgetState extends State<MapWidget> {
   GoogleMapController? _mapController;
   final MapService _mapService = MapService();
   final TrainSimulationService _trainSimulation = TrainSimulationService();
@@ -46,6 +48,61 @@ class _MapWidgetState extends State<MapWidget> {
   List<StationModel>? _previousStations;
   List<TrainModel>? _previousTrains;
   String? _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
+
+  // Método público para centrar el mapa en la ubicación del usuario
+  Future<void> centerOnUserLocation() async {
+    if (_mapController == null || !mounted) return;
+    
+    try {
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      
+      // Verificar y obtener permisos si es necesario
+      final status = await locationProvider.checkLocationStatus();
+      if (!status.hasPermission && status.isGpsEnabled) {
+        await locationProvider.getCurrentLocation();
+      }
+      
+      Position? currentPosition = locationProvider.currentPosition;
+      
+      // Si no hay ubicación, intentar obtenerla
+      if (currentPosition == null) {
+        await locationProvider.getCurrentLocation();
+        currentPosition = locationProvider.currentPosition;
+      }
+      
+      if (currentPosition != null && mounted) {
+        await _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                currentPosition.latitude,
+                currentPosition.longitude,
+              ),
+              zoom: 15.0,
+            ),
+          ),
+        );
+      } else if (mounted) {
+        // Si no hay ubicación, mostrar mensaje
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo obtener tu ubicación. Verifica que los permisos de ubicación estén activados.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al centrar mapa en ubicación: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al obtener ubicación: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -63,6 +120,11 @@ class _MapWidgetState extends State<MapWidget> {
     // Escuchar cambios en el modo de edición para actualizar marcadores
     final editModeService = StationEditModeService();
     editModeService.addListener(_onEditModeChanged);
+    
+    // Configurar callback para centrar ubicación si se proporciona
+    if (widget.onCenterLocationRequested != null) {
+      // El callback se llamará desde home_screen
+    }
   }
 
   void _onEditModeChanged() {
@@ -481,8 +543,55 @@ class _MapWidgetState extends State<MapWidget> {
           onMapCreated: (GoogleMapController controller) async {
             _mapController = controller;
             
-            // Si el usuario no está en la ciudad, forzar centrado en el metro
-            if (currentPosition != null && !isUserInPanamaCity) {
+            // Esperar un momento para que la ubicación esté disponible
+            await Future.delayed(const Duration(milliseconds: 800));
+            
+            if (!mounted) return;
+            
+            // Obtener ubicación actual del provider
+            final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+            Position? currentPosition = locationProvider.currentPosition;
+            
+            // Si no hay ubicación pero hay permisos, intentar obtenerla
+            if (currentPosition == null && locationProvider.hasPermission) {
+              await locationProvider.getCurrentLocation();
+              currentPosition = locationProvider.currentPosition;
+            }
+            
+            // Si hay ubicación y está en la ciudad, centrar el mapa
+            if (currentPosition != null) {
+              final userLocation = LatLng(
+                currentPosition.latitude,
+                currentPosition.longitude,
+              );
+              final isUserInPanamaCity = MapService.isWithinPanamaCityBounds(userLocation);
+              
+              if (isUserInPanamaCity) {
+                // Centrar en la ubicación del usuario
+                await controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: userLocation,
+                      zoom: 15.0,
+                    ),
+                  ),
+                );
+              } else {
+                // Si está fuera de la ciudad, centrar en el metro
+                final metroCenter = stations.isNotEmpty
+                    ? MapService.calculateCenterFromStations(stations)
+                    : MapService.metroSystemCenter;
+                await controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: metroCenter,
+                      zoom: 12.0,
+                    ),
+                  ),
+                );
+              }
+            } else {
+              // Si no hay ubicación, centrar en el sistema de metro
               final metroCenter = stations.isNotEmpty
                   ? MapService.calculateCenterFromStations(stations)
                   : MapService.metroSystemCenter;
