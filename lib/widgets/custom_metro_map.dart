@@ -1260,9 +1260,14 @@ class MetroMapPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
 
-    // Dibujar Línea 1 en ROJO
+    // Determinar si las líneas están en la ruta resaltada
+    final line1InRoute = _isLineInRoute('linea1');
+    final line2InRoute = _isLineInRoute('linea2');
+
+    // Dibujar Línea 1 - cambiar color si está en la ruta
     if (linea1Stations.isNotEmpty) {
-      paint.color = Colors.red;
+      paint.color = line1InRoute ? Colors.blue : Colors.red;
+      paint.strokeWidth = line1InRoute ? 6 : 4;
       _drawLine(canvas, paint, line1Points);
       _drawStations(
         canvas,
@@ -1273,9 +1278,10 @@ class MetroMapPainter extends CustomPainter {
       );
     }
 
-    // Dibujar Línea 2 principal en VERDE
+    // Dibujar Línea 2 principal - cambiar color si está en la ruta
     if (linea2Stations.isNotEmpty) {
-      paint.color = Colors.green;
+      paint.color = line2InRoute ? Colors.orange : Colors.green;
+      paint.strokeWidth = line2InRoute ? 6 : 4;
       _drawLine(canvas, paint, line2Points);
       _drawStations(
         canvas,
@@ -1288,7 +1294,9 @@ class MetroMapPainter extends CustomPainter {
 
     // Dibujar rama del aeropuerto (ITSE → Aeropuerto, desde Corredor Sur)
     if (linea2AirportStations.isNotEmpty && line2AirportPoints.length >= 2) {
-      paint.color = Colors.green;
+      final airportInRoute = _isAirportBranchInRoute();
+      paint.color = airportInRoute ? Colors.orange : Colors.green;
+      paint.strokeWidth = airportInRoute ? 6 : 4;
       _drawLine(canvas, paint, line2AirportPoints);
       _drawStations(
         canvas,
@@ -1328,8 +1336,9 @@ class MetroMapPainter extends CustomPainter {
       
       // Dibujar conexión Corredor Sur → ITSE
       if (corredorSurPoint != null && itsePoint != null) {
-        paint.color = Colors.green;
-        paint.strokeWidth = 5;
+        final airportInRoute = _isAirportBranchInRoute();
+        paint.color = airportInRoute ? Colors.orange : Colors.green;
+        paint.strokeWidth = airportInRoute ? 6 : 5;
         final path = Path()
           ..moveTo(corredorSurPoint.dx, corredorSurPoint.dy)
           ..lineTo(itsePoint.dx, itsePoint.dy);
@@ -1466,6 +1475,17 @@ class MetroMapPainter extends CustomPainter {
       path.lineTo(point.dx, point.dy);
     }
     canvas.drawPath(path, paint);
+  }
+
+  bool _isLineInRoute(String linea) {
+    if (highlightedRoute == null || highlightedRoute!.isEmpty) return false;
+    return highlightedRoute!.any((station) => station.linea == linea);
+  }
+
+  bool _isAirportBranchInRoute() {
+    if (highlightedRoute == null || highlightedRoute!.isEmpty) return false;
+    final airportStationIds = ['l2_itse', 'l2_aeropuerto'];
+    return highlightedRoute!.any((station) => airportStationIds.contains(station.id));
   }
 
   void _drawStations(

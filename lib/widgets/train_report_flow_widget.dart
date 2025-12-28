@@ -28,6 +28,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   
   // Pregunta 1: Tiempo del panel digital
   String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown'
+  bool _isFromPanel = false; // Si viene del panel digital oficial
   
   // Pregunta 2: Aglomeración
   int? _crowdLevel; // 1-5
@@ -36,12 +37,45 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   final Set<String> _selectedIssues = {};
   
   final SimplifiedReportService _reportService = SimplifiedReportService();
+  final LocationService _locationService = LocationService();
   bool _isSubmitting = false;
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _checkLocationAndDistance();
+  }
+
+  /// Verifica la ubicación y distancia a la estación para validar panel
+  Future<void> _checkLocationAndDistance() async {
+    try {
+      final status = await _locationService.checkLocationStatus();
+      if (status.hasPermission) {
+        _currentPosition = await _locationService.getCurrentPosition();
+      }
+    } catch (e) {
+      print('No se pudo obtener ubicación: $e');
+    }
+  }
+
+  /// Valida si el usuario está dentro del geofence de la estación (200m)
+  bool _isWithinStationGeofence() {
+    if (_currentPosition == null) return false;
+    
+    try {
+      final distance = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        widget.station.ubicacion.latitude,
+        widget.station.ubicacion.longitude,
+      );
+      return distance <= 200; // 200 metros
+    } catch (e) {
+      print('Error calculando distancia: $e');
+      return false;
+    }
   }
 
   @override
@@ -204,6 +238,66 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
           _buildEtaOption('6-8', '🕒 6-8 MINUTOS', Colors.deepOrange),
           _buildEtaOption('9+', '🕓 9+ MINUTOS', Colors.red),
           _buildEtaOption('unknown', '🚫 APAGADO / NO FUNCIONA', Colors.grey),
+          const SizedBox(height: 24),
+          // Checkbox para "Fuente: Pantalla del andén"
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _isFromPanel ? Colors.blue[50] : Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isFromPanel ? Colors.blue : Colors.grey[300]!,
+                width: _isFromPanel ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _isFromPanel,
+                  onChanged: (value) {
+                    if (value == true) {
+                      // Validar geofence antes de permitir
+                      if (!_isWithinStationGeofence()) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Debes estar dentro de la estación (200m) para marcar como panel digital'),
+                            backgroundColor: Colors.orange,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+                    }
+                    setState(() {
+                      _isFromPanel = value ?? false;
+                    });
+                  },
+                  activeColor: Colors.blue,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Fuente: Pantalla del andén',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: MetroColors.grayDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Marca esto si copiaste el tiempo directamente del panel digital oficial de la estación',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: MetroColors.grayDark.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -763,6 +857,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
         issues: _selectedIssues.isNotEmpty ? _selectedIssues.toList() : null,
         trainLine: widget.station.linea,
         userPosition: position,
+        isPanelTime: _isFromPanel, // Pasar el flag de panel
       );
 
       if (!mounted) return;

@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/simplified_report_model.dart';
 import 'gamification_service.dart';
+import 'simplified_report_confidence_service.dart';
+import 'debug_log_service.dart';
 
 /// Servicio simplificado para reportes según nuevo diseño
 class SimplifiedReportService {
@@ -49,6 +51,25 @@ class SimplifiedReportService {
     final docRef = await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
 
+    // Calcular y guardar confianza inicial
+    final confidenceService = SimplifiedReportConfidenceService();
+    final confidenceResult = await confidenceService.calculateConfidence(
+      SimplifiedReportModel.fromFirestore(await docRef.get()),
+    );
+    await docRef.update({
+      'confidence': confidenceResult.confidence,
+      'confidenceReasons': confidenceResult.reasons,
+    });
+
+    // Otorgar puntos al usuario
+    final gamificationService = GamificationService();
+    await gamificationService.awardPointsForSimplifiedReport(
+      userId: userId,
+      points: basePoints + bonusPoints,
+      stationId: stationId,
+      reportId: docRef.id,
+    );
+
     return docRef.id;
   }
 
@@ -61,6 +82,7 @@ class SimplifiedReportService {
     String? trainLine, // 'L1' | 'L2' (opcional)
     String? direction, // 'A' | 'B' (opcional)
     Position? userPosition, // Opcional
+    bool? isPanelTime, // true si el tiempo viene del panel digital oficial
   }) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) throw Exception('Usuario no autenticado');
@@ -96,7 +118,7 @@ class SimplifiedReportService {
       direction: direction,
       etaBucket: etaBucket,
       etaExpectedAt: etaExpectedAt,
-      isPanelTime: true, // Marcar que viene del panel digital oficial
+      isPanelTime: isPanelTime ?? false, // Marcar si viene del panel digital oficial
       createdAt: now,
       basePoints: basePoints,
       bonusPoints: bonusPoints,
@@ -109,6 +131,16 @@ class SimplifiedReportService {
 
     final docRef = await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
+
+    // Calcular y guardar confianza inicial
+    final confidenceService = SimplifiedReportConfidenceService();
+    final confidenceResult = await confidenceService.calculateConfidence(
+      SimplifiedReportModel.fromFirestore(await docRef.get()),
+    );
+    await docRef.update({
+      'confidence': confidenceResult.confidence,
+      'confidenceReasons': confidenceResult.reasons,
+    });
 
     // Otorgar puntos al usuario
     final gamificationService = GamificationService();
@@ -300,6 +332,16 @@ class SimplifiedReportService {
 
     final docRef = await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
+
+    // Calcular y guardar confianza inicial
+    final confidenceService = SimplifiedReportConfidenceService();
+    final confidenceResult = await confidenceService.calculateConfidence(
+      SimplifiedReportModel.fromFirestore(await docRef.get()),
+    );
+    await docRef.update({
+      'confidence': confidenceResult.confidence,
+      'confidenceReasons': confidenceResult.reasons,
+    });
 
     // Otorgar puntos al usuario
     final gamificationService = GamificationService();
@@ -526,39 +568,83 @@ class SimplifiedReportService {
     });
   }
 
-  /// Stream de reportes activos para confirmar (sin filtro de tiempo en query)
-  /// Usado en la pantalla de confirmar reportes para evitar problemas de índice
-  /// Solo filtra por status='active' en Firestore, el resto del filtrado se hace en memoria
+  /// Stream de reportes activos para confirmar (sin filtro de tiempo ni límite de cantidad)
+  /// Usado en la pantalla de confirmar reportes para mostrar TODOS los reportes activos
+  /// Obtiene todos los reportes y filtra en memoria para compatibilidad
+  /// con reportes que pueden tener 'status' o 'estado' o ninguno
   Stream<List<SimplifiedReportModel>> getReportsForConfirmationStream() {
     return _firestore
         .collection('reports')
-        .where('status', isEqualTo: 'active')
-        .snapshots()
+        .snapshots()  // Sin filtro en Firestore para obtener todos
         .map((snapshot) {
       final now = DateTime.now();
+      final logService = DebugLogService();
+      logService.addLog(
+        'ReportsStream',
+        '${snapshot.docs.length} documentos recibidos de Firestore',
+        level: LogLevel.info,
+      );
+      
       final reports = snapshot.docs
           .map((doc) {
             try {
-              final report = SimplifiedReportModel.fromFirestore(doc);
+              final data = doc.data() as Map<String, dynamic>;
               
-              // Filtrar ETAs expirados en memoria (no en query)
-              if (report.etaExpectedAt != null && 
-                  report.arrivalTime == null &&
-                  now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 5)))) {
-                // ETA expirado (más de 5 min después del tiempo esperado)
+              // Filtrar reportes eliminados o resueltos
+              final status = data['status'] as String?;
+              final estado = data['estado'] as String?;
+              
+              // Si tiene status y no es 'active', saltarlo
+              if (status != null && status != 'active') {
+                logService.addLog(
+                  'ReportsStream',
+                  'Reporte ${doc.id} filtrado: status=$status (no es active)',
+                  level: LogLevel.info,
+                );
                 return null;
               }
               
+              // Si tiene estado (sistema viejo) y no es 'activo', saltarlo
+              if (estado != null && estado != 'activo') {
+                logService.addLog(
+                  'ReportsStream',
+                  'Reporte ${doc.id} filtrado: estado=$estado (no es activo)',
+                  level: LogLevel.info,
+                );
+                return null;
+              }
+              
+              // Si no tiene ni status ni estado, asumir que está activo (compatibilidad)
+              // o si tiene status='active' o estado='activo', incluirlo
+              
+              final report = SimplifiedReportModel.fromFirestore(doc);
+              // No filtrar por ETAs expirados - mostrar todos los reportes activos
+              // para que puedan ser confirmados por otros usuarios
+              logService.addLog(
+                'ReportsStream',
+                'Reporte ${doc.id} incluido: scope=${report.scope}, status=${report.status}',
+                level: LogLevel.success,
+              );
               return report;
-            } catch (e) {
-              print('Error parsing report ${doc.id}: $e');
+            } catch (e, stackTrace) {
+              logService.addLog(
+                'ReportsStream',
+                'Error parsing report ${doc.id}: $e\nStack trace: $stackTrace',
+                level: LogLevel.error,
+              );
               return null;
             }
           })
           .whereType<SimplifiedReportModel>()
           .toList();
       
-      // Ordenar por fecha (más reciente primero)
+      logService.addLog(
+        'ReportsStream',
+        'Total reportes válidos después del filtrado: ${reports.length}',
+        level: LogLevel.info,
+      );
+      
+      // Ordenar en memoria por fecha (más reciente primero) - sin límite de cantidad
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
     });

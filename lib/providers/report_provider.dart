@@ -10,7 +10,9 @@ import '../services/accuracy_service.dart';
 import '../services/error_handler_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/time_estimation_service.dart';
+import '../services/simplified_report_confidence_service.dart';
 import '../models/report_model.dart';
+import '../models/simplified_report_model.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -279,13 +281,28 @@ class ReportProvider with ChangeNotifier {
         }
       }
       
-      // Actualizar confianza del reporte
-      await _confidenceService.updateReportConfidence(reportId);
-      
-      // Actualizar precisión del creador del reporte
-      final creadorId = reportData['usuario_id'] as String?;
-      if (creadorId != null) {
-        await _accuracyService.onReportVerified(creadorId);
+      // Actualizar confianza del reporte (verificar si es reporte simplificado)
+      final scope = reportData['scope'] as String?;
+      if (scope != null) {
+        // Es un reporte simplificado
+        final simplifiedConfidenceService = SimplifiedReportConfidenceService();
+        await simplifiedConfidenceService.updateReportConfidence(reportId);
+        
+        // Actualizar precisión del autor si alcanza 3 confirmaciones
+        final confirmations = reportData['confirmations'] as int? ?? 0;
+        final reportAuthorId = reportData['userId'] as String?;
+        if (reportAuthorId != null && confirmations >= 3) {
+          await _accuracyService.onReportVerified(reportAuthorId);
+        }
+      } else {
+        // Es un reporte del modelo antiguo
+        await _confidenceService.updateReportConfidence(reportId);
+        
+        // Actualizar precisión del creador del reporte
+        final creadorId = reportData['usuario_id'] as String?;
+        if (creadorId != null) {
+          await _accuracyService.onReportVerified(creadorId);
+        }
       }
       
       // Incrementar reputación del usuario que confirmó

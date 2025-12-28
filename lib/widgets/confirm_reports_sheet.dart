@@ -6,7 +6,10 @@ import '../providers/report_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../services/firebase_service.dart';
 import '../services/simplified_report_service.dart';
+import '../services/simplified_report_confidence_service.dart';
+import '../services/debug_log_service.dart';
 import '../models/simplified_report_model.dart';
+import '../models/user_model.dart';
 import '../theme/metro_theme.dart';
 import 'points_reward_animation.dart';
 
@@ -197,7 +200,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           // Lista de reportes
           Expanded(
             child: StreamBuilder<List<SimplifiedReportModel>>(
-              stream: _reportService.getReportsForConfirmationStream(),
+              stream: _reportService.getActiveReportsStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -217,18 +220,54 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 }
 
                 final allReports = snapshot.data ?? [];
+                final logService = DebugLogService();
+                logService.addLog(
+                  'ConfirmReports',
+                  '${allReports.length} reportes recibidos del stream',
+                  level: LogLevel.info,
+                );
+                for (var report in allReports) {
+                  logService.addLog(
+                    'ConfirmReports',
+                    '  - ${report.id}: scope=${report.scope}, stationId=${report.stationId}, status=${report.status}',
+                    level: LogLevel.info,
+                  );
+                }
+                
                 // Mostrar todos los reportes (propios y de otros)
                 var filteredReports = allReports.toList();
+                logService.addLog(
+                  'ConfirmReports',
+                  'Antes del filtro por tipo: ${filteredReports.length} reportes',
+                  level: LogLevel.info,
+                );
 
                 // Filtrar por tipo si está seleccionado
                 if (_selectedReportType != null) {
                   filteredReports = filteredReports
                       .where((report) => report.scope == _selectedReportType)
                       .toList();
+                  logService.addLog(
+                    'ConfirmReports',
+                    'Después del filtro por tipo ($_selectedReportType): ${filteredReports.length} reportes',
+                    level: LogLevel.info,
+                  );
                 }
 
                 // Ordenar por más recientes primero
-                filteredReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                // Ordenar: primero por confianza descendente, luego por fecha (más recientes), luego por confirmaciones
+                filteredReports.sort((a, b) {
+                  // 1. Por confianza (descendente)
+                  final confidenceCompare = b.confidence.compareTo(a.confidence);
+                  if (confidenceCompare != 0) return confidenceCompare;
+                  
+                  // 2. Por fecha (más recientes primero)
+                  final dateCompare = b.createdAt.compareTo(a.createdAt);
+                  if (dateCompare != 0) return dateCompare;
+                  
+                  // 3. Por confirmaciones (más confirmaciones primero)
+                  return b.confirmations.compareTo(a.confirmations);
+                });
 
                 if (filteredReports.isEmpty) {
                   return Center(
@@ -546,6 +585,18 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                 ],
                               ),
                               const SizedBox(height: 16),
+                              // Chips de confianza
+                              FutureBuilder<UserModel?>(
+                                future: _firebaseService.getUser(report.userId),
+                                builder: (context, userSnapshot) {
+                                  return _buildConfidenceChips(
+                                    context,
+                                    report,
+                                    userSnapshot.data,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
                               // Información del reporte con diseño moderno
                               Container(
                                 padding: const EdgeInsets.all(16),
@@ -765,6 +816,165 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           },
         );
       },
+    );
+  }
+
+  /// Construye los 3 chips de confianza: Confianza, Fuente, Autor
+  Widget _buildConfidenceChips(
+    BuildContext context,
+    SimplifiedReportModel report,
+    UserModel? author,
+  ) {
+    final confidenceLevel = SimplifiedReportConfidenceService.getConfidenceLevel(report.confidence);
+    final confidenceColor = SimplifiedReportConfidenceService.getConfidenceColor(report.confidence);
+    final explanation = SimplifiedReportConfidenceService.getConfidenceExplanation(report.confidenceReasons);
+    
+    // Determinar chip de autor
+    String authorChipText;
+    IconData authorIcon;
+    Color authorColor;
+    
+    if (author == null) {
+      authorChipText = '👤 Usuario';
+      authorIcon = Icons.person;
+      authorColor = Colors.grey;
+    } else {
+      // Obtener total de reportes del autor
+      final totalReports = author.reportesCount;
+      if (totalReports < 5) {
+        authorChipText = '📝 Nuevo';
+        authorIcon = Icons.edit;
+        authorColor = Colors.blue;
+      } else if (author.precision >= 85) {
+        authorChipText = '🎯 ${author.precision.toStringAsFixed(0)}%';
+        authorIcon = Icons.verified;
+        authorColor = Colors.green;
+      } else {
+        authorChipText = '👤 ${author.precision.toStringAsFixed(0)}%';
+        authorIcon = Icons.person;
+        authorColor = Colors.blue;
+      }
+    }
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        // Chip de Confianza
+        Tooltip(
+          message: explanation.isNotEmpty 
+              ? 'Confianza: $explanation'
+              : 'Confianza: ${(report.confidence * 100).toStringAsFixed(0)}%',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: confidenceColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: confidenceColor.withOpacity(0.5),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  confidenceLevel == 'Alta' 
+                      ? Icons.verified
+                      : confidenceLevel == 'Media'
+                          ? Icons.info
+                          : Icons.warning,
+                  size: 14,
+                  color: confidenceColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Confianza: $confidenceLevel',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: confidenceColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Chip de Fuente
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: report.confidenceReasons.contains('panel')
+                ? Colors.blue.withOpacity(0.15)
+                : Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: report.confidenceReasons.contains('panel')
+                  ? Colors.blue.withOpacity(0.5)
+                  : Colors.grey.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                report.confidenceReasons.contains('panel')
+                    ? Icons.tv
+                    : Icons.people,
+                size: 14,
+                color: report.confidenceReasons.contains('panel')
+                    ? Colors.blue
+                    : Colors.grey[700],
+              ),
+              const SizedBox(width: 6),
+              Text(
+                report.confidenceReasons.contains('panel')
+                    ? 'Panel Digital'
+                    : 'Comunidad',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: report.confidenceReasons.contains('panel')
+                      ? Colors.blue
+                      : Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Chip de Autor
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: authorColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: authorColor.withOpacity(0.5),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                authorIcon,
+                size: 14,
+                color: authorColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                authorChipText,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: authorColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

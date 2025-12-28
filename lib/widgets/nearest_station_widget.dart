@@ -91,6 +91,26 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
     return linea;
   }
 
+  Color _getStationStatusColor(StationModel station) {
+    // Priorizar estadoActual si está disponible
+    if (station.estadoActual == EstadoEstacion.cerrado) {
+      return Colors.grey;
+    } else if (station.estadoActual == EstadoEstacion.lleno) {
+      return Colors.red;
+    } else if (station.estadoActual == EstadoEstacion.moderado) {
+      return Colors.orange;
+    } else {
+      // Si no hay estado específico, usar aglomeración
+      if (station.aglomeracion <= 2) {
+        return Colors.green;
+      } else if (station.aglomeracion == 3) {
+        return Colors.orange;
+      } else {
+        return Colors.red;
+      }
+    }
+  }
+
   void _openStationDetails(BuildContext context, StationModel station) {
     final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
     final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
@@ -171,7 +191,7 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     constraints: const BoxConstraints(maxWidth: 300),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.75),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -182,30 +202,31 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
                           offset: const Offset(0, 2),
                         ),
                       ],
-                      border: hasRecentArrivals
-                          ? Border.all(
-                              color: MetroColors.blue,
-                              width: 1.5,
-                            )
-                          : null,
+                      border: Border.all(
+                        color: _getStationStatusColor(nearestStation),
+                        width: 2,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Column(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
                               'Estación ${nearestStation.nombre}',
+                              textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: MetroColors.grayDark,
+                                color: _getStationStatusColor(nearestStation),
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               _getLineaText(nearestStation.linea),
+                              textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: nearestStation.linea == 'linea1' || nearestStation.linea == 'L1'
                                     ? MetroColors.blue

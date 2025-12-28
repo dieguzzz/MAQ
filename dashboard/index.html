@@ -410,6 +410,7 @@
             <button class="tab" onclick="showTab('reports')">Reportes Recientes</button>
             <button class="tab" onclick="showTab('users')">Usuarios Top</button>
             <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
+            <button class="tab" onclick="showTab('debugLogs')">🐛 Debug Logs</button>
         </div>
         
         <div id="stations" class="tab-content active section">
@@ -472,6 +473,29 @@
         <div id="community" class="tab-content section">
             <h2>🏗️ Estadísticas Comunitarias</h2>
             <div class="loading">Cargando estadísticas...</div>
+        </div>
+        
+        <div id="debugLogs" class="tab-content section">
+            <h2>🐛 Debug Logs</h2>
+            <div class="filter-container">
+                <select id="logCategoryFilter" class="filter-input" onchange="filterLogs()">
+                    <option value="">Todas las categorías</option>
+                    <option value="ReportsStream">ReportsStream</option>
+                    <option value="ConfirmReports">ConfirmReports</option>
+                </select>
+                <select id="logLevelFilter" class="filter-input" onchange="filterLogs()">
+                    <option value="">Todos los niveles</option>
+                    <option value="info">Info</option>
+                    <option value="success">Success</option>
+                    <option value="warning">Warning</option>
+                    <option value="error">Error</option>
+                </select>
+                <button class="refresh-btn" onclick="clearLogsDisplay()" style="margin: 0;">Limpiar Vista</button>
+                <span class="filter-count" id="logsCount">-</span>
+            </div>
+            <div id="logsContainer" style="max-height: 600px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
+                <div class="loading" style="color: #d4d4d4;">Cargando logs...</div>
+            </div>
         </div>
     </div>
     
@@ -646,6 +670,17 @@
             
             event.target.classList.add('active');
             document.getElementById(tabName).classList.add('active');
+            
+            // Si se activa el tab de debug logs, cargar logs
+            if (tabName === 'debugLogs') {
+                loadDebugLogs();
+            } else {
+                // Cancelar suscripción de logs si se cambia de tab
+                if (logsUnsubscribe) {
+                    logsUnsubscribe();
+                    logsUnsubscribe = null;
+                }
+            }
         }
         
         // Función para refrescar todo
@@ -656,6 +691,12 @@
             loadRecentReports();
             loadTopUsers();
             loadCommunityStats();
+            
+            // Cargar logs solo si el tab está activo
+            const debugTab = document.getElementById('debugLogs');
+            if (debugTab && debugTab.classList.contains('active')) {
+                loadDebugLogs();
+            }
         }
         
         // Cargar estadísticas generales
@@ -1542,6 +1583,153 @@
                     }
                 }
             }
+        }
+        
+        // Debug Logs
+        let logsUnsubscribe = null;
+        let allLogs = [];
+        
+        // Cargar logs de debug
+        function loadDebugLogs() {
+            try {
+                // Cancelar suscripción anterior si existe
+                if (logsUnsubscribe) {
+                    logsUnsubscribe();
+                }
+                
+                // Cargar logs iniciales
+                db.collection('debug_logs')
+                    .orderBy('timestamp', 'desc')
+                    .limit(500)
+                    .get()
+                    .then((snapshot) => {
+                        allLogs = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            timestamp: doc.data().timestamp,
+                            category: doc.data().category || 'Unknown',
+                            message: doc.data().message || '',
+                            level: doc.data().level || 'info'
+                        }));
+                        renderLogs();
+                        
+                        // Escuchar nuevos logs en tiempo real
+                        logsUnsubscribe = db.collection('debug_logs')
+                            .orderBy('timestamp', 'desc')
+                            .limit(500)
+                            .onSnapshot((snapshot) => {
+                                snapshot.docChanges().forEach((change) => {
+                                    if (change.type === 'added') {
+                                        const logData = change.doc.data();
+                                        const newLog = {
+                                            id: change.doc.id,
+                                            timestamp: logData.timestamp,
+                                            category: logData.category || 'Unknown',
+                                            message: logData.message || '',
+                                            level: logData.level || 'info'
+                                        };
+                                        
+                                        // Evitar duplicados
+                                        if (!allLogs.find(log => log.id === newLog.id)) {
+                                            allLogs.unshift(newLog);
+                                            // Mantener solo los últimos 500
+                                            if (allLogs.length > 500) {
+                                                allLogs = allLogs.slice(0, 500);
+                                            }
+                                            renderLogs();
+                                        }
+                                    }
+                                });
+                            }, (error) => {
+                                console.error('Error en listener de logs:', error);
+                            });
+                    })
+                    .catch((error) => {
+                        console.error('Error cargando logs:', error);
+                        const container = document.getElementById('logsContainer');
+                        if (container) {
+                            container.innerHTML = `
+                                <div style="color: #cd3131; padding: 1rem;">
+                                    ❌ Error cargando logs: ${error.message}<br>
+                                    ${error.message.includes('permissions') ? 'Verifica las reglas de Firestore para debug_logs' : ''}
+                                </div>
+                            `;
+                        }
+                    });
+            } catch (error) {
+                console.error('Error inicializando logs:', error);
+            }
+        }
+        
+        // Renderizar logs
+        function renderLogs() {
+            const container = document.getElementById('logsContainer');
+            if (!container) return;
+            
+            const categoryFilter = document.getElementById('logCategoryFilter')?.value || '';
+            const levelFilter = document.getElementById('logLevelFilter')?.value || '';
+            
+            let filteredLogs = allLogs;
+            
+            if (categoryFilter) {
+                filteredLogs = filteredLogs.filter(log => log.category === categoryFilter);
+            }
+            
+            if (levelFilter) {
+                filteredLogs = filteredLogs.filter(log => log.level === levelFilter);
+            }
+            
+            // Actualizar contador
+            const countElement = document.getElementById('logsCount');
+            if (countElement) {
+                countElement.textContent = `${filteredLogs.length} de ${allLogs.length} logs`;
+            }
+            
+            if (filteredLogs.length === 0) {
+                container.innerHTML = '<div style="color: #808080; padding: 1rem; text-align: center;">No hay logs para mostrar</div>';
+                return;
+            }
+            
+            const logsHtml = filteredLogs.map(log => {
+                const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp).toLocaleTimeString('es-PA') : 'N/A';
+                const levelClass = `log-${log.level}`;
+                const levelColor = log.level === 'error' ? '#cd3131' : 
+                                  log.level === 'warning' ? '#d7ba7d' : 
+                                  log.level === 'success' ? '#6a9955' : '#569cd6';
+                
+                return `
+                    <div class="log-entry" style="margin-bottom: 0.5rem; padding: 0.5rem; border-left: 3px solid ${levelColor}; background: rgba(255,255,255,0.02);">
+                        <span style="color: #808080; margin-right: 0.5rem;">${timestamp}</span>
+                        <span style="color: ${levelColor}; font-weight: bold; margin-right: 0.5rem;">[${log.category}]</span>
+                        <span style="color: ${levelColor};">${escapeHtml(log.message)}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = logsHtml;
+            
+            // Auto-scroll al inicio (logs más recientes)
+            const debugTab = document.getElementById('debugLogs');
+            if (debugTab && debugTab.classList.contains('active')) {
+                container.scrollTop = 0;
+            }
+        }
+        
+        // Filtrar logs
+        function filterLogs() {
+            renderLogs();
+        }
+        
+        // Limpiar vista de logs (no elimina de Firestore)
+        function clearLogsDisplay() {
+            allLogs = [];
+            renderLogs();
+        }
+        
+        // Escapar HTML para seguridad
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         // Esperar autenticación antes de cargar datos

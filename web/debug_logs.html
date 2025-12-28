@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Logs - MetroPTY</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .controls button, .controls select {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .controls button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .controls button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .controls select {
+            background: white;
+            color: #333;
+        }
+
+        .stats {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            display: flex;
+            gap: 30px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .logs-container {
+            height: calc(100vh - 250px);
+            overflow-y: auto;
+            padding: 20px;
+            background: #1e1e1e;
+        }
+
+        .log-entry {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-entry.info {
+            background: rgba(33, 150, 243, 0.1);
+            border-color: #2196F3;
+            color: #90CAF9;
+        }
+
+        .log-entry.success {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: #4CAF50;
+            color: #A5D6A7;
+        }
+
+        .log-entry.warning {
+            background: rgba(255, 152, 0, 0.1);
+            border-color: #FF9800;
+            color: #FFCC80;
+        }
+
+        .log-entry.error {
+            background: rgba(244, 67, 54, 0.1);
+            border-color: #F44336;
+            color: #EF9A9A;
+        }
+
+        .log-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .log-time {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .log-category {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .log-message {
+            color: #e0e0e0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-indicator.disconnected {
+            background: #F44336;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐛 Debug Logs - MetroPTY</h1>
+            <div class="controls">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="statusText">Conectando...</span>
+                <select id="categoryFilter">
+                    <option value="">Todas las categorías</option>
+                    <option value="ReportsStream">ReportsStream</option>
+                    <option value="ConfirmReports">ConfirmReports</option>
+                </select>
+                <button onclick="clearLogs()">Limpiar</button>
+                <button onclick="toggleAutoScroll()" id="autoScrollBtn">Auto-scroll: ON</button>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-label">Total Logs</span>
+                <span class="stat-value" id="totalLogs">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Info</span>
+                <span class="stat-value" id="infoCount" style="color: #2196F3;">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Success</span>
+                <span class="stat-value" id="successCount" style="color: #4CAF50;">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Warning</span>
+                <span class="stat-value" id="warningCount" style="color: #FF9800;">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Error</span>
+                <span class="stat-value" id="errorCount" style="color: #F44336;">0</span>
+            </div>
+        </div>
+        <div class="logs-container" id="logsContainer">
+            <div class="loading">Cargando logs...</div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de Firebase (desde firebase_options.dart)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKqEztWsaiwmRE-GqhmPit0CJOjzDwpPk",
+            authDomain: "metropty-aa303.firebaseapp.com",
+            projectId: "metropty-aa303",
+            storageBucket: "metropty-aa303.firebasestorage.app",
+            messagingSenderId: "443011769374",
+            appId: "1:443011769374:web:d55dc805031e69c993ba0f"
+        };
+
+        // Inicializar Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            
+            // Configurar settings para Firestore
+            db.settings({
+                ignoreUndefinedProperties: true
+            });
+        } catch (error) {
+            console.error('Error inicializando Firebase:', error);
+            document.getElementById('logsContainer').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">❌</div>
+                    <div>Error inicializando Firebase</div>
+                    <div style="margin-top: 20px; font-size: 12px; color: #666;">
+                        ${error.message}
+                    </div>
+                </div>
+            `;
+        }
+
+        let autoScroll = true;
+        let logs = [];
+        let unsubscribe = null;
+
+
+        function formatTime(timestamp) {
+            const date = timestamp.toDate();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function addLogEntry(logData) {
+            const entry = {
+                id: logData.id,
+                timestamp: logData.data().timestamp,
+                category: logData.data().category,
+                message: logData.data().message,
+                level: logData.data().level
+            };
+
+            logs.unshift(entry); // Agregar al inicio
+            renderLogs();
+            updateStats();
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logsContainer');
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            
+            let filteredLogs = logs;
+            if (categoryFilter) {
+                filteredLogs = logs.filter(log => log.category === categoryFilter);
+            }
+
+            if (filteredLogs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>No hay logs para mostrar</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredLogs.map(log => `
+                <div class="log-entry ${log.level}">
+                    <div class="log-header">
+                        <span class="log-time">${formatTime(log.timestamp)}</span>
+                        <span class="log-category">${log.category}</span>
+                    </div>
+                    <div class="log-message">${escapeHtml(log.message)}</div>
+                </div>
+            `).join('');
+
+            if (autoScroll) {
+                container.scrollTop = 0;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateStats() {
+            document.getElementById('totalLogs').textContent = logs.length;
+            document.getElementById('infoCount').textContent = logs.filter(l => l.level === 'info').length;
+            document.getElementById('successCount').textContent = logs.filter(l => l.level === 'success').length;
+            document.getElementById('warningCount').textContent = logs.filter(l => l.level === 'warning').length;
+            document.getElementById('errorCount').textContent = logs.filter(l => l.level === 'error').length;
+        }
+
+        function clearLogs() {
+            if (confirm('¿Estás seguro de que quieres limpiar todos los logs?')) {
+                logs = [];
+                renderLogs();
+                updateStats();
+            }
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            document.getElementById('autoScrollBtn').textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+
+        // Filtrar por categoría
+        document.getElementById('categoryFilter').addEventListener('change', renderLogs);
+
+        // Inicializar listener de Firestore
+        function startListening() {
+            if (!db) {
+                console.error('Firebase no está inicializado');
+                return;
+            }
+            
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+
+            statusIndicator.className = 'status-indicator connected';
+            statusText.textContent = 'Conectado';
+
+            unsubscribe = db.collection('debug_logs')
+                .orderBy('timestamp', 'desc')
+                .limit(500)
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            addLogEntry(change.doc);
+                        }
+                    });
+                }, (error) => {
+                    console.error('Error en listener:', error);
+                    statusIndicator.className = 'status-indicator disconnected';
+                    statusText.textContent = 'Error de conexión';
+                });
+        }
+
+        // Cargar logs iniciales
+        if (db) {
+            db.collection('debug_logs')
+                .orderBy('timestamp', 'desc')
+                .limit(500)
+                .get()
+                .then((snapshot) => {
+                    logs = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        timestamp: doc.data().timestamp,
+                        category: doc.data().category,
+                        message: doc.data().message,
+                        level: doc.data().level
+                    }));
+                    renderLogs();
+                    updateStats();
+                    startListening();
+                })
+                .catch((error) => {
+                    console.error('Error cargando logs:', error);
+                    document.getElementById('logsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <div>Error cargando logs: ${error.message}</div>
+                            <div style="margin-top: 20px; font-size: 12px; color: #666;">
+                                Asegúrate de que:<br>
+                                1. Firestore esté habilitado en Firebase<br>
+                                2. Las reglas de Firestore permitan lectura<br>
+                                3. Estés autenticado en Firebase (si las reglas lo requieren)
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+    </script>
+</body>
+</html>
+

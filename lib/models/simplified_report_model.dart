@@ -31,6 +31,7 @@ class SimplifiedReportModel {
   final String status; // 'active' | 'resolved' | 'rejected'
   final int confirmations;
   final double confidence; // 0..1
+  final List<String> confidenceReasons; // ['panel', '3_confirms', 'fresh', 'high_precision_author', 'new_user']
   
   // Puntos
   final int basePoints;
@@ -63,6 +64,7 @@ class SimplifiedReportModel {
     this.status = 'active',
     this.confirmations = 0,
     this.confidence = 0.5,
+    this.confidenceReasons = const [],
     this.basePoints = 0,
     this.bonusPoints = 0,
     this.totalPoints = 0,
@@ -99,6 +101,7 @@ class SimplifiedReportModel {
       status: data['status'] ?? 'active',
       confirmations: data['confirmations'] ?? 0,
       confidence: (data['confidence'] ?? 0.5).toDouble(),
+      confidenceReasons: List<String>.from(data['confidenceReasons'] ?? []),
       basePoints: data['basePoints'] ?? 0,
       bonusPoints: data['bonusPoints'] ?? 0,
       totalPoints: data['totalPoints'] ?? 0,
@@ -130,6 +133,7 @@ class SimplifiedReportModel {
       'status': status,
       'confirmations': confirmations,
       'confidence': confidence,
+      'confidenceReasons': confidenceReasons,
       'basePoints': basePoints,
       'bonusPoints': bonusPoints,
       'totalPoints': totalPoints,
