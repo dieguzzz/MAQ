@@ -1,0 +1,139 @@
+# 🚇 MetroPTY (MAQ) – Cursor Rules
+# Proyecto Flutter + Firebase + Google Maps
+# ⚠️ PROYECTO EXISTENTE — NO RECREAR, NO REESTRUCTURAR
+
+Cursor debe:
+- Entender
+- Mejorar
+- Extender
+el código existente, respetando arquitectura, patrones y límites definidos.
+
+────────────────────────────────────
+🚫 PROHIBIDO (ABSOLUTO)
+────────────────────────────────────
+
+Flutter / Dart
+- ❌ Usar `dynamic` sin tipado estricto
+- ❌ Widgets de más de 300 líneas
+- ❌ Funciones de más de 50 líneas
+- ❌ Lógica de negocio dentro de widgets
+- ❌ Acceso a Firestore desde widgets
+- ❌ Ignorar null safety
+- ❌ Usar `BuildContext` después de `await` sin:
+  - `if (!mounted) return;`
+  - o `if (!context.mounted) return;`
+- ❌ Reemplazar Provider por otro state manager
+- ❌ Reescribir UI sin pedirlo explícitamente
+
+Firebase / Firestore
+- ❌ Queries sin `.limit()`
+- ❌ Queries sin `orderBy()` cuando aplique
+- ❌ Listeners sin cancelar (`dispose`)
+- ❌ Escribir Firestore directamente desde la UI
+- ❌ Exponer secretos, API keys o IDs sensibles
+- ❌ Modificar reglas sin explicación clara
+
+Arquitectura
+- ❌ Cambiar estructura de carpetas existente
+- ❌ Introducir Clean Architecture “enterprise”
+- ❌ Refactors masivos sin autorización
+- ❌ Eliminar código sin entender su uso
+
+Google Maps
+- ❌ Hardcodear API keys en Dart
+- ❌ Recalcular markers innecesariamente
+- ❌ Mezclar lógica de mapas con UI
+
+────────────────────────────────────
+✅ OBLIGATORIO
+────────────────────────────────────
+
+Dart / Flutter
+- ✅ Null safety estricto
+- ✅ `const` constructors cuando aplique
+- ✅ Widgets `StatelessWidget` si no hay estado local
+- ✅ Separar responsabilidades:
+  UI → Provider → Service → Firebase
+- ✅ Manejo de errores visible para el usuario
+- ✅ Código legible, simple y mantenible
+
+Estructura base (NO cambiar)
+lib/
+├── models/
+├── services/
+├── providers/
+├── screens/
+├── widgets/
+└── utils/
+
+Providers
+- Deben:
+  - Mantener estado (`loading`, `error`, `data`)
+  - Llamar servicios
+  - Usar `notifyListeners()` correctamente
+- Nunca:
+  - Usar `BuildContext`
+  - Acceder directamente a UI
+
+Servicios
+- Encapsulan Firebase, Maps, Location, etc.
+- Usan try/catch
+- Devuelven tipos claros
+- No dependen de Flutter UI
+
+Firestore
+- Siempre usar:
+  - `.limit(n)`
+  - `.orderBy()`
+- Manejar errores
+- Tipar resultados con modelos
+
+Google Maps
+- Markers tipados
+- MapWidget solo UI
+- MapService para lógica/transformaciones
+- Permisos manejados con UX clara
+
+────────────────────────────────────
+📏 LÍMITES DE CÓDIGO
+────────────────────────────────────
+
+| Tipo      | Límite | Acción |
+|----------|--------|--------|
+| Widget   | 300    | Extraer subwidgets |
+| Servicio | 400    | Dividir responsabilidades |
+| Modelo   | 150    | Usar freezed o dividir |
+| Función | 50     | Extraer helpers |
+
+────────────────────────────────────
+🧪 TESTING
+────────────────────────────────────
+
+- Widgets críticos deben tener tests
+- Providers/Services: unit tests si es viable
+- No usar Firebase real en tests
+- `flutter analyze` debe pasar sin errores
+
+────────────────────────────────────
+📝 DOCUMENTACIÓN
+────────────────────────────────────
+
+- Cambios importantes → actualizar:
+  - `docs/ESTADO_ACTUAL.md`
+- Código público debe tener comentarios claros
+- Seguir patrones existentes antes de crear nuevos
+
+────────────────────────────────────
+🎯 DEFINITION OF DONE
+────────────────────────────────────
+
+Un cambio está completo cuando:
+- ✅ Cumple límites de código
+- ✅ Null safety correcto
+- ✅ No hay lógica en UI
+- ✅ Providers notifican correctamente
+- ✅ Firestore queries limitadas
+- ✅ Listeners cancelados
+- ✅ Tests pasan
+- ✅ `flutter analyze` limpio
+- ✅ Documentación actualizada
