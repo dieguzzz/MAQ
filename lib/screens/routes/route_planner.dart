@@ -17,9 +17,59 @@ class RoutePlanner extends StatefulWidget {
 }
 
 class _RoutePlannerState extends State<RoutePlanner> {
+  late PageController _pageController;
+  int _currentStep = 0;
+  String? _selectedOrigenLinea;
+  String? _selectedDestinoLinea;
   StationModel? _origen;
   StationModel? _destino;
   bool _isCalculating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _nextStep() {
+    if (_currentStep < 3) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _previousStep() {
+    if (_currentStep > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _selectOrigenLinea(String linea) {
+    setState(() {
+      _selectedOrigenLinea = linea;
+      _origen = null; // Resetear estación cuando cambia la línea
+    });
+    _nextStep();
+  }
+
+  void _selectDestinoLinea(String linea) {
+    setState(() {
+      _selectedDestinoLinea = linea;
+      _destino = null; // Resetear estación cuando cambia la línea
+    });
+    _nextStep();
+  }
 
   Future<void> _calculateRoute() async {
     if (_origen == null || _destino == null) {
@@ -45,14 +95,12 @@ class _RoutePlannerState extends State<RoutePlanner> {
     });
 
     try {
-      // Calcular ruta (simplificado - en producción usar Cloud Functions)
       final firebaseService = FirebaseService();
       RouteModel? route = await firebaseService.getRoute(
         _origen!.id,
         _destino!.id,
       );
 
-      // Si no existe, calcular tiempo estimado básico
       if (route == null) {
         final tiempoEstimado = _calculateEstimatedTime(_origen!, _destino!);
         route = RouteModel(
@@ -102,15 +150,13 @@ class _RoutePlannerState extends State<RoutePlanner> {
     
     int tiempoBase = RouteCalculationService.calculateEstimatedTime(routeStations);
     
-    // Agregar tiempo de transbordo si hay cambio de línea
     if (origen.linea != destino.linea) {
-      tiempoBase += 3; // 3 minutos adicionales por transbordo
+      tiempoBase += 3;
     }
     
     return tiempoBase;
   }
 
-  // Métodos auxiliares para ordenar estaciones
   List<StationModel> _getOrderedLinea1Stations(List<StationModel> allStations) {
     final staticStations = MetroData.getLinea1Stations();
     final orderMap = <String, int>{};
@@ -137,7 +183,6 @@ class _RoutePlannerState extends State<RoutePlanner> {
     
     final linea2Stations = allStations.where((s) => s.linea == 'linea2').toList();
     
-    // Separar estaciones principales de la rama del aeropuerto
     final mainLineStations = <StationModel>[];
     final airportBranchStations = <StationModel>[];
     
@@ -149,28 +194,23 @@ class _RoutePlannerState extends State<RoutePlanner> {
       }
     }
     
-    // Ordenar línea principal
     mainLineStations.sort((a, b) {
       final orderA = orderMap[a.id] ?? 999;
       final orderB = orderMap[b.id] ?? 999;
       return orderA.compareTo(orderB);
     });
     
-    // Ordenar rama del aeropuerto
     airportBranchStations.sort((a, b) {
       final orderA = orderMap[a.id] ?? 999;
       final orderB = orderMap[b.id] ?? 999;
       return orderA.compareTo(orderB);
     });
     
-    // Encontrar índice de Corredor Sur
     final corredorSurIndex = mainLineStations.indexWhere((s) => s.id == 'l2_corredor_sur');
     
-    // Insertar ITSE y Aeropuerto después de Corredor Sur
     if (corredorSurIndex != -1 && airportBranchStations.isNotEmpty) {
       mainLineStations.insertAll(corredorSurIndex + 1, airportBranchStations);
     } else {
-      // Si no se encuentra Corredor Sur, agregar al final
       mainLineStations.addAll(airportBranchStations);
     }
     
@@ -180,286 +220,525 @@ class _RoutePlannerState extends State<RoutePlanner> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Planificador de Rutas'),
-      ),
       body: Consumer<MetroDataProvider>(
         builder: (context, metroProvider, child) {
           final stations = metroProvider.stations;
           final linea1Stations = _getOrderedLinea1Stations(stations);
           final linea2Stations = _getOrderedLinea2Stations(stations);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Título
-                Text(
-                  'Planificador de Rutas',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: MetroColors.grayDark,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Descripción
-                Text(
-                  'Selecciona tu estación de origen y destino para calcular la mejor ruta y tiempo estimado de viaje.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: MetroColors.grayDark.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Selector de origen
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Origen',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Línea 1
-                        Card(
-                          color: Colors.blue[50],
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.train, color: Colors.blue[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Línea 1',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<StationModel>(
-                                  value: _origen?.linea == 'linea1' ? _origen : null,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Selecciona estación de Línea 1',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  ),
-                                  isExpanded: true,
-                                  items: linea1Stations.map((station) {
-                                    return DropdownMenuItem<StationModel>(
-                                      value: station,
-                                      child: Text(station.nombre),
-                                    );
-                                  }).toList(),
-                                  onChanged: (StationModel? value) {
-                                    setState(() {
-                                      _origen = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Línea 2
-                        Card(
-                          color: Colors.orange[50],
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.train, color: Colors.orange[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Línea 2',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<StationModel>(
-                                  value: _origen?.linea == 'linea2' ? _origen : null,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Selecciona estación de Línea 2',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  ),
-                                  isExpanded: true,
-                                  items: linea2Stations.map((station) {
-                                    return DropdownMenuItem<StationModel>(
-                                      value: station,
-                                      child: Text(station.nombre),
-                                    );
-                                  }).toList(),
-                                  onChanged: (StationModel? value) {
-                                    setState(() {
-                                      _origen = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+          return Column(
+            children: [
+              // Título y descripción centrados
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                child: Column(
+                  children: [
+                    Text(
+                      'Planificador de Rutas',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: MetroColors.grayDark,
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Selector de destino
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Destino',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Línea 1
-                        Card(
-                          color: Colors.blue[50],
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.train, color: Colors.blue[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Línea 1',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<StationModel>(
-                                  value: _destino?.linea == 'linea1' ? _destino : null,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Selecciona estación de Línea 1',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  ),
-                                  isExpanded: true,
-                                  items: linea1Stations.map((station) {
-                                    return DropdownMenuItem<StationModel>(
-                                      value: station,
-                                      child: Text(station.nombre),
-                                    );
-                                  }).toList(),
-                                  onChanged: (StationModel? value) {
-                                    setState(() {
-                                      _destino = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Línea 2
-                        Card(
-                          color: Colors.orange[50],
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.train, color: Colors.orange[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Línea 2',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<StationModel>(
-                                  value: _destino?.linea == 'linea2' ? _destino : null,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Selecciona estación de Línea 2',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  ),
-                                  isExpanded: true,
-                                  items: linea2Stations.map((station) {
-                                    return DropdownMenuItem<StationModel>(
-                                      value: station,
-                                      child: Text(station.nombre),
-                                    );
-                                  }).toList(),
-                                  onChanged: (StationModel? value) {
-                                    setState(() {
-                                      _destino = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Selecciona tu estación de origen y destino para calcular la mejor ruta y tiempo estimado de viaje.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: MetroColors.grayDark.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-
-                // Botón de calcular
-                ElevatedButton(
-                  onPressed: _isCalculating ? null : _calculateRoute,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: _isCalculating
-                      ? const CircularProgressIndicator()
-                      : const Text('Calcular Ruta'),
+              ),
+              
+              // PageView con pasos del formulario
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(), // Deshabilitar swipe
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentStep = index;
+                    });
+                  },
+                  children: [
+                    // Paso 0: Seleccionar línea de origen
+                    _buildLineSelectionStep(
+                      title: 'Selecciona la línea de origen',
+                      onLineSelected: _selectOrigenLinea,
+                    ),
+                    
+                    // Paso 1: Seleccionar estación de origen
+                    _buildStationSelectionStep(
+                      title: 'Selecciona la estación de origen',
+                      selectedLinea: _selectedOrigenLinea,
+                      selectedStation: _origen,
+                      onStationSelected: (station) {
+                        setState(() {
+                          _origen = station;
+                        });
+                      },
+                      linea1Stations: linea1Stations,
+                      linea2Stations: linea2Stations,
+                      showOrigen: true,
+                      showDestino: false,
+                    ),
+                    
+                    // Paso 2: Seleccionar línea de destino
+                    _buildLineSelectionStep(
+                      title: 'Selecciona la línea de destino',
+                      onLineSelected: _selectDestinoLinea,
+                    ),
+                    
+                    // Paso 3: Seleccionar estación de destino
+                    _buildStationSelectionStep(
+                      title: 'Selecciona la estación de destino',
+                      selectedLinea: _selectedDestinoLinea,
+                      selectedStation: _destino,
+                      onStationSelected: (station) {
+                        setState(() {
+                          _destino = station;
+                        });
+                      },
+                      linea1Stations: linea1Stations,
+                      linea2Stations: linea2Stations,
+                      showOrigen: true,
+                      showDestino: true,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              
+              // Botones de navegación
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    if (_currentStep > 0) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _previousStep,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('Atrás'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      flex: _currentStep > 0 ? 1 : 1,
+                      child: _currentStep == 3
+                          ? ElevatedButton(
+                              onPressed: (_destino == null || _isCalculating) ? null : _calculateRoute,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: _isCalculating
+                                  ? const CircularProgressIndicator()
+                                  : const Text('Calcular Ruta'),
+                            )
+                          : ElevatedButton(
+                              onPressed: (_currentStep == 1 && _origen == null) ||
+                                        (_currentStep == 3 && _destino == null)
+                                  ? null
+                                  : _nextStep,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: const Text('Siguiente'),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
-}
 
+  Widget _buildLineSelectionStep({
+    required String title,
+    required Function(String) onLineSelected,
+  }) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          // Botón Línea 1
+          Card(
+            elevation: 4,
+            child: InkWell(
+              onTap: () => onLineSelected('linea1'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(24.0),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.blue[700],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.train,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Línea 1',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Albrook → Villa Zaita',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.blue[700],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Botón Línea 2
+          Card(
+            elevation: 4,
+            child: InkWell(
+              onTap: () => onLineSelected('linea2'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(24.0),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.orange[700],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.train,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Línea 2',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'San Miguelito → Nuevo Tocumen',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.orange[700],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStationSelectionStep({
+    required String title,
+    required String? selectedLinea,
+    required StationModel? selectedStation,
+    required Function(StationModel) onStationSelected,
+    required List<StationModel> linea1Stations,
+    required List<StationModel> linea2Stations,
+    required bool showOrigen,
+    required bool showDestino,
+  }) {
+    final stations = selectedLinea == 'linea1' ? linea1Stations : linea2Stations;
+    final lineColor = selectedLinea == 'linea1' ? Colors.blue : Colors.orange;
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Resumen lado a lado (origen y destino)
+          Row(
+            children: [
+              // Origen (izquierda)
+              Expanded(
+                child: Card(
+                  color: showOrigen ? lineColor[50] : Colors.grey[100],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.radio_button_checked,
+                              color: showOrigen ? lineColor[700] : Colors.grey,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Origen',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: showOrigen ? lineColor[700] : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_selectedOrigenLinea != null) ...[
+                          Text(
+                            _selectedOrigenLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: showOrigen ? lineColor[700] : Colors.grey,
+                            ),
+                          ),
+                          if (_origen != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _origen!.nombre,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: showOrigen ? Colors.black : Colors.grey,
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'No seleccionada',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ] else ...[
+                          Text(
+                            'No seleccionada',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Destino (derecha)
+              Expanded(
+                child: Card(
+                  color: showDestino ? lineColor[50] : Colors.grey[100],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.place,
+                              color: showDestino ? lineColor[700] : Colors.grey,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Destino',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: showDestino ? lineColor[700] : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_selectedDestinoLinea != null) ...[
+                          Text(
+                            _selectedDestinoLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: showDestino ? lineColor[700] : Colors.grey,
+                            ),
+                          ),
+                          if (_destino != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _destino!.nombre,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: showDestino ? Colors.black : Colors.grey,
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'No seleccionada',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ] else ...[
+                          Text(
+                            'No seleccionada',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Selector de estación
+          if (selectedLinea != null) ...[
+            Card(
+              color: lineColor[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.train, color: lineColor[700], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          selectedLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: lineColor[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<StationModel>(
+                      value: selectedStation,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        hintText: 'Selecciona una estación',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      isExpanded: true,
+                      items: stations.map((station) {
+                        return DropdownMenuItem<StationModel>(
+                          value: station,
+                          child: Text(station.nombre),
+                        );
+                      }).toList(),
+                      onChanged: (StationModel? value) {
+                        if (value != null) {
+                          onStationSelected(value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

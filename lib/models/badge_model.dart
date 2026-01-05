@@ -15,6 +15,13 @@ enum BadgeRarity {
   legendary,
 }
 
+enum BadgeFilter {
+  all,
+  featured,
+  unlocked,
+  locked,
+}
+
 class BadgeModel {
   final String id;
   final String name;

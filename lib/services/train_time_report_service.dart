@@ -1,19 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
+import 'gamification_service.dart';
 
 /// Servicio para manejar reportes de tiempos de tren desde las pantallas de estación
 class TrainTimeReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GamificationService _gamificationService = GamificationService();
 
   /// Crea un reporte de tiempos de tren desde la pantalla de la estación
   Future<String> createTrainTimeReport({
     required String stationId,
     required String line, // 'linea1' | 'linea2'
     required String direction, // Nombre de destino: 'Villa Zaita', 'Albrook', etc.
-    required String nextTrainRange, // '0-1', '2', '3', '4', '5', '5+', 'no-appears'
-    String? followingTrainRange, // Opcional: '3-4', '5-6', '7-8', '10+', 'not-seen'
+    required int? nextTrainMinutes, // 1..12 (o null si "No sé")
+    required bool nextTrainUnknown, // true si el usuario tocó "No sé"
+    int? followingTrainMinutes, // Opcional: 1..12
     Position? userPosition,
   }) async {
     final userId = _auth.currentUser?.uid;
@@ -22,36 +25,41 @@ class TrainTimeReportService {
     final now = DateTime.now();
     
     // Calcular puntos
-    final basePoints = 10; // Reporte dirección + próximo tren
-    final followingBonus = followingTrainRange != null ? 5 : 0;
+    final basePoints = 5; // Reporte dirección + próximo tren (aunque sea "No sé")
+    final followingBonus = followingTrainMinutes != null ? 3 : 0;
     final totalPoints = basePoints + followingBonus;
 
-    // Convertir rangos a minutos (usar punto medio para cálculo)
-    int? nextTrainMinutes;
-    int? followingTrainMinutes;
+    String? nextTrainRange;
+    String? followingTrainRange;
 
-    final rangeToMinutes = {
-      '0-1': 1,
-      '2': 2,
-      '3': 3,
-      '4': 4,
-      '5': 5,
-      '5+': 7,
-    };
-
-    final followingRangeToMinutes = {
-      '3-4': 4,
-      '5-6': 6,
-      '7-8': 8,
-      '10+': 10,
-    };
-
-    if (nextTrainRange != 'no-appears') {
-      nextTrainMinutes = rangeToMinutes[nextTrainRange] ?? 2;
+    // Compatibilidad temporal: mantener campos viejos derivados para clientes/analytics.
+    // (La fuente de verdad pasa a ser nextTrainMinutes/followingTrainMinutes)
+    if (nextTrainUnknown || nextTrainMinutes == null) {
+      nextTrainRange = 'unknown';
+    } else if (nextTrainMinutes <= 1) {
+      nextTrainRange = '0-1';
+    } else if (nextTrainMinutes == 2) {
+      nextTrainRange = '2';
+    } else if (nextTrainMinutes == 3) {
+      nextTrainRange = '3';
+    } else if (nextTrainMinutes == 4) {
+      nextTrainRange = '4';
+    } else if (nextTrainMinutes == 5) {
+      nextTrainRange = '5';
+    } else {
+      nextTrainRange = '5+';
     }
 
-    if (followingTrainRange != null && followingTrainRange != 'not-seen') {
-      followingTrainMinutes = followingRangeToMinutes[followingTrainRange] ?? 6;
+    if (followingTrainMinutes != null) {
+      if (followingTrainMinutes <= 4) {
+        followingTrainRange = '3-4';
+      } else if (followingTrainMinutes <= 6) {
+        followingTrainRange = '5-6';
+      } else if (followingTrainMinutes <= 8) {
+        followingTrainRange = '7-8';
+      } else {
+        followingTrainRange = '10+';
+      }
     }
 
     final reportData = {
@@ -62,6 +70,7 @@ class TrainTimeReportService {
       'nextTrainMinutes': nextTrainMinutes,
       'followingTrainRange': followingTrainRange,
       'followingTrainMinutes': followingTrainMinutes,
+      'nextTrainUnknown': nextTrainUnknown,
       'source': 'station_display', // Viene de la pantalla oficial
       'reportedAt': FieldValue.serverTimestamp(),
       'userId': userId,
@@ -91,6 +100,13 @@ class TrainTimeReportService {
         // Si falla verificar duplicados, no es crítico, continuar
         print('Advertencia: No se pudo verificar duplicados: $e');
       }
+
+      // Otorgar puntos al usuario (ETA panel report)
+      await _gamificationService.awardPointsForEtaPanelReport(
+        userId: userId,
+        points: totalPoints,
+        stationId: stationId,
+      );
 
       return docRef.id;
     } on FirebaseException catch (e) {

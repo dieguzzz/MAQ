@@ -1,0 +1,787 @@
+#  MetroPTY (MAQ) – Cursor Rules
+# Proyecto Flutter + Firebase + Google Maps + Sistema de Gamificación
+#  PROYECTO EXISTENTE — NO RECREAR, NO REESTRUCTURAR
+
+Cursor debe: 
+- Entender la arquitectura existente
+- Mejorar código siguiendo patrones establecidos
+- Extender funcionalidad respetando límites y convenciones
+el código existente, respetando arquitectura, patrones y límites definidos.
+
+────────────────────────────────────
+ ARQUITECTURA DEL PROYECTO
+────────────────────────────────────
+
+## Stack Tecnológico
+- **Frontend:** Flutter (Dart)
+- **Backend:** Firebase (Firestore, Auth, Cloud Messaging, Functions)
+- **Mapas:** Google Maps Platform
+- **State Management:** Provider
+- **Anuncios:** Google Mobile Ads
+- **Ubicación:** Geolocator
+
+## Estructura de Carpetas (NO MODIFICAR)
+```
+lib/
+├── data/              # Datos estáticos del metro
+├── models/            # Modelos de datos (Firestore)
+├── providers/         # State management con Provider
+├── screens/           # Pantallas de la aplicación
+├── services/          # Servicios (Firebase, APIs, lógica de negocio)
+├── theme/             # Temas y estilos
+├── utils/             # Utilidades y constantes
+└── widgets/           # Widgets reutilizables
+```
+
+────────────────────────────────────
+🚫 PROHIBIDO (ABSOLUTO)
+────────────────────────────────────
+
+## Flutter / Dart
+- ❌ Usar `dynamic` sin tipado estricto
+- ❌ Widgets de más de 300 líneas
+- ❌ Funciones de más de 50 líneas
+- ❌ Lógica de negocio dentro de widgets
+- ❌ Acceso directo a Firestore desde widgets
+- ❌ Ignorar null safety
+- ❌ Usar `BuildContext` después de `await` sin: 
+  ```dart
+  if (! mounted) return;
+  // o
+  if (! context.mounted) return;
+  ```
+- ❌ Reemplazar Provider por otro state manager
+- ❌ Reescribir UI sin pedirlo explícitamente
+- ❌ Imports circulares entre archivos
+
+## Firebase / Firestore
+- ❌ Queries sin `.limit()`
+- ❌ Queries sin `orderBy()` cuando aplique
+- ❌ Listeners sin cancelar en `dispose()`
+- ❌ Escribir Firestore directamente desde la UI
+- ❌ Exponer secretos, API keys o IDs sensibles
+- ❌ Modificar reglas sin explicación clara
+- ❌ Queries que puedan generar miles de reads
+- ❌ Actualizar documentos sin validación
+
+## Arquitectura
+- ❌ Cambiar estructura de carpetas existente
+- ❌ Introducir Clean Architecture "enterprise"
+- ❌ Refactors masivos sin autorización
+- ❌ Eliminar código sin entender su uso
+- ❌ Mezclar responsabilidades de capas
+- ❌ Crear servicios que accedan directamente a UI
+
+## Google Maps
+- ❌ Hardcodear API keys en Dart
+- ❌ Recalcular markers innecesariamente
+- ❌ Mezclar lógica de mapas con UI
+- ❌ Crear markers sin optimizar rendimiento
+
+────────────────────────────────────
+✅ OBLIGATORIO
+────────────────────────────────────
+
+## Dart / Flutter
+- ✅ Null safety estricto (`?`, `!`, `??`, `?.`)
+- ✅ `const` constructors cuando aplique
+- ✅ `StatelessWidget` si no hay estado local
+- ✅ Separar responsabilidades: 
+  ```
+  UI (Widget) → Provider → Service → Firebase/API
+  ```
+- ✅ Manejo de errores visible para el usuario
+- ✅ Código legible, simple y mantenible
+- ✅ Comentarios en lógica compleja
+
+## Flujo de Datos (CRÍTICO)
+
+### 1. Widgets (UI Layer)
+- Solo renderizar datos
+- Usar `Provider. of<T>(context)` o `context.watch<T>()`
+- Nunca acceder directamente a servicios o Firebase
+- Ejemplo correcto:
+  ```dart
+  class MyWidget extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      final provider = context.watch<MyProvider>();
+      
+      if (provider.isLoading) return CircularProgressIndicator();
+      if (provider.error != null) return ErrorWidget(provider.error);
+      
+      return ListView(children: provider.data.map(... ).toList());
+    }
+  }
+  ```
+
+### 2. Providers (State Management)
+- Mantienen estado:  `_isLoading`, `_error`, `_data`
+- Llaman servicios
+- Usan `notifyListeners()` después de cambios de estado
+- **Lazy initialization** de streams con `_ensureStreamInitialized()`
+- Nunca usan `BuildContext`
+- Ejemplo correcto:
+  ```dart
+  class MyProvider with ChangeNotifier {
+    final MyService _service = MyService();
+    List<MyModel> _data = [];
+    bool _isLoading = false;
+    String?  _error;
+    bool _streamInitialized = false;
+    
+    List<MyModel> get data {
+      _ensureStreamInitialized();
+      return _data;
+    }
+    
+    void _ensureStreamInitialized() {
+      if (_streamInitialized) return;
+      _streamInitialized = true;
+      _init();
+    }
+    
+    void _init() {
+      try {
+        _service.getDataStream().listen((data) {
+          _data = data;
+          notifyListeners();
+        }, onError: (error) {
+          _error = error.toString();
+          notifyListeners();
+        });
+      } catch (e) {
+        print('Error:  $e');
+      }
+    }
+    
+    Future<void> createItem(MyModel item) async {
+      _isLoading = true;
+      notifyListeners();
+      
+      try {
+        await _service.createItem(item);
+        // No notificar aquí - el stream lo hará automáticamente
+      } catch (e) {
+        _error = e.toString();
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+  ```
+
+### 3. Services (Business Logic)
+- Encapsulan Firebase, APIs, Maps, Location, etc.
+- Usan `try/catch` para todos los errores
+- Devuelven tipos claros (no `dynamic`)
+- No dependen de Flutter UI (no `BuildContext`)
+- Validaciones de negocio aquí
+- Ejemplo correcto:
+  ```dart
+  class MyService {
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+    
+    Stream<List<MyModel>> getDataStream() {
+      return _firestore
+        .collection('my_collection')
+        .limit(100)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+          .map((doc) => MyModel.fromFirestore(doc))
+          .toList());
+    }
+    
+    Future<void> createItem(MyModel item) async {
+      try {
+        await _firestore.collection('my_collection').add(item.toFirestore());
+      } catch (e) {
+        throw Exception('Error creating item: $e');
+      }
+    }
+  }
+  ```
+
+### 4. Models (Data Layer)
+- Representan documentos de Firestore
+- Tienen constructores `fromFirestore` y métodos `toFirestore`
+- Inmutables cuando sea posible
+- Ejemplo correcto:
+  ```dart
+  class MyModel {
+    final String id;
+    final String name;
+    final DateTime createdAt;
+    
+    MyModel({
+      required this.id,
+      required this.name,
+      required this.createdAt,
+    });
+    
+    factory MyModel.fromFirestore(DocumentSnapshot doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return MyModel(
+        id: doc.id,
+        name: data['name'] ?? '',
+        createdAt: (data['created_at'] as Timestamp).toDate(),
+      );
+    }
+    
+    Map<String, dynamic> toFirestore() {
+      return {
+        'name':  name,
+        'created_at':  Timestamp.fromDate(createdAt),
+      };
+    }
+  }
+  ```
+
+## Firestore Patterns
+
+### Queries Seguras
+```dart
+//  CORRECTO
+_firestore
+  .collection('reports')
+  .where('status', isEqualTo: 'active')
+  .orderBy('created_at', descending: true)
+  .limit(50)
+  .get();
+
+//  INCORRECTO
+_firestore
+  .collection('reports')
+  .get(); // Sin límite - puede ser costoso
+```
+
+### Listeners con Cleanup
+```dart
+class MyWidget extends StatefulWidget {
+  @override
+  _MyWidgetState createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  StreamSubscription? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _subscription = _service.getStream().listen((data) {
+      setState(() {
+        // actualizar estado
+      });
+    });
+  }
+  
+  @override
+  void dispose() {
+    _subscription?.cancel(); // ✅ Cancelar listener
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+```
+
+## Sistema de Gamificación (CRÍTICO)
+
+El proyecto tiene un sistema complejo de gamificación que DEBE respetarse:
+
+### Estructura de Puntos
+- **Reportes normales:** 15 puntos base
+- **Confirmaciones:** 15 puntos
+- **Reportes verificados (autor):** +10 puntos bonus
+- **Rachas (streaks):** +2 puntos por día consecutivo
+- **Badges especiales:** Puntos variables según rareza
+
+### Badges del Sistema
+```dart
+enum BadgeType {
+  // Fundadores (Primera semana)
+  fundador,
+  fundadorPlatino,
+  pioneroEstacion,
+  
+  // Precisión
+  francotirador,  // 95%+
+  detective,      // 85%+
+  observador,     // 70%+
+  
+  // Comunidad
+  ayudanteComunidad,
+  influencerMetro,
+  
+  // Especialización
+  expertoLinea1,
+  maestroLinea2,
+  
+  // Eventos panameños
+  almaPollera,
+  reyCarnaval,
+}
+```
+
+### Niveles (1-50)
+```dart
+// Ejemplo de niveles
+1-4:   🥚 Novato del Metro
+5-9:  🚶 Viajero Frecuente
+10-19: 🎯 Reportero Confiable
+20-29: 💪 Experto del Metro
+30-39: 🌟 Leyenda Urbana
+40-49: 👑 Héroe del Metro
+50:    🇵🇦 Ícono Panameño
+```
+
+### Cálculo de Reputación
+```dart
+// Basado en: 
+// - Reportes confirmados
+// - Precisión histórica
+// - Rachas activas
+// - Badges desbloqueados
+```
+
+## Sistema de Reportes (CRÍTICO)
+
+### Tipos de Reporte
+```dart
+enum TipoReporte {
+  estacion,  // Reportar estado de estación
+  tren,      // Reportar estado de tren
+}
+
+enum CategoriaReporte {
+  congestion,     // Aglomeración
+  operacion,      // Estado operativo
+  infraestructura, // Problemas físicos
+  seguridad,      // Problemas de seguridad
+  otro,
+}
+```
+
+### Flujo de Creación de Reporte
+1. **Validación Anti-Spam:** `ReportValidationService. canUserReport()`
+2. **Validación de Ubicación:** Opcional según `AppMode`
+3. **Cálculo de Confianza:** `ConfidenceService.calculateConfidence()`
+4. **Guardar en Firestore:** Con `expiresAt` (25 minutos)
+5. **Otorgar Puntos:** `GamificationService.awardPointsForReport()`
+6. **Enviar Alertas:** `AlertService.sendRelevantAlerts()`
+
+### Confirmación de Reportes
+- Usuario puede confirmar reportes de otros
+- Validar que no sea su propio reporte
+- +15 puntos por confirmar
+- Aumentar `confidence` del reporte original
+- Autor del reporte recibe +10 puntos bonus
+
+## Sistema de Aprendizaje (Machine Learning)
+
+El proyecto tiene un sistema que aprende de los reportes:
+
+### LearningReportModel
+```dart
+// Captura llegadas reales de trenes
+final learningReport = LearningReportModel(
+  estacionId: 'albrook',
+  linea: 'linea1',
+  horaLlegadaReal: DateTime.now(),
+  tiempoEstimadoMostrado: 5,
+  retrasoMinutos: 2,
+  llegadaATiempo: false,
+);
+```
+
+### StationKnowledge
+```dart
+// Conocimiento aprendido por estación
+class StationKnowledge {
+  double averageDelay;           // Retraso promedio
+  Map<int, double> hourlyPatterns; // Patrones por hora (0-23)
+  double reliabilityScore;        // Confiabilidad
+  int totalReports;
+}
+```
+
+### Learning Rate
+```dart
+// Moving average con 10% de peso al nuevo dato
+static const double defaultLearningRate = 0.1;
+static const double hourlyLearningRate = 0.15;
+```
+
+## Sistema de Simulación (DevMode)
+
+Para testing y desarrollo:
+
+### MetroSimulatorService
+```dart
+// Simular estado de estación
+_simulator.setStationStatus('albrook', SimulatorStationStatus. cerrada);
+_simulator.setAglomeracion('albrook', 5);
+
+// Simular ubicación del usuario
+_simulator.setSimulatedLocation(SimulatorLocationType.enEstacion);
+
+// Simular tren llegando
+_simulator.setTrainStatus(SimulatorTrainStatus.llegando);
+_simulator.setNextTrainTime(120); // 2 minutos
+```
+
+## Google Maps Integration
+
+### Markers Optimizados
+```dart
+// Usar MapService para crear markers
+final marker = await MapService.createStationMarker(
+  station: station,
+  confidence: 'high',
+);
+
+// Abreviaciones de estaciones para mejor UX
+final abbr = MapService.getStationAbbreviation('Fernández de Córdoba');
+// Retorna: 'F.  Córdoba'
+```
+
+### BitmapDescriptor Customizado
+- Crear markers con estado visual
+- Colores según confianza
+- Iconos según tipo (estación/tren)
+
+## Sistema de Anuncios (Google Mobile Ads)
+
+### Reglas UX para Anuncios
+```dart
+//  PERMITIDO
+// - Banner en pantalla de perfil
+// - Intersticial después de 3er reporte de la sesión
+// - Recompensado para duplicar puntos
+
+//  PROHIBIDO
+// - Anuncios durante reporte urgente
+// - Interrumpir vista de mapa activa
+// - Más de 3 intersticiales por día
+```
+
+### AdSessionService
+```dart
+// Gestiona cuándo mostrar anuncios
+final canShow = await _adService.shouldShowInterstitialAfterReport();
+if (canShow) {
+  await _adService.showInterstitial();
+}
+```
+
+## Modo de Aplicación (AppMode)
+
+```dart
+enum AppMode {
+  production,   // Producción - validaciones completas
+  development,  // Desarrollo - logging extendido
+  test,        // Testing - sin validación de ubicación
+}
+
+// Cambiar modo por usuario
+await _appModeService.setMode(userId, AppMode.test);
+```
+
+────────────────────────────────────
+📏 LÍMITES DE CÓDIGO
+────────────────────────────────────
+
+| Tipo       | Límite | Acción                        |
+|------------|--------|-------------------------------|
+| Widget     | 300    | Extraer subwidgets            |
+| Servicio   | 400    | Dividir responsabilidades     |
+| Provider   | 300    | Crear sub-providers           |
+| Modelo     | 150    | Usar composition              |
+| Función    | 50     | Extraer helpers               |
+| Parámetros | 5      | Usar objetos de configuración |
+
+────────────────────────────────────
+ TESTING
+────────────────────────────────────
+
+-  Widgets críticos deben tener tests
+-  Providers/Services:  unit tests cuando sea viable
+-  No usar Firebase real en tests (usar mocks)
+-  `flutter analyze` debe pasar sin errores
+-  `flutter test` debe pasar todos los tests
+
+## Estructura de Tests
+```dart
+// test/services/my_service_test.dart
+void main() {
+  group('MyService', () {
+    late MyService service;
+    
+    setUp(() {
+      service = MyService();
+    });
+    
+    test('should return valid data', () async {
+      final result = await service.getData();
+      expect(result, isNotNull);
+    });
+  });
+}
+```
+
+────────────────────────────────────
+ DOCUMENTACIÓN
+────────────────────────────────────
+
+## Cambios importantes → actualizar: 
+- `docs/ESTADO_ACTUAL.md`
+- `README.md` si afecta instalación/setup
+- Comentarios inline en código complejo
+
+## Formato de Comentarios
+```dart
+/// Documentación pública (aparece en autocomplete)
+/// 
+/// Ejemplo:
+/// ```dart
+/// final result = service.getData();
+/// ```
+void publicMethod() {}
+
+// Comentario interno de implementación
+void _privateMethod() {}
+```
+
+────────────────────────────────────
+ DEFINITION OF DONE
+────────────────────────────────────
+
+Un cambio está completo cuando:
+-  Cumple límites de código
+-  Null safety correcto
+-  No hay lógica en UI
+-  Providers notifican correctamente con `notifyListeners()`
+-  Firestore queries tienen `.limit()` y `.orderBy()`
+-  Listeners son cancelados en `dispose()`
+-  Sistema de gamificación funciona (puntos, badges, niveles)
+-  Tests pasan (si aplica)
+-  `flutter analyze` limpio (0 issues)
+-  Documentación actualizada
+-  No hay warnings en consola
+-  UX fluida en dispositivos físicos
+
+────────────────────────────────────
+🚀 NUEVOS MÓDULOS:  CHECKLIST
+────────────────────────────────────
+
+Cuando agregues un nuevo módulo, sigue este orden:
+
+### 1. Modelo
+```dart
+// lib/models/my_new_model.dart
+class MyNewModel {
+  // Fields, fromFirestore, toFirestore
+}
+```
+
+### 2. Servicio
+```dart
+// lib/services/my_new_service. dart
+class MyNewService {
+  // Lógica de negocio, queries Firebase
+}
+```
+
+### 3. Provider
+```dart
+// lib/providers/my_new_provider.dart
+class MyNewProvider with ChangeNotifier {
+  // State management, lazy streams
+}
+```
+
+### 4. Widget/Screen
+```dart
+// lib/screens/my_new_screen.dart
+class MyNewScreen extends StatelessWidget {
+  // UI usando Provider
+}
+```
+
+### 5. Registro en main.dart
+```dart
+MultiProvider(
+  providers: [
+    // ... existing providers
+    ChangeNotifierProvider(create: (_) => MyNewProvider()),
+  ],
+  child: MyApp(),
+)
+```
+
+────────────────────────────────────⚡ PERFORMANCE TIPS
+────────────────────────────────────
+
+## Firestore
+- Usar `limit()` siempre que sea posible
+- Cachear datos frecuentes en memoria
+- Usar `SetOptions(merge: true)` para updates parciales
+
+## UI
+- Usar `const` widgets cuando sea posible
+- `ListView.builder` para listas largas
+- Evitar `setState()` en widgets grandes - preferir Provider
+
+## Maps
+- Limitar número de markers visible (< 100)
+- Usar `clusterManager` para muchos markers
+- Actualizar marcadores solo cuando cambien datos
+
+────────────────────────────────────
+ SEGURIDAD
+────────────────────────────────────
+
+## API Keys
+-  En archivos nativos (Android/iOS manifest)
+-  NUNCA en código Dart
+-  NUNCA en git
+
+## Firestore Rules
+- Validar en reglas de Firestore
+- No confiar solo en validación client-side
+- Limitar writes por usuario
+
+## Auth
+- Validar permisos en cada operación
+- Verificar `currentUser` antes de acciones
+- Manejar sesiones expiradas
+
+────────────────────────────────────
+ PLATAFORMAS
+────────────────────────────────────
+
+- **Android:** Mínimo SDK 21 (Lollipop)
+- **iOS:** Mínimo iOS 12
+- **Web:** Soporte básico (no prioritario)
+
+────────────────────────────────────
+ UI/UX GUIDELINES
+────────────────────────────────────
+
+## Colores (MetroTheme)
+- Usar colores del tema existente
+- No hardcodear colores
+- Mantener consistencia visual
+
+## Spacing
+```dart
+// Usar constantes definidas
+const kPaddingSmall = 8.0;
+const kPaddingMedium = 16.0;
+const kPaddingLarge = 24.0;
+```
+
+## Feedback al Usuario
+- Loading states claros
+- Error messages descriptivos
+- Success feedback visible
+- Animaciones suaves (< 300ms)
+
+────────────────────────────────────
+ ERROR HANDLING
+────────────────────────────────────
+
+```dart
+//  CORRECTO
+try {
+  final result = await _service.riskyOperation();
+  return result;
+} on FirebaseException catch (e) {
+  print('Firebase error: $e');
+  throw Exception(ErrorHandlerService.getErrorMessage(e));
+} catch (e) {
+  print('Unexpected error: $e');
+  throw Exception('Error inesperado:  $e');
+}
+
+//  INCORRECTO
+try {
+  final result = await _service.riskyOperation();
+  return result;
+} catch (e) {
+  return null; // Silencia errores - no hacer esto
+}
+```
+
+────────────────────────────────────
+ INTERNACIONALIZACIÓN
+────────────────────────────────────
+
+- Textos en español (idioma primario)
+- Preparado para i18n futuro
+- Fechas en formato local
+
+────────────────────────────────────
+ANALYTICS & LOGGING
+────────────────────────────────────
+
+```dart
+// Logging en desarrollo
+if (kDebugMode) {
+  print('Debug:  $message');
+}
+
+// Analytics en producción
+await _analytics.logEvent(
+  name: 'report_created',
+  parameters: {
+    'station_id': stationId,
+    'type': type. toString(),
+  },
+);
+```
+
+────────────────────────────────────
+ FINAL NOTES
+────────────────────────────────────
+
+**Este es un proyecto colaborativo para mejorar la experiencia
+del Metro de Panamá mediante reportes de usuarios en tiempo real.**
+
+**Mantén el código:**
+-  Simple y directo
+-  Legible y documentado
+-  Seguro y validado
+-  Rápido y eficiente
+-  Consistente visualmente
+
+**Recuerda:** La app debe funcionar bien incluso con poca conectividad. 
+Optimiza para usuarios en el metro. 
+
+────────────────────────────────────
+ RECURSOS IMPORTANTES
+────────────────────────────────────
+
+- `/docs/ESTADO_ACTUAL. md` - Estado del proyecto
+- `/docs/LANZAMIENTO/` - Estrategia de lanzamiento
+- `/docs/DOCUMENTACION_COMPLETA_PROYECTO.md` - Docs completas
+- `/TESTING_CHECKLIST.md` - Lista de pruebas
+- `/dashboard/` - Dashboard web de monitoreo
+
+────────────────────────────────────
+ COLABORACIÓN
+────────────────────────────────────
+
+Si necesitas agregar funcionalidad nueva:
+1. Revisar patrones existentes
+2. Seguir la arquitectura establecida
+3. Documentar decisiones importantes
+4. Testear en dispositivo físico
+5. Actualizar documentación
+
+**¡Gracias por contribuir a MetroPTY!  🚇🇵🇦**

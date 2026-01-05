@@ -258,7 +258,9 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 // Ordenar: primero por confianza descendente, luego por fecha (más recientes), luego por confirmaciones
                 filteredReports.sort((a, b) {
                   // 1. Por confianza (descendente)
-                  final confidenceCompare = b.confidence.compareTo(a.confidence);
+                  final aConf = a.confidence ?? 0.0;
+                  final bConf = b.confidence ?? 0.0;
+                  final confidenceCompare = bConf.compareTo(aConf);
                   if (confidenceCompare != 0) return confidenceCompare;
                   
                   // 2. Por fecha (más recientes primero)
@@ -628,7 +630,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                           : Colors.red,
                                 ),
                                 if (report.stationCrowd != null ||
-                                    report.stationIssues.isNotEmpty)
+                                    (report.stationIssues?.isNotEmpty ?? false))
                                   const SizedBox(height: 12),
                               ],
                               if (report.stationCrowd != null) ...[
@@ -638,14 +640,14 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                   'Nivel ${report.stationCrowd}/5',
                                   Colors.blue,
                                 ),
-                                if (report.stationIssues.isNotEmpty)
+                                if (report.stationIssues?.isNotEmpty ?? false)
                                   const SizedBox(height: 12),
                               ],
-                              if (report.stationIssues.isNotEmpty) ...[
+                              if (report.stationIssues?.isNotEmpty ?? false) ...[
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: report.stationIssues.take(3).map((issue) {
+                                  children: (report.stationIssues ?? []).take(3).map((issue) {
                                     return Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10,
@@ -825,9 +827,10 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     SimplifiedReportModel report,
     UserModel? author,
   ) {
-    final confidenceLevel = SimplifiedReportConfidenceService.getConfidenceLevel(report.confidence);
-    final confidenceColor = SimplifiedReportConfidenceService.getConfidenceColor(report.confidence);
-    final explanation = SimplifiedReportConfidenceService.getConfidenceExplanation(report.confidenceReasons);
+    final confidence = report.confidence ?? 0.0;
+    final confidenceLevel = SimplifiedReportConfidenceService.getConfidenceLevel(confidence);
+    final confidenceColor = SimplifiedReportConfidenceService.getConfidenceColor(confidence);
+    final explanation = SimplifiedReportConfidenceService.getConfidenceExplanation(report.confidenceReasons ?? []);
     
     // Determinar chip de autor
     String authorChipText;
@@ -864,7 +867,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
         Tooltip(
           message: explanation.isNotEmpty 
               ? 'Confianza: $explanation'
-              : 'Confianza: ${(report.confidence * 100).toStringAsFixed(0)}%',
+              : 'Confianza: ${(confidence * 100).toStringAsFixed(0)}%',
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -904,12 +907,12 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: report.confidenceReasons.contains('panel')
+            color: (report.confidenceReasons?.contains('panel') ?? false)
                 ? Colors.blue.withOpacity(0.15)
                 : Colors.grey.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: report.confidenceReasons.contains('panel')
+              color: (report.confidenceReasons?.contains('panel') ?? false)
                   ? Colors.blue.withOpacity(0.5)
                   : Colors.grey.withOpacity(0.3),
               width: 1.5,
@@ -919,23 +922,23 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                report.confidenceReasons.contains('panel')
+                (report.confidenceReasons?.contains('panel') ?? false)
                     ? Icons.tv
                     : Icons.people,
                 size: 14,
-                color: report.confidenceReasons.contains('panel')
+                color: (report.confidenceReasons?.contains('panel') ?? false)
                     ? Colors.blue
                     : Colors.grey[700],
               ),
               const SizedBox(width: 6),
               Text(
-                report.confidenceReasons.contains('panel')
+                (report.confidenceReasons?.contains('panel') ?? false)
                     ? 'Panel Digital'
                     : 'Comunidad',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: report.confidenceReasons.contains('panel')
+                  color: (report.confidenceReasons?.contains('panel') ?? false)
                       ? Colors.blue
                       : Colors.grey[700],
                 ),
@@ -1207,7 +1210,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     'Nivel ${report.stationCrowd}/5',
                   ),
                 ],
-                if (report.stationIssues.isNotEmpty) ...[
+                if (report.stationIssues?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 24),
                   const Text(
                     'Problemas reportados',
@@ -1221,7 +1224,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: report.stationIssues.map((issue) {
+                    children: (report.stationIssues ?? []).map((issue) {
                       return Chip(
                         label: Text(_getProblemaTexto(issue)),
                         backgroundColor: MetroColors.energyOrange.withOpacity(0.1),

@@ -21,7 +21,7 @@ import '../../widgets/location_permission_dialog.dart';
 import '../../widgets/confirm_reports_sheet.dart';
 import '../../widgets/train_arrival_animation.dart';
 import '../../widgets/pulsing_button.dart';
-import '../../services/simplified_report_service.dart';
+import '../../services/eta_arrival_service.dart';
 import '../../widgets/train_time_report_flow_widget.dart';
 import '../../models/station_model.dart';
 import '../../services/location_service.dart';
@@ -41,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isCheckingLocation = false;
   bool _lastGpsStatus = true;
   bool _lastPermissionStatus = true;
-  final SimplifiedReportService _reportService = SimplifiedReportService();
   DateTime? _lastTrainButtonTap;
   Timer? _trainButtonTimer;
   final GlobalKey<MapWidgetState> _mapWidgetKey = GlobalKey<MapWidgetState>();
@@ -446,20 +445,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       final station = nearestStation!;
-      final arrivalTime = DateTime.now();
-
-      // Si showAnimationFirst es true, mostrar animación inmediatamente con 15 puntos
-      if (showAnimationFirst && mounted) {
-        TrainArrivalAnimation.show(
-          context,
-          points: 15, // Siempre 15 puntos
-          onComplete: () {
-            // Ya se cierra automáticamente
-          },
-        );
-      }
-
-      // Crear reporte directo de llegada (siempre 15 puntos)
       Position? position;
       try {
         final locationService = LocationService();
@@ -471,23 +456,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         print('No se pudo obtener ubicación: $e');
       }
 
-      await _reportService.createDirectArrivalReport(
+      final arrivalService = EtaArrivalService();
+      final result = await arrivalService.submitArrivalTap(
         stationId: station.id,
-        arrivalTime: arrivalTime,
-        trainLine: station.linea,
         userPosition: position,
       );
 
-      // Si no se mostró la animación antes, mostrarla ahora
-      if (!showAnimationFirst && mounted) {
-        TrainArrivalAnimation.show(
-          context,
-          points: 15,
-          onComplete: () {
-            // Ya se cierra automáticamente
-          },
+      if (!mounted) return;
+
+      if (!result.success) {
+        final msg = switch (result.reason) {
+          'no_active_group' =>
+            'Primero reporta el tiempo del panel para poder confirmar.',
+          'ambiguous_direction' =>
+            'Hay varias direcciones activas. Reporta el tiempo del panel para indicar tu dirección.',
+          'out_of_geofence' => 'Debes estar en la estación (≤150m) para que cuente.',
+          'no_gps' =>
+            'No pudimos validar tu GPS aquí. No cuenta ni otorga puntos, pero puedes reportar el panel.',
+          'cooldown' => 'Espera un poco antes de confirmar otra vez.',
+          'already_counted' => 'Ya registramos tu confirmación recientemente.',
+          _ => 'No se pudo confirmar. Intenta de nuevo.',
+        };
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
+        return;
       }
+
+      TrainArrivalAnimation.show(
+        context,
+        points: result.pointsAwarded,
+        onComplete: () {},
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

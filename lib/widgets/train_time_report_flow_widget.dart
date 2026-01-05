@@ -29,8 +29,9 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
   // Estado del formulario
   String? _selectedDirection; // Nombre de destino: 'Villa Zaita', 'Albrook', etc.
-  String? _nextTrainRange; // '0-1', '2', '3', '4', '5', '5+', 'no-appears'
-  String? _followingTrainRange; // '3-4', '5-6', '7-8', '10+', 'not-seen' (opcional)
+  int? _nextTrainMinutes; // 1..12
+  bool _nextTrainUnknown = false;
+  int? _followingTrainMinutes; // 1..12 (opcional)
 
   final TrainTimeReportService _reportService = TrainTimeReportService();
   bool _isSubmitting = false;
@@ -231,15 +232,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
   // Página 2: ¿En cuántos minutos llega el próximo tren?
   Widget _buildPage2() {
-    final timeRanges = [
-      {'value': '0-1', 'label': '0-1 min', 'color': Colors.green},
-      {'value': '2', 'label': '2 min', 'color': Colors.green},
-      {'value': '3', 'label': '3 min', 'color': Colors.orange},
-      {'value': '4', 'label': '4 min', 'color': Colors.orange},
-      {'value': '5', 'label': '5 min', 'color': Colors.orange},
-      {'value': '5+', 'label': '5+ min', 'color': Colors.red},
-      {'value': 'no-appears', 'label': 'No aparece / No llegó', 'color': Colors.grey},
-    ];
+    final minutesOptions = List<int>.generate(12, (i) => i + 1);
 
     return SingleChildScrollView(
       controller: widget.scrollController,
@@ -263,18 +256,28 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
             ),
           ),
           const SizedBox(height: 24),
-          ...timeRanges.map((range) {
-            final isSelected = _nextTrainRange == range['value'];
-            final color = range['color'] as Color;
-            return _buildTimeOptionCard(
-              label: range['label'] as String,
-              isSelected: isSelected,
-              color: color,
-              onTap: () {
-                setState(() => _nextTrainRange = range['value'] as String);
-              },
-            );
-          }),
+          _buildMinutesGrid(
+            minutesOptions: minutesOptions,
+            selected: _nextTrainMinutes,
+            onSelected: (v) {
+              setState(() {
+                _nextTrainMinutes = v;
+                _nextTrainUnknown = false;
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildTimeOptionCard(
+            label: 'No sé',
+            isSelected: _nextTrainUnknown,
+            color: Colors.grey,
+            onTap: () {
+              setState(() {
+                _nextTrainUnknown = true;
+                _nextTrainMinutes = null;
+              });
+            },
+          ),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -293,7 +296,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _nextTrainRange != null
+                  onPressed: (_nextTrainMinutes != null || _nextTrainUnknown)
                       ? () {
                           HapticFeedback.lightImpact();
                           _nextPage();
@@ -320,16 +323,10 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
   // Página 3: ¿Y el siguiente tren? (opcional) + confirmación
   Widget _buildPage3() {
-    const followingRanges = [
-      {'value': '3-4', 'label': '3-4 min'},
-      {'value': '5-6', 'label': '5-6 min'},
-      {'value': '7-8', 'label': '7-8 min'},
-      {'value': '10+', 'label': '10+ min'},
-      {'value': 'not-seen', 'label': 'No lo vi'},
-    ];
+    final minutesOptions = List<int>.generate(12, (i) => i + 1);
 
-    const basePoints = 10;
-    final followingBonus = _followingTrainRange != null ? 5 : 0;
+    const basePoints = 5;
+    final followingBonus = _followingTrainMinutes != null ? 3 : 0;
     final totalPoints = basePoints + followingBonus;
 
     return SingleChildScrollView(
@@ -354,26 +351,25 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
             ),
           ),
           const SizedBox(height: 24),
-          ...followingRanges.map((range) {
-            final isSelected = _followingTrainRange == range['value'];
-            return _buildTimeOptionCard(
-              label: range['label'] as String,
-              isSelected: isSelected,
-              color: Colors.blue,
-              onTap: () {
-                setState(() {
-                  if (_followingTrainRange == range['value']) {
-                    _followingTrainRange = null; // Deseleccionar
-                  } else {
-                    _followingTrainRange = range['value'] as String;
-                  }
-                });
-              },
-            );
-          }),
+          _buildMinutesGrid(
+            minutesOptions: minutesOptions,
+            selected: _followingTrainMinutes,
+            onSelected: (v) {
+              setState(() => _followingTrainMinutes = v);
+            },
+            color: Colors.blue,
+          ),
+          const SizedBox(height: 12),
+          _buildTimeOptionCard(
+            label: 'Omitir',
+            isSelected: _followingTrainMinutes == null,
+            color: Colors.grey,
+            onTap: () => setState(() => _followingTrainMinutes = null),
+          ),
           const SizedBox(height: 24),
           // Resumen antes de enviar
-          if (_selectedDirection != null && _nextTrainRange != null) ...[
+          if (_selectedDirection != null &&
+              (_nextTrainMinutes != null || _nextTrainUnknown)) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -573,37 +569,6 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
     );
   }
 
-  Widget _buildTimeChip({
-    required String label,
-    required bool isSelected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.2) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? color : Colors.grey[800],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTimeOptionCard({
     required String label,
     required bool isSelected,
@@ -725,47 +690,23 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
     }
     
     // Próximo tren
-    if (_nextTrainRange != null) {
-      parts.add('Próximo: ${_getNextTrainLabel()}');
+    if (_nextTrainMinutes != null) {
+      parts.add('Próximo: $_nextTrainMinutes min');
+    } else if (_nextTrainUnknown) {
+      parts.add('Próximo: No sé');
     }
     
     // Siguiente tren (si existe)
-    if (_followingTrainRange != null) {
-      parts.add('Siguiente: ${_getFollowingTrainLabel()}');
+    if (_followingTrainMinutes != null) {
+      parts.add('Siguiente: $_followingTrainMinutes min');
     }
     
     return parts.join(' • ');
   }
 
-  String _getNextTrainLabel() {
-    if (_nextTrainRange == null) return '';
-    final labels = {
-      '0-1': '0-1 min',
-      '2': '2 min',
-      '3': '3 min',
-      '4': '4 min',
-      '5': '5 min',
-      '5+': '5+ min',
-      'no-appears': 'No aparece',
-    };
-    return labels[_nextTrainRange] ?? _nextTrainRange!;
-  }
-
-  String _getFollowingTrainLabel() {
-    if (_followingTrainRange == null) return '';
-    final labels = {
-      '3-4': '3-4 min',
-      '5-6': '5-6 min',
-      '7-8': '7-8 min',
-      '10+': '10+ min',
-      'not-seen': 'No lo vi',
-    };
-    return labels[_followingTrainRange] ?? _followingTrainRange!;
-  }
-
   bool _canSubmit() {
     return _selectedDirection != null &&
-        _nextTrainRange != null &&
+        (_nextTrainMinutes != null || _nextTrainUnknown) &&
         !_isSubmitting;
   }
 
@@ -804,14 +745,15 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
         stationId: widget.station.id,
         line: widget.station.linea,
         direction: _selectedDirection!,
-        nextTrainRange: _nextTrainRange!,
-        followingTrainRange: _followingTrainRange,
+        nextTrainMinutes: _nextTrainMinutes,
+        nextTrainUnknown: _nextTrainUnknown,
+        followingTrainMinutes: _followingTrainMinutes,
         userPosition: position,
       );
 
       if (!mounted) return;
 
-      final totalPoints = 10 + (_followingTrainRange != null ? 5 : 0);
+      final totalPoints = 5 + (_followingTrainMinutes != null ? 3 : 0);
       
       // Mostrar animación de puntos
       PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
@@ -841,6 +783,114 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  Widget _buildMinutesGrid({
+    required List<int> minutesOptions,
+    required int? selected,
+    required void Function(int value) onSelected,
+    Color color = Colors.green,
+  }) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: minutesOptions.length,
+      itemBuilder: (context, index) {
+        final m = minutesOptions[index];
+        final isSelected = selected == m;
+        return _buildMinuteChip(
+          label: '$m',
+          isSelected: isSelected,
+          color: color,
+          onTap: () => onSelected(m),
+        );
+      },
+    );
+  }
+
+  Widget _buildMinuteChip({
+    required String label,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.2),
+                    color.withValues(alpha: 0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: !isSelected ? Colors.grey[100] : null,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? color : Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'min',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? color.withValues(alpha: 0.8) : Colors.grey[600],
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

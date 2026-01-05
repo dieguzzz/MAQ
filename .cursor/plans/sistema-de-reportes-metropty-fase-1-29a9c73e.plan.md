@@ -597,4 +597,3 @@ Implementar horarios base predeterminados del metro diferenciados por weekdays/w
 ### SPRINT 2 (Crítico - 3-4 días): Reportes de Llegada Básicos
 
 - `learning_report_model.dart` - Modelo de datos
-- `learning_

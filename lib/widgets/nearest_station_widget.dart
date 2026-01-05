@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../providers/location_provider.dart';
@@ -6,7 +7,8 @@ import '../providers/metro_data_provider.dart';
 import '../models/station_model.dart';
 import '../theme/metro_theme.dart';
 import '../widgets/station_report_sheet.dart';
-import '../services/simplified_report_service.dart';
+import '../services/eta_group_service.dart';
+import '../models/eta_group_model.dart';
 import '../models/simplified_report_model.dart';
 
 class NearestStationWidget extends StatefulWidget {
@@ -128,7 +130,7 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
 
   @override
   Widget build(BuildContext context) {
-    final reportService = SimplifiedReportService();
+    final etaGroupService = EtaGroupService();
     
     return Consumer<LocationProvider>(
       builder: (context, locationProvider, child) {
@@ -155,24 +157,13 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
               return const SizedBox.shrink();
             }
 
-            return StreamBuilder<List<SimplifiedReportModel>>(
-              stream: reportService.getActiveReportsStream(),
+            return StreamBuilder<EtaGroupModel?>(
+              stream: etaGroupService.watchBestActiveGroupForStation(nearestStation.id),
               builder: (context, snapshot) {
-                // Usar el agregador en lugar del filtro simple
-                bool hasRecentArrivals = false;
-                int recentCount = 0;
-                
-                if (snapshot.hasData) {
-                  final aggregated = _TrainArrivalAggregator.processReports(
-                    snapshot.data!,
-                    nearestStation.id,
-                  );
-                  
-                  if (aggregated != null) {
-                    hasRecentArrivals = aggregated.isActive;
-                    recentCount = aggregated.count;
-                  }
-                }
+                final group = snapshot.data;
+                final ageMin = group?.ageMinutes ?? 999;
+                final recentCount = group?.arrivedCount ?? 0;
+                final hasRecentArrivals = group != null && recentCount > 0 && ageMin <= 5;
 
                 // Detectar cuando hay un nuevo reporte
                 if (recentCount > _previousCount) {
@@ -234,6 +225,21 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
+                            if (group != null) ...[
+                              const SizedBox(height: 6),
+                              _MiniEtaCountdown(
+                                label: 'Próximo',
+                                baseTime: group.firstReportedAt ?? group.bucketStart,
+                                primaryExpectedAt: group.nextEtaExpectedAt,
+                                primaryBucket: group.nextEtaBucket,
+                                secondaryExpectedAt: group.followingEtaExpectedAt,
+                                secondaryBucket: group.followingEtaBucket,
+                                primaryMinutes: group.nextEtaMinutesP50,
+                                secondaryMinutes: group.followingEtaMinutesP50,
+                                expiresAt: group.expiresAt,
+                                confidence: group.confidence,
+                              ),
+                            ],
                           ],
                         ),
                         if (hasRecentArrivals) ...[
@@ -272,6 +278,144 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
           },
         );
       },
+    );
+  }
+}
+
+int? _midpointFromBucket(String? bucket) {
+  switch (bucket) {
+    case '1-2':
+      return 2;
+    case '3-5':
+      return 4;
+    case '6-8':
+      return 7;
+    case '9+':
+      return 10;
+    default:
+      return null;
+  }
+}
+
+class _MiniEtaCountdown extends StatefulWidget {
+  const _MiniEtaCountdown({
+    required this.label,
+    required this.baseTime,
+    required this.primaryExpectedAt,
+    required this.primaryBucket,
+    required this.secondaryExpectedAt,
+    required this.secondaryBucket,
+    required this.primaryMinutes,
+    required this.secondaryMinutes,
+    required this.expiresAt,
+    required this.confidence,
+  });
+
+  final String label;
+  final DateTime baseTime;
+  final DateTime? primaryExpectedAt;
+  final String? primaryBucket;
+  final DateTime? secondaryExpectedAt;
+  final String? secondaryBucket;
+  final int? primaryMinutes;
+  final int? secondaryMinutes;
+  final DateTime expiresAt;
+  final double confidence;
+
+  @override
+  State<_MiniEtaCountdown> createState() => _MiniEtaCountdownState();
+}
+
+class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
+  Timer? _timer;
+  static const int NO_FOLLOW_GRACE_SECONDS = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+
+    if (now.isAfter(widget.expiresAt)) {
+      return const SizedBox.shrink();
+    }
+
+    // Calcular tiempos restantes
+    final primaryRem = widget.primaryExpectedAt?.difference(now).inSeconds ?? 999999;
+    final secondaryRem = widget.secondaryExpectedAt?.difference(now).inSeconds ?? -1;
+
+    // Rollover: si primaryRem <= 0 y hay secondary válido (secondaryRem > 0)
+    final rolled = (primaryRem <= 0 && secondaryRem > 0);
+    
+    // No follow expired: cuando primaryRem <= -30s y no hay secondary válido
+    final noFollowExpired = (primaryRem <= -NO_FOLLOW_GRACE_SECONDS && secondaryRem <= 0);
+
+    // Si no hay following y ya expiró la gracia, ocultar
+    if (noFollowExpired) {
+      return const SizedBox.shrink();
+    }
+
+    final effectiveExpectedAt = rolled ? widget.secondaryExpectedAt : widget.primaryExpectedAt;
+    final effectiveBucket = rolled ? widget.secondaryBucket : widget.primaryBucket;
+    final effectiveMidpoint = rolled
+        ? (widget.secondaryMinutes ?? _midpointFromBucket(effectiveBucket))
+        : (widget.primaryMinutes ?? _midpointFromBucket(effectiveBucket));
+
+    if (effectiveExpectedAt == null &&
+        (effectiveMidpoint == null || effectiveMidpoint <= 0)) {
+      return const SizedBox.shrink();
+    }
+
+    int remainingSeconds;
+    if (effectiveExpectedAt != null) {
+      remainingSeconds = effectiveExpectedAt.difference(now).inSeconds;
+    } else {
+      final totalSeconds = effectiveMidpoint! * 60;
+      final elapsedSeconds = now.difference(widget.baseTime).inSeconds;
+      remainingSeconds = totalSeconds - elapsedSeconds;
+    }
+
+    if (remainingSeconds < 0) remainingSeconds = 0;
+
+    final displayText = remainingSeconds <= 60
+        ? 'Llegando'
+        : '${(remainingSeconds / 60).ceil()} min';
+
+    final prefix = widget.confidence >= 0.75
+        ? '🟢'
+        : widget.confidence >= 0.5
+            ? '🟡'
+            : '🔴';
+
+    // Animar solo cuando cambia la fuente (expectedAt/bucket), no cada tick.
+    final key = effectiveExpectedAt != null
+        ? 'exp-${effectiveExpectedAt.millisecondsSinceEpoch}'
+        : 'base-${widget.baseTime.millisecondsSinceEpoch}-$effectiveBucket';
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: Text(
+        '$prefix ${widget.label}: $displayText',
+        key: ValueKey(key),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: MetroColors.grayDark,
+            ),
+      ),
     );
   }
 }

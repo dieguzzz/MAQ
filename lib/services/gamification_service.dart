@@ -815,5 +815,48 @@ class GamificationService {
       // No lanzar error, solo loggear
     }
   }
+
+  /// Otorga puntos por reportar tiempos del panel (ETA).
+  ///
+  /// A diferencia de `awardPointsForArrivalValidation`, este método también
+  /// actualiza la racha (streak), porque es una acción de reporte.
+  Future<void> awardPointsForEtaPanelReport({
+    required String userId,
+    required int points,
+    required String stationId,
+  }) async {
+    try {
+      final stationDoc = await _firestore.collection('stations').doc(stationId).get();
+      if (!stationDoc.exists) return;
+
+      final linea = stationDoc.data()?['linea'] as String?;
+      if (linea == null) return;
+
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      if (!userDoc.exists) return;
+
+      final currentData = userDoc.data()!;
+      final gamification = currentData['gamification'] as Map<String, dynamic>?;
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final puntosPorLinea = Map<String, int>.from(gamification?['puntos_por_linea'] ?? {});
+
+      final newPuntos = currentPuntos + points;
+      puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + points;
+
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.puntos_por_linea': puntosPorLinea,
+      });
+
+      await updateStreak(userId);
+      await _checkAndAwardBadges(userId, newPuntos);
+    } catch (e) {
+      print('Error awarding points for ETA panel report: $e');
+    }
+  }
 }
 

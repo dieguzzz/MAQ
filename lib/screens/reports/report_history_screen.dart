@@ -663,11 +663,11 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                           ),
                           const SizedBox(height: 8),
                         ],
-                        if (report.stationIssues.isNotEmpty) ...[
+                        if (report.stationIssues?.isNotEmpty ?? false) ...[
                           Wrap(
                             spacing: 4,
                             runSpacing: 4,
-                            children: report.stationIssues.take(3).map((issue) {
+                            children: (report.stationIssues ?? []).take(3).map((issue) {
                               return Chip(
                                 label: Text(
                                   _getProblemaTexto(issue),
@@ -830,12 +830,12 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       _buildEstadoChip(report.status),
                     ],
                   ),
-                  if (report.stationIssues.isNotEmpty) ...[
+                  if (report.stationIssues?.isNotEmpty ?? false) ...[
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
-                      children: report.stationIssues.take(3).map((issue) {
+                      children: (report.stationIssues ?? []).take(3).map((issue) {
                         return Chip(
                           label: Text(
                             _getProblemaTexto(issue),
@@ -1091,7 +1091,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                     'Nivel ${report.stationCrowd}/5',
                   ),
                 ],
-                if (report.stationIssues.isNotEmpty) ...[
+                if (report.stationIssues?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 24),
                   const Text(
                     'Problemas reportados',
@@ -1104,7 +1104,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: report.stationIssues.map((issue) {
+                    children: (report.stationIssues ?? []).map((issue) {
                       return Chip(
                         label: Text(_getProblemaTexto(issue)),
                         backgroundColor: MetroColors.energyOrange.withValues(alpha: 0.1),
@@ -1248,7 +1248,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                   '${report.userLocation!.latitude.toStringAsFixed(4)}, ${report.userLocation!.longitude.toStringAsFixed(4)}',
                 ),
               ],
-              if (report.scope == 'station' && report.stationIssues.isNotEmpty) ...[
+              if (report.scope == 'station' && (report.stationIssues?.isNotEmpty ?? false)) ...[
                 const SizedBox(height: 24),
                 const Text(
                   'Problemas reportados',
@@ -1261,7 +1261,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: report.stationIssues.map((issue) {
+                  children: (report.stationIssues ?? []).map((issue) {
                     return Chip(
                       label: Text(_getProblemaTexto(issue)),
                       backgroundColor: MetroColors.energyOrange.withValues(alpha: 0.1),

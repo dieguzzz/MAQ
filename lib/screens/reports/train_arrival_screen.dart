@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../models/station_model.dart';
 import '../../models/simplified_report_model.dart';
 import '../../services/simplified_report_service.dart';
+import '../../services/eta_arrival_service.dart';
 import '../../services/location_service.dart';
 import '../../widgets/train_arrival_animation.dart';
 
@@ -244,15 +245,16 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
           trainStatus: _trainStatus,
         );
       } else {
-        // Crear reporte directo de llegada
-        await _reportService.createDirectArrivalReport(
+        // Nuevo sistema: arrival tap agrega señal fuerte al ETA Group (sin reporte suelto).
+        final arrivalService = EtaArrivalService();
+        final result = await arrivalService.submitArrivalTap(
           stationId: widget.station.id,
-          arrivalTime: arrivalTime,
-          crowdLevel: _crowdLevel,
-          trainStatus: _trainStatus,
-          trainLine: widget.station.linea,
           userPosition: position,
         );
+
+        if (!result.success) {
+          throw Exception('No se pudo confirmar: ${result.reason}');
+        }
       }
 
       if (!mounted) return;
