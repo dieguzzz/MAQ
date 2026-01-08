@@ -3,121 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MetroPTY - Dashboard de Administración</title>
+    <title>🚇 MetroPTY - Dashboard Admin</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <!-- Iconos modernos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
+    <!-- Banner de Testing -->
     <div class="testing-banner">
-        🧪 MODO TESTING - Sin restricciones de autenticación
+        <i class="fas fa-flask"></i>
+        MODO TESTING - Sin restricciones de autenticación
+        <button class="close-banner" onclick="this.parentElement.style.display='none'">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
-    <div class="header">
-        <h1>🚇 MetroPTY - Dashboard de Administración</h1>
-        <p>Monitoreo en tiempo real de la aplicación</p>
-        <div id="authInfo" style="margin-top: 10px; font-size: 14px;">
-            <span style="color: #ff9800;">Cargando...</span>
-        </div>
-    </div>
-    
-    <div class="container">
-        <button class="refresh-btn" onclick="refreshAll()">🔄 Actualizar Datos</button>
 
-        <!-- Indicador de actualización en tiempo real -->
-        <div id="realtimeIndicator" class="realtime-indicator">
-          Actualizado
+    <!-- Sidebar Moderno -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-subway"></i>
+                <span>MetroPTY</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Usuarios</h3>
-                <div class="value" id="totalUsers">-</div>
-                <div class="change" id="usersChange">Cargando...</div>
+        <ul class="sidebar-menu">
+            <li class="menu-item active" data-tab="overview">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Overview</span>
+            </li>
+            <li class="menu-item" data-tab="stations">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Estaciones</span>
+            </li>
+            <li class="menu-item" data-tab="trains">
+                <i class="fas fa-train"></i>
+                <span>Trenes</span>
+            </li>
+            <li class="menu-item" data-tab="reports">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Reportes</span>
+            </li>
+            <li class="menu-item" data-tab="users">
+                <i class="fas fa-users"></i>
+                <span>Usuarios</span>
+            </li>
+            <li class="menu-item" data-tab="analytics">
+                <i class="fas fa-chart-bar"></i>
+                <span>Análisis</span>
+            </li>
+            <li class="menu-item" data-tab="testing">
+                <i class="fas fa-flask"></i>
+                <span>Testing</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="theme-toggle">
+                <button id="themeToggle" class="theme-btn">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
-            <div class="stat-card">
-                <h3>Reportes Hoy</h3>
-                <div class="value" id="reportsToday">-</div>
-                <div class="change" id="reportsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Estaciones Activas</h3>
-                <div class="value" id="activeStations">-</div>
-                <div class="change" id="stationsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Trenes Virtuales</h3>
-                <div class="value" id="activeTrains">-</div>
-                <div class="change" id="trainsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Confianza Promedio</h3>
-                <div class="value" id="avgConfidence">-</div>
-                <div class="change" id="confidenceChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Reportes Prioritarios</h3>
-                <div class="value" id="priorityReports">-</div>
-                <div class="change" id="priorityChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Tasa de Verificación</h3>
-                <div class="value" id="verificationRate">-</div>
-                <div class="change" id="verificationChange">Cargando...</div>
-            </div>
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('stations')">Estaciones</button>
-            <button class="tab" onclick="showTab('trains')">Trenes</button>
-            <button class="tab" onclick="showTab('reports')">Reportes Recientes</button>
-            <button class="tab" onclick="showTab('users')">Usuarios Top</button>
-            <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
-            <button class="tab" onclick="showTab('timeAnalysis')">⏱️ Análisis de Tiempo</button>
-            <button class="tab" onclick="showTab('trainTimeReportsTesting')">🕰️ Testing Tiempos de Tren</button>
-            <button class="tab" onclick="showTab('stationReportsTesting')">🏢 Testing Reportes de Estación</button>
-            <button class="tab" onclick="showTab('multiReportsTesting')">📊 Testing Múltiples Reportes</button>
-            <button class="tab" onclick="showTab('debugLogs')">🐛 Debug Logs</button>
-        </div>
-        
-        <div id="stations" class="tab-content active section">
-            <h2>📍 Estaciones</h2>
-            <div class="filter-container">
-                <input type="text" id="filterStations" class="filter-input" placeholder="🔍 Buscar por nombre, línea, estado..." onkeyup="filterTable('stations')">
-                <span class="filter-count" id="stationsCount">-</span>
-            </div>
-            <div class="loading">Cargando estaciones...</div>
-        </div>
-        
-        <div id="trains" class="tab-content section">
-            <h2>🚇 Trenes Virtuales</h2>
-            <div class="filter-container">
-                <input type="text" id="filterTrains" class="filter-input" placeholder="🔍 Buscar por ID, línea, dirección, estado..." onkeyup="filterTable('trains')">
-                <span class="filter-count" id="trainsCount">-</span>
-            </div>
-            <div class="loading">Cargando trenes...</div>
-        </div>
-        
-        <div id="reports" class="tab-content section">
-            <h2>📊 Reportes Recientes</h2>
-            
-            <!-- Herramientas de Prueba -->
-            <div class="test-tools">
-                <h3>🧪 Herramientas de Prueba</h3>
-                <div class="test-buttons">
-                    <button class="test-btn test-btn-danger" onclick="clearAllReports()" id="clearReportsBtn">
-                        🗑️ Limpiar Todos los Reportes
-                    </button>
-                    <button class="test-btn test-btn-primary" onclick="createTestStationReport()" id="createStationBtn">
-                        ➕ Crear Reporte de Estación (Prueba)
-                    </button>
-                    <button class="test-btn test-btn-primary" onclick="createTestTrainReport()" id="createTrainBtn">
-                        ➕ Crear Reporte de Tren (Prueba)
-                    </button>
-                    <button class="test-btn test-btn-success" onclick="showReportStats()" id="statsBtn">
-                        📈 Ver Estadísticas
-                    </button>
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
                 </div>
+                <div class="user-details">
+                    <span class="user-name" id="userName">Admin</span>
+                    <span class="user-role">Administrador</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <!-- Header Superior -->
+        <header class="top-header">
+            <div class="header-left">
+                <h1 id="pageTitle">Dashboard Overview</h1>
+                <p id="pageSubtitle">Monitoreo en tiempo real de MetroPTY</p>
+            </div>
+            <div class="header-right">
+                <div class="realtime-status">
+                    <div class="status-dot" id="realtimeDot"></div>
+                    <span>En vivo</span>
+                </div>
+                <button class="refresh-btn" onclick="refreshAll()">
+                    <i class="fas fa-sync-alt"></i>
+                    Actualizar
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenedor de Contenido -->
+        <div class="content-container">
+    
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <!-- KPIs Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card primary">
+                        <div class="kpi-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="totalUsers">-</h3>
+                            <p>Total Usuarios</p>
+                            <div class="kpi-change" id="usersChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card success">
+                        <div class="kpi-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="reportsToday">-</h3>
+                            <p>Reportes Hoy</p>
+                            <div class="kpi-change" id="reportsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card info">
+                        <div class="kpi-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="activeStations">-</h3>
+                            <p>Estaciones Activas</p>
+                            <div class="kpi-change" id="stationsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card warning">
+                        <div class="kpi-icon">
+                            <i class="fas fa-train"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="activeTrains">-</h3>
+                            <p>Trenes Virtuales</p>
+                            <div class="kpi-change" id="trainsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card secondary">
+                        <div class="kpi-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="avgConfidence">-</h3>
+                            <p>Confianza Promedio</p>
+                            <div class="kpi-change" id="confidenceChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card danger">
+                        <div class="kpi-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="priorityReports">-</h3>
+                            <p>Reportes Prioritarios</p>
+                            <div class="kpi-change" id="priorityChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-chart-line"></i> Actividad Reciente</h4>
+                            <select class="chart-period">
+                                <option value="24h">Últimas 24h</option>
+                                <option value="7d">Última semana</option>
+                                <option value="30d">Último mes</option>
+                            </select>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-area"></i>
+                            <p>Gráfico de actividad por hora</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-chart-pie"></i> Distribución de Estados</h4>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-pie"></i>
+                            <p>Estados de estaciones</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <h4><i class="fas fa-history"></i> Actividad Reciente</h4>
+                        <button class="view-all-btn">Ver todo</button>
+                    </div>
+                    <div class="activity-list" id="recentActivity">
+                        <div class="activity-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Cargando actividad...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Stations Tab -->
+            <div id="stations" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <h2>Estaciones</h2>
+                            <p>Monitoreo de estaciones del metro</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterStations" placeholder="Buscar estaciones...">
+                        </div>
+                        <button class="filter-btn">
+                            <i class="fas fa-filter"></i>
+                            Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando estaciones...</p>
+                </div>
+            </div>
+
+            <!-- Trains Tab -->
+            <div id="trains" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-train"></i>
+                        <div>
+                            <h2>Trenes Virtuales</h2>
+                            <p>Estado de trenes en tiempo real</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterTrains" placeholder="Buscar trenes...">
+                        </div>
+                        <button class="filter-btn">
+                            <i class="fas fa-filter"></i>
+                            Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando trenes...</p>
+                </div>
+            </div>
+        
+            <!-- Reports Tab -->
+            <div id="reports" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        <div>
+                            <h2>Reportes</h2>
+                            <p>Gestión de reportes de usuarios</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterReports" placeholder="Buscar reportes...">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filterCategory" class="filter-select">
+                                <option value="">Todas las categorías</option>
+                                <option value="aglomeracion">Aglomeración</option>
+                                <option value="retraso">Retraso</option>
+                                <option value="servicio_normal">Servicio Normal</option>
+                                <option value="falla_tecnica">Falla Técnica</option>
+                            </select>
+                            <select id="filterEstadoPrincipal" class="filter-select">
+                                <option value="">Todos los estados</option>
+                                <option value="normal">Normal</option>
+                                <option value="moderado">Moderado</option>
+                                <option value="lleno">Lleno</option>
+                                <option value="retraso">Retraso</option>
+                                <option value="cerrado">Cerrado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testing Tools (Collapsed by default) -->
+                <details class="testing-tools">
+                    <summary>
+                        <i class="fas fa-flask"></i>
+                        Herramientas de Testing
+                    </summary>
+                    <div class="testing-content">
+                        <div class="test-buttons">
+                            <button class="test-btn test-btn-danger" onclick="clearAllReports()" id="clearReportsBtn">
+                                🗑️ Limpiar Todos los Reportes
+                            </button>
+                            <button class="test-btn test-btn-primary" onclick="createTestStationReport()" id="createStationBtn">
+                                ➕ Crear Reporte de Estación (Prueba)
+                            </button>
+                            <button class="test-btn test-btn-primary" onclick="createTestTrainReport()" id="createTrainBtn">
+                                ➕ Crear Reporte de Tren (Prueba)
+                            </button>
+                            <button class="test-btn test-btn-success" onclick="showReportStats()" id="statsBtn">
+                                📈 Ver Estadísticas
+                            </button>
+                        </div>
                 
                 <!-- Configuración de reporte de prueba -->
                 <details style="margin-top: 1rem;">
@@ -235,56 +467,146 @@
             <div class="loading">Cargando reportes...</div>
         </div>
         
-        <div id="users" class="tab-content section">
-            <h2>👥 Usuarios Top</h2>
-            <div class="filter-container">
-                <input type="text" id="filterUsers" class="filter-input" placeholder="🔍 Buscar por nombre, email..." onkeyup="filterTable('users')">
-                <span class="filter-count" id="usersCount">-</span>
-            </div>
-            <div class="loading">Cargando usuarios...</div>
-        </div>
-        
-        <div id="community" class="tab-content section">
-            <h2>🏗️ Estadísticas Comunitarias</h2>
-            <div class="loading">Cargando estadísticas...</div>
-        </div>
-        
-        <div id="timeAnalysis" class="tab-content section">
-            <h2>⏱️ Análisis de Validación de Tiempo Estimado</h2>
-            <div class="loading">Cargando análisis...</div>
-        </div>
-        
-        <div id="debugLogs" class="tab-content section">
-            <h2>🐛 Debug Logs</h2>
-            <div class="filter-container">
-                <select id="logCategoryFilter" class="filter-input" onchange="filterLogs()">
-                    <option value="">Todas las categorías</option>
-                    <option value="ReportsStream">ReportsStream</option>
-                    <option value="ConfirmReports">ConfirmReports</option>
-                </select>
-                <select id="logLevelFilter" class="filter-input" onchange="filterLogs()">
-                    <option value="">Todos los niveles</option>
-                    <option value="info">Info</option>
-                    <option value="success">Success</option>
-                    <option value="warning">Warning</option>
-                    <option value="error">Error</option>
-                </select>
-                <button class="refresh-btn" onclick="clearLogsDisplay()" style="margin: 0;">Limpiar Vista</button>
-                <span class="filter-count" id="logsCount">-</span>
-            </div>
-            <div id="logsContainer" style="max-height: 600px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
-                <div class="loading" style="color: #d4d4d4;">Cargando logs...</div>
-            </div>
-        </div>
+            <!-- Users Tab -->
+            <div id="users" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <h2>Usuarios</h2>
+                            <p>Gestión de usuarios y rankings</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterUsers" placeholder="Buscar usuarios...">
+                        </div>
+                    </div>
+                </div>
 
-        <div id="trainTimeReportsTesting" class="tab-content section">
-            <h2>🕰️ Testing de Reportes de Tiempos de Tren</h2>
-            <p>Genera reportes de tiempos de tren basados en pantallas digitales oficiales</p>
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando usuarios...</p>
+                </div>
+            </div>
 
-            <!-- Configuración de reportes de tiempos -->
-            <div class="train-time-config">
-                <div class="config-section">
-                    <h4>🎯 Estación y Dirección</h4>
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-chart-bar"></i>
+                        <div>
+                            <h2>Análisis</h2>
+                            <p>Estadísticas y métricas detalladas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando análisis...</p>
+                </div>
+            </div>
+
+            <!-- Debug Logs Tab -->
+            <div id="debugLogs" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-bug"></i>
+                        <div>
+                            <h2>Debug Logs</h2>
+                            <p>Logs de depuración del sistema</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <select id="logCategoryFilter" class="filter-select" onchange="filterLogs()">
+                            <option value="">Todas las categorías</option>
+                            <option value="ReportsStream">ReportsStream</option>
+                            <option value="ConfirmReports">ConfirmReports</option>
+                        </select>
+                        <select id="logLevelFilter" class="filter-select" onchange="filterLogs()">
+                            <option value="">Todos los niveles</option>
+                            <option value="info">Info</option>
+                            <option value="success">Success</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                        </select>
+                        <button class="refresh-btn" onclick="clearLogsDisplay()">
+                            <i class="fas fa-trash"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="logsContainer" class="logs-container">
+                    <div class="loading" style="color: #d4d4d4;">Cargando logs...</div>
+                </div>
+            </div>
+        
+            <!-- Testing Tab -->
+            <div id="testing" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-flask"></i>
+                        <div>
+                            <h2>Testing</h2>
+                            <p>Herramientas de desarrollo y testing</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testing-grid">
+                    <div class="testing-card" onclick="showTab('trainTimeReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4>Testing Tiempos de Tren</h4>
+                        <p>Genera reportes de tiempos de llegada</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTab('stationReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <h4>Testing Estaciones</h4>
+                        <p>Reportes de estado de estaciones</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTab('multiReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <h4>Múltiples Reportes</h4>
+                        <p>Generación masiva de datos</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTab('debugLogs')">
+                        <div class="testing-icon">
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <h4>Debug Logs</h4>
+                        <p>Logs de depuración</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Train Time Reports Testing Tab -->
+            <div id="trainTimeReportsTesting" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h2>Testing Tiempos de Tren</h2>
+                            <p>Genera reportes de tiempos de llegada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de reportes de tiempos -->
+                <div class="testing-content">
+                    <div class="config-section">
+                        <h4><i class="fas fa-map-marker-alt"></i> Estación y Dirección</h4>
                     <div class="station-direction-selector">
                         <label>
                             Estación:
@@ -303,8 +625,8 @@
                     </div>
                 </div>
 
-                <div class="config-section">
-                    <h4>⏰ Tiempos de Llegada</h4>
+                    <div class="config-section">
+                        <h4><i class="fas fa-clock"></i> Tiempos de Llegada</h4>
                     <div class="time-inputs">
                         <label>
                             Próximo tren:
@@ -345,8 +667,8 @@
                     </div>
                 </div>
 
-                <div class="config-section">
-                    <h4>📊 Generación Múltiple (ETAs)</h4>
+                    <div class="config-section">
+                        <h4><i class="fas fa-layer-group"></i> Generación Múltiple (ETAs)</h4>
                     <div class="multi-time-config">
                         <label>
                             Número de reportes:
@@ -380,27 +702,18 @@
                 </div>
             </div>
 
-            <!-- Vista previa y acciones -->
-            <div class="train-time-actions">
-                <button class="test-btn test-btn-primary" onclick="previewTrainTimeReports()" id="previewTrainTimeBtn">
-                    👁️ Vista Previa ETAs
-                </button>
-                <button class="test-btn test-btn-success" onclick="generateTrainTimeReports()" id="generateTrainTimeBtn">
-                    🚀 Generar ETAs
-                </button>
-                <button class="test-btn test-btn-success" onclick="generateTrainArrivalReports()" id="generateArrivalBtn" style="background-color: #48bb78;">
-                    🚇 Generar Llegadas
-                </button>
-                <button class="test-btn test-btn-info" onclick="verifyEtaGroupsCreation()" id="verifyEtaGroupsBtn" style="background-color: #6f42c1;">
-                    🔍 Verificar ETA Groups
-                </button>
-                <button class="test-btn test-btn-warning" onclick="clearTrainTimeReports()" id="clearTrainTimeBtn">
-                    🗑️ Limpiar Reportes
-                </button>
-                <button class="test-btn test-btn-info" onclick="showTrainTimeAnalytics()" id="analyticsTrainTimeBtn">
-                    📈 Ver Analytics
-                </button>
-            </div>
+                    <!-- Acciones -->
+                    <div class="train-time-actions">
+                        <button class="test-btn test-btn-primary" onclick="previewTrainTimeReports()" id="previewTrainTimeBtn">
+                            <i class="fas fa-eye"></i> Vista Previa ETAs
+                        </button>
+                        <button class="test-btn test-btn-success" onclick="generateTrainTimeReports()" id="generateTrainTimeBtn">
+                            <i class="fas fa-rocket"></i> Generar ETAs
+                        </button>
+                        <button class="test-btn test-btn-warning" onclick="clearTrainTimeReports()" id="clearTrainTimeBtn">
+                            <i class="fas fa-trash"></i> Limpiar Reportes
+                        </button>
+                    </div>
 
             <!-- Vista previa -->
             <div id="trainTimePreview" class="train-time-preview" style="display: none;">
@@ -694,17 +1007,25 @@
     </div>
 
     <!-- Modal de Detalles de Reporte -->
-    <div id="reportModal" class="modal-overlay" onclick="if(event.target === this) closeReportModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="reportModal" class="modal-overlay">
+        <div class="modal-container">
             <div class="modal-header">
-                <h2>📋 Detalles del Reporte</h2>
-                <button class="modal-close" onclick="closeReportModal()">✕ Cerrar</button>
+                <h3><i class="fas fa-clipboard-list"></i> Detalles del Reporte</h3>
+                <button class="modal-close" onclick="closeReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div id="reportModalBody">
-                <div class="loading">Cargando detalles...</div>
+            <div id="reportModalBody" class="modal-body">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Cargando detalles...
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
     
     <script src="js/core.js"></script>
     <script src="js/firebase.js"></script>

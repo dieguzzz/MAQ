@@ -1,93 +1,275 @@
-(function () {
-  const state = window.Dashboard.state;
+// Sistema de temas
+function initTheme() {
+  const theme = localStorage.getItem('dashboard-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeButton(theme);
+}
 
-  function updateAuthUI() {
-    const authInfo = document.getElementById('authInfo');
-    if (!authInfo) return;
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
-    const currentUser = state.currentUser;
-    if (currentUser) {
-      const label = currentUser.isAnonymous
-        ? `🧪 MODO TESTING - Auth anónimo (${currentUser.uid.substring(0, 8)}...)`
-        : `Autenticado: ${currentUser.email || (currentUser.uid.substring(0, 8) + '...')}`;
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('dashboard-theme', newTheme);
+  updateThemeButton(newTheme);
 
-      authInfo.innerHTML = `
-        <span style="color: #4caf50;">${label}</span>
-        <span style="margin-left: 10px; color: #ddd; font-size: 12px;">(Sin login admin requerido)</span>
-      `;
-      return;
-    }
+  showToast('Tema cambiado exitosamente', 'success');
+}
 
-    authInfo.innerHTML = `
-      <span style="color: #ff9800;">⚠ No autenticado</span>
-      <button onclick="authenticateDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Autenticar</button>
-    `;
+function updateThemeButton(theme) {
+  const themeBtn = document.getElementById('themeToggle');
+  if (!themeBtn) return;
+
+  const icon = themeBtn.querySelector('i');
+  if (!icon) return;
+
+  if (theme === 'dark') {
+    icon.className = 'fas fa-sun';
+  } else {
+    icon.className = 'fas fa-moon';
+  }
+}
+
+// Sidebar functionality
+function initSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const mainContent = document.querySelector('.main-content');
+  const toggleBtn = document.getElementById('sidebarToggle');
+
+  if (!sidebar || !mainContent || !toggleBtn) return;
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('sidebar-collapsed');
+  });
+}
+
+// Navegación por tabs
+function showTab(tabName) {
+  // Ocultar todas las tabs
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Mostrar tab seleccionada
+  const targetTab = document.getElementById(tabName);
+  if (targetTab) {
+    targetTab.classList.add('active');
   }
 
-  function showTab(tabName) {
-    document.querySelectorAll('.tab').forEach((tab) => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach((content) => content.classList.remove('active'));
+  // Actualizar sidebar
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
 
-    // eslint-disable-next-line no-undef
-    event.target.classList.add('active');
-    document.getElementById(tabName).classList.add('active');
+  const activeMenuItem = document.querySelector(`[data-tab="${tabName}"]`);
+  if (activeMenuItem) {
+    activeMenuItem.classList.add('active');
+  }
 
-    if (tabName === 'stations') {
-      // Inicializar listeners cuando se abre la pestaña de estaciones
-      window.initStationsRealtimeListeners?.();
-    } else if (tabName === 'debugLogs') {
-      window.loadDebugLogs?.();
-    } else if (tabName === 'timeAnalysis') {
-      window.loadTimeAnalysis?.();
-    } else if (tabName === 'trainTimeReportsTesting') {
-      // Cargar estaciones para el testing de tiempos de tren
-      window.loadTrainTimeStations?.();
-    } else if (tabName === 'stationReportsTesting') {
-      // Cargar estaciones para el testing de reportes de estación
-      window.loadStationTestingStations?.();
-    } else if (tabName === 'multiReportsTesting') {
-      // Cargar estaciones para testing múltiple
-      window.loadMultiStations?.();
-    } else {
-      // Limpiar listeners cuando se sale de stations
-      if (window.cleanupStationsListeners) {
-        window.cleanupStationsListeners();
+  // Actualizar título de página
+  updatePageTitle(tabName);
+}
+
+function updatePageTitle(tabName) {
+  const titles = {
+    'overview': { title: 'Dashboard Overview', subtitle: 'Monitoreo en tiempo real de MetroPTY' },
+    'stations': { title: 'Estaciones', subtitle: 'Monitoreo de estaciones del metro' },
+    'trains': { title: 'Trenes Virtuales', subtitle: 'Estado de trenes en tiempo real' },
+    'reports': { title: 'Reportes', subtitle: 'Gestión de reportes de usuarios' },
+    'users': { title: 'Usuarios', subtitle: 'Gestión de usuarios y rankings' },
+    'analytics': { title: 'Análisis', subtitle: 'Estadísticas y métricas detalladas' },
+    'testing': { title: 'Testing', subtitle: 'Herramientas de desarrollo y testing' }
+  };
+
+  const pageTitle = document.getElementById('pageTitle');
+  const pageSubtitle = document.getElementById('pageSubtitle');
+
+  if (titles[tabName]) {
+    if (pageTitle) pageTitle.textContent = titles[tabName].title;
+    if (pageSubtitle) pageSubtitle.textContent = titles[tabName].subtitle;
+  }
+}
+
+// Toast notifications
+function showToast(message, type = 'info', duration = 5000) {
+  const toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const iconClass = {
+    'success': 'fas fa-check-circle',
+    'error': 'fas fa-exclamation-circle',
+    'warning': 'fas fa-exclamation-triangle',
+    'info': 'fas fa-info-circle'
+  };
+
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i class="${iconClass[type] || iconClass.info}"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-title">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+    <button class="toast-close" onclick="this.parentElement.remove()">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+
+  toastContainer.appendChild(toast);
+
+  // Auto-remover después de duración
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.remove();
+    }
+  }, duration);
+}
+
+// Responsive sidebar for mobile
+function initResponsiveSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const mainContent = document.querySelector('.main-content');
+  const toggleBtn = document.getElementById('sidebarToggle');
+
+  if (!sidebar || !mainContent || !toggleBtn) return;
+
+  // Close sidebar when clicking outside on mobile
+  mainContent.addEventListener('click', () => {
+    if (window.innerWidth <= 1024 && sidebar.classList.contains('mobile-open')) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 1024) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+}
+
+// Initialize tooltips for collapsed sidebar
+function initTooltips() {
+  const menuItems = document.querySelectorAll('.menu-item');
+
+  menuItems.forEach(item => {
+    const tabName = item.getAttribute('data-tab');
+    const tooltipText = getTabDisplayName(tabName);
+    item.setAttribute('data-tooltip', tooltipText);
+  });
+}
+
+function getTabDisplayName(tabName) {
+  const names = {
+    'overview': 'Overview',
+    'stations': 'Estaciones',
+    'trains': 'Trenes',
+    'reports': 'Reportes',
+    'users': 'Usuarios',
+    'analytics': 'Análisis',
+    'testing': 'Testing'
+  };
+  return names[tabName] || tabName;
+}
+
+// Enhanced search functionality
+function initSearch() {
+  const searchBoxes = document.querySelectorAll('.search-box input');
+
+  searchBoxes.forEach(searchBox => {
+    searchBox.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const tabName = getCurrentTab();
+
+      // Call existing filter functions based on current tab
+      switch(tabName) {
+        case 'stations':
+          filterTable('stations');
+          break;
+        case 'trains':
+          filterTable('trains');
+          break;
+        case 'reports':
+          filterReportsAdvanced();
+          break;
+        case 'users':
+          filterTable('users');
+          break;
       }
+    });
+  });
+}
 
-      if (state.logsUnsubscribe) {
-        state.logsUnsubscribe();
-        state.logsUnsubscribe = null;
-      }
-    }
+function getCurrentTab() {
+  const activeTab = document.querySelector('.tab-content.active');
+  return activeTab ? activeTab.id : 'overview';
+}
+
+// Initialize all UI components
+document.addEventListener('DOMContentLoaded', function() {
+  initTheme();
+  initSidebar();
+  initResponsiveSidebar();
+  initTooltips();
+  initSearch();
+
+  // Event listeners
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', toggleTheme);
   }
 
-  function refreshAll() {
-    window.loadStats?.();
-    window.loadStations?.();
-    window.loadTrains?.();
-    window.loadRecentReports?.();
-    window.loadTopUsers?.();
-    window.loadCommunityStats?.();
+  // Navegación por sidebar
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const tabName = item.getAttribute('data-tab');
+      showTab(tabName);
+    });
+  });
 
-    const timeTab = document.getElementById('timeAnalysis');
-    if (timeTab && timeTab.classList.contains('active')) {
-      window.loadTimeAnalysis?.();
+  // Mostrar overview por defecto
+  showTab('overview');
+
+  // Add loading animations
+  initLoadingAnimations();
+});
+
+// Loading animations
+function initLoadingAnimations() {
+  const loadingElements = document.querySelectorAll('.data-loading, .analytics-loading');
+
+  loadingElements.forEach(element => {
+    const spinner = element.querySelector('i');
+    if (spinner) {
+      spinner.style.animation = 'spin 1s linear infinite';
     }
+  });
+}
 
-    const debugTab = document.getElementById('debugLogs');
-    if (debugTab && debugTab.classList.contains('active')) {
-      window.loadDebugLogs?.();
-    }
+// Utility functions for animations
+function animateElement(element, animation, duration = 300) {
+  if (!element) return;
+
+  element.style.animation = `${animation} ${duration}ms ease-out`;
+
+  setTimeout(() => {
+    element.style.animation = '';
+  }, duration);
+}
+
+// Enhanced filter functionality
+function updateFilterCount(tabName, count) {
+  const countElement = document.getElementById(`${tabName}Count`);
+  if (countElement) {
+    countElement.textContent = count;
   }
+}
 
-  function closeReportModal() {
-    document.getElementById('reportModal')?.classList.remove('active');
-  }
-
-  window.updateAuthUI = updateAuthUI;
-  window.showTab = showTab;
-  window.refreshAll = refreshAll;
-  window.closeReportModal = closeReportModal;
-})();
-
-
+// Export functions for global use
+window.showToast = showToast;
+window.showTab = showTab;
+window.toggleTheme = toggleTheme;
