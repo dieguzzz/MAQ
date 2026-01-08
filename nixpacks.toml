@@ -3,7 +3,7 @@ nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["npm ci --prefix dashboard"]
+cmds = ["npm install --prefix dashboard"]
 
 [phases.build]
 dependsOn = ["install"]

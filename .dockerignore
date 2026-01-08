@@ -1,0 +1,41 @@
+# Flutter files - no queremos que Railway los procese
+pubspec.yaml
+pubspec.lock
+.dart_tool/
+.metadata
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Mobile platform files
+android/
+ios/
+linux/
+macos/
+windows/
+
+# Flutter lib
+lib/
+test/
+
+# Other Flutter specific
+analysis_options.yaml
+*.iml
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# Scripts
+*.ps1
+*.bat
+
+# Docs
+docs/
+README.md
+TESTING_CHECKLIST.md
