@@ -46,9 +46,15 @@ function initSidebar() {
 
 // Navegación por tabs
 function showTab(tabName) {
-  // Ocultar todas las tabs
+  // Ocultar todas las tabs principales
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
+  });
+
+  // Ocultar también todos los sub-tabs de testing
+  document.querySelectorAll('.testing-subtab').forEach(subtab => {
+    subtab.classList.remove('active');
+    subtab.style.display = 'none';
   });
 
   // Mostrar tab seleccionada
@@ -162,11 +168,8 @@ function addBackButton(container) {
     container.classList.remove('active');
     container.style.display = 'none';
 
-    // Mostrar tab principal de testing
-    const testingTab = document.getElementById('testing');
-    if (testingTab) {
-      testingTab.style.display = 'block';
-    }
+    // Mostrar tab principal de testing usando la función showTab
+    showTab('testing');
   };
 
   // Insertar al inicio del contenedor
