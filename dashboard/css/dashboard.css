@@ -1615,11 +1615,9 @@ body {
 
 .stations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.5rem;
-  max-height: 200px;
-  overflow-y: auto;
-  margin-top: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .stations-grid label {
@@ -2375,7 +2373,9 @@ body {
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
   position: relative;
-  overflow: hidden;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .station-card:hover {
@@ -2459,6 +2459,7 @@ body {
 
 .station-reports {
   margin-bottom: 1rem;
+  flex: 1;
 }
 
 .reports-summary h4 {
@@ -2537,6 +2538,7 @@ body {
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
   font-size: 0.85rem;
+  margin-top: auto;
 }
 
 .station-location {

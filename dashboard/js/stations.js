@@ -193,7 +193,9 @@
 
             <div class="station-footer">
               <div class="station-location">
-                ${data.direccion || data.ubicacion || 'Ubicación no especificada'}
+                ${typeof data.direccion === 'string' ? data.direccion :
+                  typeof data.ubicacion === 'string' ? data.ubicacion :
+                  'Ubicación no especificada'}
               </div>
               <div class="station-updated">
                 🕒 ${lastUpdate}
