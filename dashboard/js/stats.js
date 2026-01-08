@@ -138,6 +138,338 @@
     }
   }
 
+  // Gráficos del Overview
+  let activityChart = null;
+  let statusChart = null;
+
+  async function loadOverviewCharts(period = '24h') {
+    try {
+      const now = new Date();
+      let startDate;
+
+      switch (period) {
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      }
+
+      // Cargar datos de actividad por hora
+      await loadActivityChart(startDate, now);
+
+      // Cargar distribución de estados
+      await loadStatusChart();
+
+    } catch (error) {
+      console.error('Error loading overview charts:', error);
+    }
+  }
+
+  async function loadActivityChart(startDate, endDate) {
+    try {
+      const startTs = firebase.firestore.Timestamp.fromDate(startDate);
+      const endTs = firebase.firestore.Timestamp.fromDate(endDate);
+
+      // Consultar reportes en el período
+      const reportsSnap = await db.collection('reports')
+        .where('creado_en', '>=', startTs)
+        .where('creado_en', '<=', endTs)
+        .limit(1000)
+        .get();
+
+      // Agrupar por hora
+      const hourlyData = {};
+      reportsSnap.docs.forEach(doc => {
+        const data = doc.data();
+        const timestamp = _getMillisFromPossibleTimestamp(data.creado_en || data.createdAt);
+        if (timestamp) {
+          const hour = new Date(timestamp).getHours();
+          hourlyData[hour] = (hourlyData[hour] || 0) + 1;
+        }
+      });
+
+      // Crear datos para el gráfico
+      const labels = [];
+      const data = [];
+      for (let i = 0; i < 24; i++) {
+        labels.push(`${i}:00`);
+        data.push(hourlyData[i] || 0);
+      }
+
+      // Destruir gráfico anterior si existe
+      if (activityChart) {
+        activityChart.destroy();
+      }
+
+      // Crear nuevo gráfico
+      const ctx = document.createElement('canvas');
+      ctx.width = 400;
+      ctx.height = 200;
+
+      // Reemplazar placeholder con canvas
+      const placeholder = document.querySelector('.chart-placeholder');
+      if (placeholder) {
+        placeholder.innerHTML = '';
+        placeholder.appendChild(ctx);
+      }
+
+      activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Reportes por hora',
+            data: data,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              }
+            }
+          },
+          elements: {
+            point: {
+              radius: 3,
+              hoverRadius: 5
+            }
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error loading activity chart:', error);
+    }
+  }
+
+  async function loadStatusChart() {
+    try {
+      // Consultar estados de estaciones
+      const stationsSnap = await db.collection('stations').limit(100).get();
+
+      const statusCounts = {
+        'operando': 0,
+        'cerrado': 0,
+        'retraso': 0,
+        'moderado': 0,
+        'lleno': 0
+      };
+
+      stationsSnap.docs.forEach(doc => {
+        const data = doc.data();
+        const status = data.estado || 'operando';
+
+        // Mapear estados del modelo a categorías del gráfico
+        if (status === 'cerrado' || status === 'fuera_de_servicio') {
+          statusCounts.cerrado++;
+        } else if (status === 'retraso' || status === 'demora') {
+          statusCounts.retraso++;
+        } else if (status === 'moderado' || status === 'aglomerado') {
+          statusCounts.moderado++;
+        } else if (status === 'lleno' || status === 'muy_lleno') {
+          statusCounts.lleno++;
+        } else {
+          statusCounts.operando++;
+        }
+      });
+
+      // Destruir gráfico anterior si existe
+      if (statusChart) {
+        statusChart.destroy();
+      }
+
+      // Crear nuevo gráfico
+      const ctx = document.createElement('canvas');
+      ctx.width = 400;
+      ctx.height = 200;
+
+      // Reemplazar placeholder con canvas
+      const placeholders = document.querySelectorAll('.chart-placeholder');
+      if (placeholders[1]) { // Segundo placeholder para el gráfico de estados
+        placeholders[1].innerHTML = '';
+        placeholders[1].appendChild(ctx);
+      }
+
+      statusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Operando', 'Cerrado', 'Retraso', 'Moderado', 'Lleno'],
+          datasets: [{
+            data: [
+              statusCounts.operando,
+              statusCounts.cerrado,
+              statusCounts.retraso,
+              statusCounts.moderado,
+              statusCounts.lleno
+            ],
+            backgroundColor: [
+              '#10b981', // verde - operando
+              '#ef4444', // rojo - cerrado
+              '#f59e0b', // amarillo - retraso
+              '#f97316', // naranja - moderado
+              '#dc2626'  // rojo oscuro - lleno
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true
+              }
+            }
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error loading status chart:', error);
+    }
+  }
+
+  async function loadRecentActivity() {
+    try {
+      const activityList = document.getElementById('recentActivity');
+      if (!activityList) return;
+
+      // Mostrar loading
+      activityList.innerHTML = `
+        <div class="activity-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          Cargando actividad...
+        </div>
+      `;
+
+      // Consultar reportes recientes
+      const recentReportsSnap = await db.collection('reports')
+        .orderBy('creado_en', 'desc')
+        .limit(10)
+        .get();
+
+      if (recentReportsSnap.empty) {
+        activityList.innerHTML = `
+          <div class="activity-empty">
+            <i class="fas fa-info-circle"></i>
+            No hay actividad reciente
+          </div>
+        `;
+        return;
+      }
+
+      // Crear lista de actividad
+      const activities = [];
+      recentReportsSnap.docs.forEach(doc => {
+        const data = doc.data();
+        const timestamp = _getMillisFromPossibleTimestamp(data.creado_en || data.createdAt);
+
+        let activityType = 'reporte';
+        let activityIcon = 'fas fa-clipboard-list';
+        let activityColor = 'info';
+
+        // Determinar tipo de actividad basado en el estado
+        if (data.estado_principal === 'cerrado') {
+          activityIcon = 'fas fa-times-circle';
+          activityColor = 'danger';
+        } else if (data.estado_principal === 'retraso') {
+          activityIcon = 'fas fa-clock';
+          activityColor = 'warning';
+        } else if (data.estado_principal === 'lleno') {
+          activityIcon = 'fas fa-users';
+          activityColor = 'danger';
+        }
+
+        const timeAgo = timestamp ? getTimeAgo(timestamp) : 'Hace un momento';
+
+        activities.push(`
+          <div class="activity-item">
+            <div class="activity-icon ${activityColor}">
+              <i class="${activityIcon}"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">
+                Nuevo reporte en ${data.objetivo || data.estacion || 'estación desconocida'}
+              </div>
+              <div class="activity-time">${timeAgo}</div>
+            </div>
+          </div>
+        `);
+      });
+
+      activityList.innerHTML = activities.join('');
+
+    } catch (error) {
+      console.error('Error loading recent activity:', error);
+      const activityList = document.getElementById('recentActivity');
+      if (activityList) {
+        activityList.innerHTML = `
+          <div class="activity-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            Error cargando actividad
+          </div>
+        `;
+      }
+    }
+  }
+
+  function getTimeAgo(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) return 'Hace un momento';
+    if (minutes < 60) return `Hace ${minutes} minutos`;
+    if (hours < 24) return `Hace ${hours} horas`;
+    return `Hace ${days} días`;
+  }
+
+  // Inicializar event listeners para los gráficos
+  function initOverviewCharts() {
+    // Event listener para el selector de período
+    const periodSelect = document.querySelector('.chart-period');
+    if (periodSelect) {
+      periodSelect.addEventListener('change', (e) => {
+        loadOverviewCharts(e.target.value);
+      });
+    }
+
+    // Cargar datos iniciales
+    loadOverviewCharts();
+    loadRecentActivity();
+  }
+
+  window.loadOverviewCharts = loadOverviewCharts;
+  window.loadRecentActivity = loadRecentActivity;
+  window.initOverviewCharts = initOverviewCharts;
   window.loadStats = loadStats;
 })();
 

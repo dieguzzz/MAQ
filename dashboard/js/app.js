@@ -10,12 +10,15 @@
   // Autenticación automática (sin bloquear)
   window.authenticateDashboard?.().catch(() => {});
 
-  // Inicializar generadores
-  window.loadAvailableStations?.();
-  window.loadTrainTimeStations?.();
+    // Inicializar generadores
+    window.loadAvailableStations?.();
+    window.loadTrainTimeStations?.();
 
-  // Inicializar nuevas funcionalidades UI
-  initializeDashboardUI();
+    // Inicializar gráficos del overview
+    window.initOverviewCharts?.();
+
+    // Inicializar nuevas funcionalidades UI
+    initializeDashboardUI();
 })();
 
 // Initialize new dashboard UI features
