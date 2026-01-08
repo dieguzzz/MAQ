@@ -510,7 +510,7 @@
             </div>
 
             <!-- Debug Logs Tab -->
-            <div id="debugLogs" class="tab-content">
+            <div id="debugLogs" class="tab-content testing-subtab" style="display: none;">
                 <div class="page-header">
                     <div class="page-title">
                         <i class="fas fa-bug"></i>
@@ -557,7 +557,7 @@
                 </div>
 
                 <div class="testing-grid">
-                    <div class="testing-card" onclick="showTab('trainTimeReportsTesting')">
+                    <div class="testing-card" onclick="showTestingSubTab('trainTimeReportsTesting')">
                         <div class="testing-icon">
                             <i class="fas fa-clock"></i>
                         </div>
@@ -565,7 +565,7 @@
                         <p>Genera reportes de tiempos de llegada</p>
                     </div>
 
-                    <div class="testing-card" onclick="showTab('stationReportsTesting')">
+                    <div class="testing-card" onclick="showTestingSubTab('stationReportsTesting')">
                         <div class="testing-icon">
                             <i class="fas fa-building"></i>
                         </div>
@@ -573,7 +573,7 @@
                         <p>Reportes de estado de estaciones</p>
                     </div>
 
-                    <div class="testing-card" onclick="showTab('multiReportsTesting')">
+                    <div class="testing-card" onclick="showTestingSubTab('multiReportsTesting')">
                         <div class="testing-icon">
                             <i class="fas fa-layer-group"></i>
                         </div>
@@ -581,7 +581,7 @@
                         <p>Generación masiva de datos</p>
                     </div>
 
-                    <div class="testing-card" onclick="showTab('debugLogs')">
+                    <div class="testing-card" onclick="showTestingSubTab('debugLogs')">
                         <div class="testing-icon">
                             <i class="fas fa-bug"></i>
                         </div>
@@ -592,7 +592,7 @@
             </div>
 
             <!-- Train Time Reports Testing Tab -->
-            <div id="trainTimeReportsTesting" class="tab-content">
+            <div id="trainTimeReportsTesting" class="tab-content testing-subtab" style="display: none;">
                 <div class="page-header">
                     <div class="page-title">
                         <i class="fas fa-clock"></i>
@@ -737,7 +737,7 @@
             <div id="trainTimeStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
         </div>
 
-        <div id="stationReportsTesting" class="tab-content section">
+        <div id="stationReportsTesting" class="tab-content testing-subtab section" style="display: none;">
             <h2>🏢 Testing de Reportes de Estación</h2>
             <p>Genera reportes de estado de estación para probar el sistema</p>
 
@@ -893,7 +893,7 @@
             <div id="stationTestingStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
         </div>
 
-        <div id="multiReportsTesting" class="tab-content section">
+        <div id="multiReportsTesting" class="tab-content testing-subtab section" style="display: none;">
             <h2>📊 Testing Múltiples Reportes</h2>
             <p>Genera varios reportes con diferentes tiempos para probar la lógica de agregación de estados</p>
 

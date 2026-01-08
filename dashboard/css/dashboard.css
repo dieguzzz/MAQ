@@ -2017,3 +2017,30 @@ body {
   }
 }
 
+/ *   T e s t i n g   S u b - t a b s   * / 
+ . t e s t i n g - s u b t a b   { 
+     b a c k g r o u n d :   v a r ( - - b g - p r i m a r y ) ; 
+     b o r d e r - r a d i u s :   1 2 p x ; 
+     p a d d i n g :   2 r e m ; 
+     m a r g i n :   1 r e m   0 ; 
+     b o x - s h a d o w :   v a r ( - - s h a d o w ) ; 
+ } 
+ 
+ . b a c k - t o - t e s t i n g - b t n   { 
+     t r a n s i t i o n :   a l l   0 . 3 s   e a s e ; 
+ } 
+ 
+ . b a c k - t o - t e s t i n g - b t n : h o v e r   { 
+     b a c k g r o u n d :   v a r ( - - p r i m a r y - d a r k )   ! i m p o r t a n t ; 
+     t r a n s f o r m :   t r a n s l a t e Y ( - 2 p x ) ; 
+     b o x - s h a d o w :   v a r ( - - s h a d o w - h o v e r ) ; 
+ } 
+ 
+ . t e s t i n g - s u b t a b   . p a g e - h e a d e r   { 
+     m a r g i n - b o t t o m :   2 r e m ; 
+ } 
+ 
+ . t e s t i n g - s u b t a b   . p a g e - t i t l e   { 
+     m a r g i n - b o t t o m :   1 r e m ; 
+ }  
+ 

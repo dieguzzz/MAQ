@@ -71,6 +71,71 @@ function showTab(tabName) {
   updatePageTitle(tabName);
 }
 
+// Navegación por sub-tabs de testing
+function showTestingSubTab(subTabName) {
+  // Ocultar contenido principal del tab testing
+  const testingTab = document.getElementById('testing');
+  if (testingTab) {
+    testingTab.style.display = 'none';
+  }
+
+  // Mostrar sub-tab específico
+  const subTab = document.getElementById(subTabName);
+  if (subTab) {
+    subTab.classList.add('active');
+    subTab.style.display = 'block';
+
+    // Agregar botón de volver
+    addBackButton(subTab);
+  }
+}
+
+function addBackButton(container) {
+  // Remover botón anterior si existe
+  const existingBackBtn = container.querySelector('.back-to-testing-btn');
+  if (existingBackBtn) {
+    existingBackBtn.remove();
+  }
+
+  // Crear botón de volver
+  const backButton = document.createElement('button');
+  backButton.className = 'back-to-testing-btn';
+  backButton.innerHTML = '<i class="fas fa-arrow-left"></i> Volver al menú de Testing';
+  backButton.style.cssText = `
+    margin: 1rem 0;
+    padding: 0.75rem 1.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  `;
+
+  backButton.onclick = () => {
+    // Ocultar sub-tab
+    container.classList.remove('active');
+    container.style.display = 'none';
+
+    // Mostrar tab principal de testing
+    const testingTab = document.getElementById('testing');
+    if (testingTab) {
+      testingTab.style.display = 'block';
+    }
+  };
+
+  // Insertar al inicio del contenedor
+  const firstElement = container.firstElementChild;
+  if (firstElement) {
+    container.insertBefore(backButton, firstElement);
+  } else {
+    container.appendChild(backButton);
+  }
+}
+
 function updatePageTitle(tabName) {
   const titles = {
     'overview': { title: 'Dashboard Overview', subtitle: 'Monitoreo en tiempo real de MetroPTY' },
@@ -272,4 +337,5 @@ function updateFilterCount(tabName, count) {
 // Export functions for global use
 window.showToast = showToast;
 window.showTab = showTab;
+window.showTestingSubTab = showTestingSubTab;
 window.toggleTheme = toggleTheme;
