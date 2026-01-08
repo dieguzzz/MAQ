@@ -1,0 +1,22 @@
+{
+  "name": "metropty-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard de administración para MetroPTY",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "vite preview --host 0.0.0.0 --port 3000",
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vite": "^5.0.0"
+  },
+  "keywords": ["dashboard", "metro", "panama", "firebase"],
+  "author": "MetroPTY Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
