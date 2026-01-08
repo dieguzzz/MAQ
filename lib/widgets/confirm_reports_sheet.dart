@@ -234,7 +234,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   );
                 }
                 
-                // Mostrar todos los reportes (propios y de otros)
+                // Separar reportes generales y problemas específicos
                 var filteredReports = allReports.toList();
                 logService.addLog(
                   'ConfirmReports',
@@ -253,10 +253,17 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     level: LogLevel.info,
                   );
                 }
+                
+                // Separar reportes generales de problemas específicos
+                final generalReports = filteredReports
+                    .where((r) => !r.isSpecificIssue)
+                    .toList();
+                final specificIssueReports = filteredReports
+                    .where((r) => r.isSpecificIssue)
+                    .toList();
 
-                // Ordenar por más recientes primero
-                // Ordenar: primero por confianza descendente, luego por fecha (más recientes), luego por confirmaciones
-                filteredReports.sort((a, b) {
+                // Ordenar ambas listas por más recientes primero
+                final sortByConfidenceAndDate = (SimplifiedReportModel a, SimplifiedReportModel b) {
                   // 1. Por confianza (descendente)
                   final aConf = a.confidence ?? 0.0;
                   final bConf = b.confidence ?? 0.0;
@@ -269,9 +276,12 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   
                   // 3. Por confirmaciones (más confirmaciones primero)
                   return b.confirmations.compareTo(a.confirmations);
-                });
+                };
+                
+                generalReports.sort(sortByConfidenceAndDate);
+                specificIssueReports.sort(sortByConfidenceAndDate);
 
-                if (filteredReports.isEmpty) {
+                if (generalReports.isEmpty && specificIssueReports.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -331,28 +341,487 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   );
                 }
 
-                return ListView.builder(
+                return ListView(
                   padding: const EdgeInsets.all(16),
-                  itemCount: filteredReports.length,
-                  itemBuilder: (context, index) {
-                    final report = filteredReports[index];
-                    return TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: Duration(milliseconds: 300 + (index * 50)),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: _buildReportCard(context, report, user.uid),
-                          ),
+                  children: [
+                    // Sección: Reportes Generales de Estación
+                    if (generalReports.isNotEmpty && _selectedReportType != 'train') ...[
+                      _buildSectionHeader('Estados de Estación'),
+                      ...generalReports.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final report = entry.value;
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + (index * 50)),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Transform.translate(
+                              offset: Offset(0, 20 * (1 - value)),
+                              child: Opacity(
+                                opacity: value,
+                                child: _buildReportCard(context, report, user.uid),
+                              ),
+                            );
+                          },
                         );
-                      },
-                    );
-                  },
+                      }),
+                    ],
+                    
+                    // Sección: Problemas Específicos
+                    if (specificIssueReports.isNotEmpty && _selectedReportType != 'train') ...[
+                      if (generalReports.isNotEmpty)
+                        const SizedBox(height: 16),
+                      _buildSectionHeader('Problemas Específicos de Infraestructura'),
+                      ...specificIssueReports.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final report = entry.value;
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + (index * 50)),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Transform.translate(
+                              offset: Offset(0, 20 * (1 - value)),
+                              child: Opacity(
+                                opacity: value,
+                                child: _buildSpecificIssueCard(context, report, user.uid),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ],
+                    
+                    // Si solo hay reportes de tren, mostrarlos normalmente
+                    if (_selectedReportType == 'train') ...[
+                      ...generalReports.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final report = entry.value;
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + (index * 50)),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Transform.translate(
+                              offset: Offset(0, 20 * (1 - value)),
+                              child: Opacity(
+                                opacity: value,
+                                child: _buildReportCard(context, report, user.uid),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ],
+                  ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [MetroColors.blue, Colors.orange],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: MetroColors.grayDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildSpecificIssueCard(
+    BuildContext context,
+    SimplifiedReportModel report,
+    String currentUserId,
+  ) {
+    final isOwnReport = report.userId == currentUserId;
+    
+    return FutureBuilder<bool>(
+      future: isOwnReport 
+          ? Future.value(false) 
+          : _firebaseService.hasUserConfirmedReport(report.id, currentUserId),
+      builder: (context, confirmationSnapshot) {
+        final isVerified = confirmationSnapshot.data ?? false;
+
+        return Consumer<MetroDataProvider>(
+          builder: (context, metroProvider, child) {
+            final station = metroProvider.getStationById(report.stationId);
+            final stationName = station?.nombre ?? 'Estación ${report.stationId}';
+            final typeIcon = _getIssueIcon(report.issueType ?? '');
+            final statusColor = _getStatusColor(report.issueStatus ?? '');
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue[200]!),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _showSpecificIssueDetails(context, report, stationName, currentUserId, isVerified, isOwnReport);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  typeIcon,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getIssueTypeName(report.issueType ?? ''),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: MetroColors.grayDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    report.issueLocation ?? 'Sin ubicación',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: statusColor.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                _getStatusName(report.issueStatus ?? ''),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              stationName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _getTimeAgo(report.createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.verified_user, size: 16, color: Colors.grey[400]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${report.confirmations}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (!isOwnReport) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: isVerified ? null : () => _confirmReport(context, report.id, currentUserId),
+                              icon: Icon(
+                                isVerified ? Icons.check_circle : Icons.verified_user,
+                                size: 18,
+                              ),
+                              label: Text(
+                                isVerified ? 'Ya confirmado' : 'Confirmar (+15pts)',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isVerified ? Colors.grey : Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  String _getIssueIcon(String type) {
+    switch (type) {
+      case 'ac':
+        return '❄️';
+      case 'escalator':
+        return '🎢';
+      case 'elevator':
+        return '🛗';
+      case 'atm':
+        return '🏧';
+      case 'recharge':
+        return '💳';
+      case 'bathroom':
+        return '🚻';
+      case 'lights':
+        return '💡';
+      default:
+        return '⚠️';
+    }
+  }
+  
+  String _getIssueTypeName(String type) {
+    switch (type) {
+      case 'ac':
+        return 'Aire Acondicionado';
+      case 'escalator':
+        return 'Escalera Eléctrica';
+      case 'elevator':
+        return 'Elevador';
+      case 'atm':
+        return 'Cajero/ATM';
+      case 'recharge':
+        return 'Máquina de Recarga';
+      case 'bathroom':
+        return 'Baño';
+      case 'lights':
+        return 'Iluminación';
+      default:
+        return type;
+    }
+  }
+  
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'not_working':
+        return Colors.red;
+      case 'working_poorly':
+        return Colors.orange;
+      case 'out_of_service':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  String _getStatusName(String status) {
+    switch (status) {
+      case 'not_working':
+        return '🔴 No Funciona';
+      case 'working_poorly':
+        return '🟡 Funciona Mal';
+      case 'out_of_service':
+        return '⚫ Fuera de Servicio';
+      default:
+        return status;
+    }
+  }
+  
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return 'Hace un momento';
+    } else if (difference.inMinutes < 60) {
+      return 'Hace ${difference.inMinutes}min';
+    } else if (difference.inHours < 24) {
+      return 'Hace ${difference.inHours}h';
+    } else {
+      return 'Hace ${difference.inDays}d';
+    }
+  }
+  
+  void _showSpecificIssueDetails(
+    BuildContext context,
+    SimplifiedReportModel report,
+    String stationName,
+    String currentUserId,
+    bool isVerified,
+    bool isOwnReport,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_getIssueTypeName(report.issueType ?? '')} - Detalle',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: MetroColors.grayDark,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow('Estación', stationName),
+            _buildDetailRow('Ubicación', report.issueLocation ?? 'No especificada'),
+            _buildDetailRow('Estado', _getStatusName(report.issueStatus ?? '')),
+            _buildDetailRow('Confirmaciones', '${report.confirmations}'),
+            _buildDetailRow('Reportado', _getTimeAgo(report.createdAt)),
+            if (!isOwnReport) ...[
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: isVerified ? null : () {
+                    Navigator.pop(context);
+                    _confirmReport(context, report.id, currentUserId);
+                  },
+                  icon: Icon(
+                    isVerified ? Icons.check_circle : Icons.verified_user,
+                    size: 20,
+                  ),
+                  label: Text(
+                    isVerified ? 'Ya confirmaste este problema' : 'Confirmar (+15 puntos)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isVerified ? Colors.grey : Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                color: MetroColors.grayDark,
+              ),
             ),
           ),
         ],
@@ -1173,19 +1642,16 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
               ),
               const SizedBox(height: 24),
               _buildDetailRow(
-                Icons.access_time,
                 'Fecha',
                 _formatDateTime(report.createdAt),
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
-                Icons.verified,
                 'Confirmaciones',
                 '${report.confirmations} usuarios confirmaron este reporte',
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
-                Icons.stars,
                 'Puntos',
                 '${report.totalPoints} puntos (${report.basePoints} base + ${report.bonusPoints} bonus)',
               ),
@@ -1193,7 +1659,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 if (report.stationOperational != null) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.info_outline,
                     'Estado operacional',
                     report.stationOperational == 'yes'
                         ? 'Operativa'
@@ -1205,7 +1670,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 if (report.stationCrowd != null) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.people,
                     'Aglomeración',
                     'Nivel ${report.stationCrowd}/5',
                   ),
@@ -1238,7 +1702,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     (report.etaBucket == null || report.etaBucket == 'unknown')) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.check_circle,
                     'Llegada confirmada',
                     'Llegó a las ${_formatTime(report.arrivalTime!)}',
                   ),
@@ -1246,7 +1709,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 if (report.trainCrowd != null) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.people,
                     'Aglomeración',
                     'Nivel ${report.trainCrowd}/5',
                   ),
@@ -1254,7 +1716,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 if (report.trainStatus != null) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.speed,
                     'Estado del tren',
                     report.trainStatus == 'normal'
                         ? 'Normal'
@@ -1267,7 +1728,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     report.etaBucket != 'unknown') ...[
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    Icons.schedule,
                     'Tiempo estimado',
                     '${report.etaBucket} minutos',
                   ),
@@ -1399,38 +1859,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

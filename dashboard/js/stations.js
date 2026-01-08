@@ -200,35 +200,21 @@
         console.error('Error en listener de estaciones:', error);
       });
 
-    // Listener para reportes que afectan estaciones
+    // Listener para reportes (sin filtros para evitar índices compuestos)
+    // El nuevo sistema usa 'scope' en vez de 'tipo', así que mejor escuchar todos los reportes
     try {
       reportsUnsubscribe = db.collection('reports')
-        .where('tipo', 'in', ['estacion', 'station'])
         .orderBy('createdAt', 'desc')
-        .limit(10)
+        .limit(20)
         .onSnapshot((snapshot) => {
-          console.log('📊 Nuevos reportes detectados, actualizando estaciones...');
-          // Solo actualizar si hay cambios reales
+          console.log('📊 Reportes actualizados');
           if (!snapshot.empty && snapshot.docChanges().length > 0) {
             loadStations(false);
-            // También actualizar estadísticas
             window.loadStats?.();
             showRealtimeIndicator('Nuevo reporte recibido');
           }
         }, (error) => {
-          console.warn('Error en listener de reportes (posible falta de índices):', error);
-          // Fallback sin filtros si hay error de índices
-          reportsUnsubscribe = db.collection('reports')
-            .orderBy('createdAt', 'desc')
-            .limit(20)
-            .onSnapshot((snapshot) => {
-              console.log('📊 Reportes actualizados (fallback)');
-              if (!snapshot.empty && snapshot.docChanges().length > 0) {
-                loadStations(false);
-                window.loadStats?.();
-                showRealtimeIndicator('Actualización recibida');
-              }
-            });
+          console.warn('Error en listener de reportes:', error);
         });
     } catch (e) {
       console.warn('No se pudieron inicializar listeners de reportes:', e);

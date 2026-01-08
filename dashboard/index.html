@@ -75,6 +75,7 @@
             <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
             <button class="tab" onclick="showTab('timeAnalysis')">⏱️ Análisis de Tiempo</button>
             <button class="tab" onclick="showTab('trainTimeReportsTesting')">🕰️ Testing Tiempos de Tren</button>
+            <button class="tab" onclick="showTab('stationReportsTesting')">🏢 Testing Reportes de Estación</button>
             <button class="tab" onclick="showTab('multiReportsTesting')">📊 Testing Múltiples Reportes</button>
             <button class="tab" onclick="showTab('debugLogs')">🐛 Debug Logs</button>
         </div>
@@ -345,7 +346,7 @@
                 </div>
 
                 <div class="config-section">
-                    <h4>📊 Generación Múltiple</h4>
+                    <h4>📊 Generación Múltiple (ETAs)</h4>
                     <div class="multi-time-config">
                         <label>
                             Número de reportes:
@@ -360,15 +361,38 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="config-section" style="border-top: 2px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
+                    <h4>🚇 Reportes de "Llegó el Metro"</h4>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">
+                        Genera reportes de llegadas confirmadas para probar el panel de la app
+                    </p>
+                    <div class="multi-time-config">
+                        <label>
+                            Número de llegadas:
+                            <input type="number" id="arrivalReportCount" min="1" max="10" value="3">
+                        </label>
+                        <label>
+                            Intervalo entre llegadas (seg):
+                            <input type="number" id="arrivalInterval" min="10" max="300" value="60">
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- Vista previa y acciones -->
             <div class="train-time-actions">
                 <button class="test-btn test-btn-primary" onclick="previewTrainTimeReports()" id="previewTrainTimeBtn">
-                    👁️ Vista Previa
+                    👁️ Vista Previa ETAs
                 </button>
                 <button class="test-btn test-btn-success" onclick="generateTrainTimeReports()" id="generateTrainTimeBtn">
-                    🚀 Generar Reportes
+                    🚀 Generar ETAs
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateTrainArrivalReports()" id="generateArrivalBtn" style="background-color: #48bb78;">
+                    🚇 Generar Llegadas
+                </button>
+                <button class="test-btn test-btn-info" onclick="verifyEtaGroupsCreation()" id="verifyEtaGroupsBtn" style="background-color: #6f42c1;">
+                    🔍 Verificar ETA Groups
                 </button>
                 <button class="test-btn test-btn-warning" onclick="clearTrainTimeReports()" id="clearTrainTimeBtn">
                     🗑️ Limpiar Reportes
@@ -398,6 +422,162 @@
 
             <!-- Status -->
             <div id="trainTimeStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
+
+        <div id="stationReportsTesting" class="tab-content section">
+            <h2>🏢 Testing de Reportes de Estación</h2>
+            <p>Genera reportes de estado de estación para probar el sistema</p>
+
+            <!-- Configuración de reportes de estación -->
+            <div class="station-testing-config">
+                <div class="config-section">
+                    <h4>🎯 Estación</h4>
+                    <div class="station-selector">
+                        <label>
+                            Estación:
+                            <select id="stationTestingStationSelect">
+                                <option value="">Selecciona estación...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>🚦 Estado Operacional</h4>
+                    <div class="operational-inputs">
+                        <label>
+                            Estado:
+                            <select id="stationOperationalSelect">
+                                <option value="">Selecciona...</option>
+                                <option value="yes">🟢 Operando Normal</option>
+                                <option value="partial">🟡 Parcialmente Operando</option>
+                                <option value="no">🔴 No Operando</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>👥 Nivel de Aglomeración</h4>
+                    <div class="crowd-inputs">
+                        <label>
+                            Aglomeración (1-5):
+                            <select id="stationCrowdSelect">
+                                <option value="">Selecciona...</option>
+                                <option value="1">⭐ 1 - Vacía</option>
+                                <option value="2">⭐⭐ 2 - Baja</option>
+                                <option value="3">⭐⭐⭐ 3 - Media</option>
+                                <option value="4">⭐⭐⭐⭐ 4 - Alta</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 - Muy Alta</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>⚠️ Problemas Específicos de Infraestructura</h4>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">
+                        Agrega problemas específicos con ubicación y estado. Cada problema suma +10 puntos.
+                    </p>
+                    
+                    <!-- Formulario para agregar problema -->
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: grid; gap: 0.5rem;">
+                            <label style="display: flex; flex-direction: column;">
+                                Tipo de Problema:
+                                <select id="issueTypeSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="">Selecciona...</option>
+                                    <option value="ac">❄️ Aire Acondicionado</option>
+                                    <option value="escalator">🎢 Escalera Eléctrica</option>
+                                    <option value="elevator">🛗 Elevador</option>
+                                    <option value="atm">🏧 Cajero/ATM</option>
+                                    <option value="recharge">💳 Máquina de Recarga</option>
+                                    <option value="bathroom">🚻 Baño</option>
+                                    <option value="lights">💡 Iluminación</option>
+                                </select>
+                            </label>
+                            
+                            <label style="display: flex; flex-direction: column;">
+                                Ubicación / Descripción:
+                                <input type="text" id="issueLocationInput" 
+                                       placeholder="Ej: Escalera principal entrada norte" 
+                                       style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;" 
+                                       maxlength="100">
+                            </label>
+                            
+                            <label style="display: flex; flex-direction: column;">
+                                Estado:
+                                <select id="issueStatusSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="">Selecciona...</option>
+                                    <option value="not_working">🔴 No Funciona</option>
+                                    <option value="working_poorly">🟡 Funciona Mal</option>
+                                    <option value="out_of_service">⚫ Fuera de Servicio</option>
+                                </select>
+                            </label>
+                            
+                            <button onclick="addSpecificIssue()" 
+                                    style="background: #007bff; color: white; padding: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                ➕ Agregar Problema
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de problemas agregados -->
+                    <div id="specificIssuesList" style="margin-top: 1rem;">
+                        <p style="color: #999;">No hay problemas específicos agregados</p>
+                    </div>
+                    
+                    <button onclick="clearSpecificIssues()" 
+                            style="background: #6c757d; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; margin-top: 0.5rem;">
+                        🗑️ Limpiar Todos
+                    </button>
+                </div>
+
+                <div class="config-section">
+                    <h4>📊 Generación Múltiple</h4>
+                    <div class="multi-config">
+                        <label>
+                            Número de reportes:
+                            <input type="number" id="stationReportCount" min="1" max="20" value="5">
+                        </label>
+                        <label>
+                            Intervalo entre reportes (seg):
+                            <input type="number" id="stationInterval" min="1" max="300" value="30">
+                        </label>
+                        <div class="variation-option">
+                            <label><input type="checkbox" id="addStationVariation" checked> Agregar variación de estado</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="station-testing-actions">
+                <button class="test-btn test-btn-primary" onclick="previewStationReports()" id="previewStationBtn">
+                    👁️ Vista Previa
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateStationReports()" id="generateStationBtn">
+                    🚀 Generar Reportes
+                </button>
+                <button class="test-btn test-btn-warning" onclick="clearStationReports()" id="clearStationBtn">
+                    🗑️ Limpiar Reportes
+                </button>
+            </div>
+
+            <!-- Vista previa -->
+            <div id="stationTestingPreview" class="station-testing-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes</h4>
+                <div id="stationTestingPreviewContent"></div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="stationTestingResults" class="station-testing-results" style="display: none;">
+                <h4>✅ Reportes Generados</h4>
+                <div id="stationTestingResultsContent"></div>
+            </div>
+
+            <div id="stationTestingStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
         </div>
 
         <div id="multiReportsTesting" class="tab-content section">
@@ -544,6 +724,7 @@
     <script src="js/test_reports.js"></script>
     <script src="js/multi_reports_testing.js"></script>
     <script src="js/train_time_reports_testing.js"></script>
+    <script src="js/station_reports_testing.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/app.js"></script>
 </body>

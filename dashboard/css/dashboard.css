@@ -940,7 +940,7 @@ td:nth-child(12) {
 }
 
 /* Testing de Reportes de Tiempos de Tren */
-.train-time-config {
+.train-time-config, .station-testing-config {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 1.5rem;
@@ -972,24 +972,75 @@ td:nth-child(12) {
   margin-top: 0.5rem;
 }
 
-.train-time-actions {
+.train-time-actions, .station-testing-actions {
   display: flex;
   gap: 1rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
 }
 
-.train-time-preview, .train-time-results, .train-time-analytics {
+.train-time-preview, .train-time-results, .train-time-analytics,
+.station-testing-preview, .station-testing-results {
   background: #f8f9fa;
   border-radius: 6px;
   padding: 1rem;
   margin-top: 1rem;
 }
 
-.train-time-preview h4, .train-time-results h4, .train-time-analytics h4 {
+.train-time-preview h4, .train-time-results h4, .train-time-analytics h4,
+.station-testing-preview h4, .station-testing-results h4 {
   margin: 0 0 1rem 0;
   color: #495057;
   font-size: 1rem;
+}
+
+/* Station Testing Specific */
+.station-selector, .operational-inputs, .crowd-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.station-selector select, .operational-inputs select, .crowd-inputs select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.issues-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.issues-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.issues-checkboxes label:hover {
+  background: #e9ecef;
+}
+
+.issues-checkboxes input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.variation-option {
+  margin-top: 0.5rem;
+}
+
+.multi-config {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .preview-reports-table {
@@ -1091,20 +1142,24 @@ td:nth-child(12) {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .train-time-config {
+  .train-time-config, .station-testing-config {
     grid-template-columns: 1fr;
   }
 
-  .station-direction-selector, .time-inputs, .multi-time-config {
+  .station-direction-selector, .time-inputs, .multi-time-config, .multi-config {
     grid-template-columns: 1fr;
   }
 
-  .train-time-actions {
+  .train-time-actions, .station-testing-actions {
     flex-direction: column;
   }
 
-  .train-time-actions button {
+  .train-time-actions button, .station-testing-actions button {
     width: 100%;
+  }
+
+  .issues-checkboxes {
+    grid-template-columns: 1fr;
   }
 
   .analytics-grid {

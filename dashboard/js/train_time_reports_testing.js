@@ -5,21 +5,21 @@
   let availableStations = [];
   let generatedTrainReports = [];
 
-  // Direcciones por línea
+  // Direcciones por línea (usar códigos A/B como en la app)
   const lineDirections = {
     linea1: [
-      { id: 'albrook', name: 'Albrook' },
-      { id: 'villa_zaita', name: 'Villa Zaita' }
+      { id: 'A', name: 'Hacia Villa Zaita', label: 'Villa Zaita' },
+      { id: 'B', name: 'Hacia Albrook', label: 'Albrook' }
     ],
     linea2: [
-      { id: 'san_miguelito', name: 'San Miguelito' },
-      { id: 'aeropuerto', name: 'Aeropuerto' },
-      { id: 'alto_tocumen', name: 'Altos de Tocumen' }
+      { id: 'A', name: 'Hacia Nuevo Tocumen', label: 'Nuevo Tocumen' },
+      { id: 'B', name: 'Hacia San Miguelito', label: 'San Miguelito' }
     ]
   };
 
   // Cargar estaciones disponibles
   async function loadTrainTimeStations() {
+    console.log('🔄 Cargando estaciones para testing de tiempos de tren...');
     try {
       const snapshot = await db.collection('stations')
         .orderBy('nombre')
@@ -32,9 +32,10 @@
         line: doc.data().linea
       }));
 
+      console.log(`✅ Cargadas ${availableStations.length} estaciones`);
       renderTrainTimeStations();
     } catch (error) {
-      console.error('Error cargando estaciones:', error);
+      console.error('❌ Error cargando estaciones:', error);
       showTrainTimeStatus('❌ Error cargando estaciones', 'error');
     }
   }
@@ -42,6 +43,11 @@
   // Renderizar selector de estaciones
   function renderTrainTimeStations() {
     const select = document.getElementById('trainTimeStationSelect');
+    if (!select) {
+      console.error('❌ No se encontró el selector trainTimeStationSelect');
+      return;
+    }
+    
     const html = [
       '<option value="">Selecciona estación...</option>',
       ...availableStations.map(station =>
@@ -50,17 +56,27 @@
     ].join('');
 
     select.innerHTML = html;
+    console.log(`✅ Renderizadas ${availableStations.length} estaciones en el selector`);
   }
 
   // Cuando cambia la estación, actualizar direcciones disponibles
   function onTrainTimeStationChanged() {
     const stationSelect = document.getElementById('trainTimeStationSelect');
     const directionSelect = document.getElementById('trainTimeDirectionSelect');
+    
+    if (!stationSelect || !directionSelect) {
+      console.error('❌ No se encontraron los selectores');
+      return;
+    }
+    
     const selectedOption = stationSelect.options[stationSelect.selectedIndex];
     const line = selectedOption?.getAttribute('data-line');
+    
+    console.log(`🔄 Estación seleccionada, línea: ${line}`);
 
     if (!line || !lineDirections[line]) {
       directionSelect.innerHTML = '<option value="">Selecciona dirección...</option>';
+      console.log('⚠️ No hay direcciones disponibles para esta línea');
       return;
     }
 
@@ -71,6 +87,7 @@
     ].join('');
 
     directionSelect.innerHTML = html;
+    console.log(`✅ Cargadas ${directions.length} direcciones para ${line}`);
   }
 
   // Vista previa de reportes de tiempos
@@ -102,6 +119,10 @@
       const previewReports = [];
       const baseTime = new Date();
 
+      // Obtener nombre de dirección una vez (fuera del loop)
+      const directionOption = lineDirections[station.line]?.find(d => d.id === direction);
+      const directionName = directionOption ? directionOption.name : `Dirección ${direction}`;
+
       for (let i = 0; i < reportCount; i++) {
         const reportTime = new Date(baseTime.getTime() + (i * interval * 1000));
 
@@ -120,16 +141,17 @@
         }
 
         previewReports.push({
-          stationId: stationId,
-          stationName: station.name,
-          line: station.line,
-          direction: direction,
-          nextTrainMinutes: actualNextTime,
-          followingTrainMinutes: actualFollowingTime,
-          reportedAt: reportTime,
-          etaBucket: convertMinutesToBucket(actualNextTime),
-          points: 10 + (actualFollowingTime ? 5 : 0)
-        });
+        stationId: stationId,
+        stationName: station.name,
+        line: station.line,
+        direction: direction,
+        directionName: directionName,
+        nextTrainMinutes: actualNextTime,
+        followingTrainMinutes: actualFollowingTime,
+        reportedAt: reportTime,
+        etaBucket: convertMinutesToBucket(actualNextTime),
+        points: 10 + (actualFollowingTime ? 5 : 0)
+      });
       }
 
       renderTrainTimePreview(previewReports);
@@ -162,7 +184,7 @@
               <tr>
                 <td>${report.reportedAt.toLocaleTimeString('es-PA')}</td>
                 <td>${report.stationName}</td>
-                <td>${report.direction}</td>
+                <td>${report.directionName || report.direction}</td>
                 <td>${report.etaBucket}</td>
                 <td>📱 Pantalla oficial</td>
                 <td>${report.points}</td>
@@ -215,6 +237,11 @@
       generatedTrainReports = [];
       let totalReports = 0;
 
+      // Obtener directionLabel y directionName una vez (fuera del loop)
+      const directionOption = lineDirections[station.line]?.find(d => d.id === direction);
+      const directionLabel = directionOption ? directionOption.label : null;
+      const directionName = directionOption ? directionOption.name : `Dirección ${direction}`;
+
       for (let i = 0; i < reportCount; i++) {
         const reportTime = new Date(Date.now() + (i * interval * 1000));
 
@@ -246,8 +273,9 @@
           // Campos específicos de tren
           etaBucket: etaBucket,
           etaExpectedAt: etaExpectedAt ? firebase.firestore.Timestamp.fromDate(etaExpectedAt) : null,
-          direction: direction,
-          trainLine: station.line,
+          direction: direction, // 'A' o 'B'
+          directionLabel: directionLabel, // Nombre legible (Villa Zaita, Albrook, etc)
+          trainLine: station.line, // 'linea1' o 'linea2'
           isPanelTime: true, // Alta confianza - viene de pantalla oficial
 
           // Campos comunes
@@ -269,6 +297,7 @@
           stationId: stationId,
           stationName: station.name,
           direction: direction,
+          directionName: directionName,
           nextTrainMinutes: actualNextTime,
           followingTrainMinutes: actualFollowingTime,
           reportedAt: reportTime,
@@ -351,7 +380,7 @@
             ${reports.map(report => `
               <div class="report-item">
                 <span>${report.reportedAt.toLocaleTimeString('es-PA')}</span>
-                <span>${report.stationName} → ${report.direction}</span>
+                <span>${report.stationName} → ${report.directionName || report.direction}</span>
                 <span>🚇 ${report.etaBucket} ${report.nextTrainMinutes ? `(${report.nextTrainMinutes}min)` : ''}</span>
                 <span>🏆 ${report.points}pts</span>
               </div>
@@ -534,11 +563,197 @@
     statusDiv.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#666';
   }
 
+  // Generar reportes de "Llegó el metro" (arrivalTime)
+  async function generateTrainArrivalReports() {
+    const stationId = document.getElementById('trainTimeStationSelect').value;
+    const direction = document.getElementById('trainTimeDirectionSelect').value;
+    const reportCount = parseInt(document.getElementById('arrivalReportCount')?.value) || 3;
+    const interval = parseInt(document.getElementById('arrivalInterval')?.value) || 60;
+
+    if (!stationId || !direction) {
+      showTrainTimeStatus('❌ Selecciona estación y dirección', 'error');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `⚠️ ¿Generar ${reportCount} reportes de "Llegó el metro"?\n\n` +
+      'Esto creará reportes de llegadas confirmadas para probar el panel de la app.'
+    );
+
+    if (!confirm) return;
+
+    const statusDiv = document.getElementById('trainTimeStatus');
+    statusDiv.textContent = '🚇 Generando reportes de llegadas...';
+    statusDiv.style.color = '#666';
+
+    try {
+      if (!auth.currentUser) {
+        await window.authenticateDashboard?.();
+      }
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No se pudo autenticar');
+      }
+
+      const station = availableStations.find(s => s.id === stationId);
+      let totalReports = 0;
+
+      // Obtener directionLabel una vez (fuera del loop)
+      const directionOption = lineDirections[station.line]?.find(d => d.id === direction);
+      const directionLabel = directionOption ? directionOption.label : null;
+
+      for (let i = 0; i < reportCount; i++) {
+        const arrivalTime = new Date(Date.now() + (i * interval * 1000));
+
+        const reportData = {
+          scope: 'train',
+          stationId: stationId,
+          userId: user.uid,
+          direction: direction,
+          directionLabel: directionLabel,
+          trainLine: station.line,
+          arrivalTime: firebase.firestore.Timestamp.fromDate(arrivalTime),
+          createdAt: firebase.firestore.Timestamp.fromDate(arrivalTime),
+          basePoints: 15,
+          bonusPoints: 0,
+          totalPoints: 15,
+          status: 'active',
+          confirmations: 0,
+          confidence: 0.9,
+          confidenceReasons: ['direct_arrival']
+        };
+
+        const docRef = await db.collection('reports').add(reportData);
+        await docRef.update({'id': docRef.id});
+
+        totalReports++;
+
+        // Pequeño delay para evitar rate limits
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      showTrainTimeStatus(`✅ Generados ${totalReports} reportes de llegadas`, 'success');
+
+      // Actualizar vistas relacionadas
+      setTimeout(() => {
+        window.loadRecentReports?.();
+        window.loadStats?.();
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error generando reportes de llegadas:', error);
+      showTrainTimeStatus(`❌ Error: ${error.message}`, 'error');
+    }
+  }
+
+  // Función de diagnóstico: verificar que los reportes generan eta_groups
+  async function verifyEtaGroupsCreation() {
+    try {
+      showTrainTimeStatus('🔍 Verificando creación de eta_groups...', 'info');
+
+      const stationSelect = document.getElementById('trainTimeStationSelect');
+      const stationId = stationSelect.value;
+
+      if (!stationId) {
+        showTrainTimeStatus('❌ Selecciona una estación primero', 'error');
+        return;
+      }
+
+      // Consultar reportes recientes de esta estación
+      const reportsSnap = await db.collection('reports')
+        .where('scope', '==', 'train')
+        .where('stationId', '==', stationId)
+        .orderBy('createdAt', 'desc')
+        .limit(5)
+        .get();
+
+      // Consultar eta_groups recientes
+      const etaGroupsSnap = await db.collection('eta_groups')
+        .where('stationId', '==', stationId)
+        .where('status', '==', 'active')
+        .orderBy('bucketStart', 'desc')
+        .limit(10)
+        .get();
+
+      let html = `
+        <div class="verification-results">
+          <h4>📊 Diagnóstico de Reportes → ETA Groups</h4>
+          
+          <div class="verification-section">
+            <h5>📝 Reportes Recientes (scope='train')</h5>
+            ${reportsSnap.empty ? '<p>No hay reportes recientes</p>' : ''}
+            ${reportsSnap.docs.map(doc => {
+              const data = doc.data();
+              return `
+                <div class="report-item" style="font-size: 0.85rem; padding: 8px; background: #f8f9fa; margin: 4px 0; border-radius: 4px;">
+                  <strong>ID:</strong> ${doc.id.substring(0, 8)}...<br>
+                  <strong>Estación:</strong> ${data.stationId}<br>
+                  <strong>Dirección:</strong> ${data.direction} (${data.trainLine})<br>
+                  <strong>ETA Bucket:</strong> ${data.etaBucket}<br>
+                  <strong>Creado:</strong> ${data.createdAt?.toDate?.().toLocaleTimeString('es-PA') || 'N/A'}<br>
+                  ${data.isPanelTime ? '📱 <strong>Fuente: Panel oficial</strong>' : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="verification-section" style="margin-top: 1rem;">
+            <h5>🎯 ETA Groups Activos</h5>
+            ${etaGroupsSnap.empty ? '<p>⚠️ No hay eta_groups activos (las Cloud Functions no han procesado los reportes)</p>' : ''}
+            ${etaGroupsSnap.docs.map(doc => {
+              const data = doc.data();
+              return `
+                <div class="report-item" style="font-size: 0.85rem; padding: 8px; background: #e7f3ff; margin: 4px 0; border-radius: 4px;">
+                  <strong>ID:</strong> ${doc.id.substring(0, 12)}...<br>
+                  <strong>Dirección:</strong> ${data.directionCode} → ${data.directionLabel || 'N/A'}<br>
+                  <strong>Próximo:</strong> ${data.nextEtaBucket} (${data.nextEtaMinutesP50 || '?'} min)<br>
+                  <strong>Siguiente:</strong> ${data.followingEtaBucket || 'N/A'} (${data.followingEtaMinutesP50 || '?'} min)<br>
+                  <strong>Reportes:</strong> ${data.reportCount} | <strong>Confianza:</strong> ${(data.confidence * 100).toFixed(0)}%<br>
+                  <strong>Actualizado:</strong> ${data.updatedAt?.toDate?.().toLocaleTimeString('es-PA') || 'N/A'}<br>
+                  <strong>Expira:</strong> ${data.expiresAt?.toDate?.().toLocaleTimeString('es-PA') || 'N/A'}
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="verification-section" style="margin-top: 1rem; padding: 12px; background: #fff3cd; border-radius: 6px;">
+            <strong>📝 Resumen:</strong><br>
+            • Reportes generados: ${generatedTrainReports.length}<br>
+            • Reportes en Firestore: ${reportsSnap.size}<br>
+            • ETA Groups creados: ${etaGroupsSnap.size}<br>
+            ${etaGroupsSnap.empty ? '<br><strong style="color: #856404;">⚠️ Si hay reportes pero no eta_groups, las Cloud Functions pueden tener un error. Revisa los logs de Firebase.</strong>' : ''}
+            ${etaGroupsSnap.empty && reportsSnap.empty ? '<br><strong style="color: #856404;">ℹ️ No hay reportes ni grupos. Genera reportes primero.</strong>' : ''}
+          </div>
+        </div>
+      `;
+
+      const resultDiv = document.getElementById('trainTimeVerification') || (() => {
+        const div = document.createElement('div');
+        div.id = 'trainTimeVerification';
+        div.className = 'train-time-results';
+        div.style.display = 'block';
+        div.style.marginTop = '1rem';
+        document.getElementById('trainTimeResults').parentElement.appendChild(div);
+        return div;
+      })();
+
+      resultDiv.innerHTML = html;
+      resultDiv.style.display = 'block';
+
+      showTrainTimeStatus('✅ Verificación completada', 'success');
+    } catch (error) {
+      console.error('Error verificando eta_groups:', error);
+      showTrainTimeStatus(`❌ Error en verificación: ${error.message}`, 'error');
+    }
+  }
+
   // Exponer funciones globales
   window.loadTrainTimeStations = loadTrainTimeStations;
   window.onTrainTimeStationChanged = onTrainTimeStationChanged;
   window.previewTrainTimeReports = previewTrainTimeReports;
   window.generateTrainTimeReports = generateTrainTimeReports;
+  window.generateTrainArrivalReports = generateTrainArrivalReports;
   window.showTrainTimeAnalytics = showTrainTimeAnalytics;
   window.clearTrainTimeReports = clearTrainTimeReports;
+  window.verifyEtaGroupsCreation = verifyEtaGroupsCreation;
 })();

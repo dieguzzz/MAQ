@@ -73,6 +73,135 @@ class SimplifiedReportService {
     return docRef.id;
   }
 
+  /// Crear reporte de estación con problemas específicos (nuevo sistema detallado)
+  /// Retorna lista de IDs de reportes creados: [generalReportId, issue1Id, issue2Id, ...]
+  Future<List<String>> createStationReportWithIssues({
+    required String stationId,
+    required String operational,
+    required int crowdLevel,
+    List<SpecificIssue>? specificIssues,
+    Position? userPosition,
+  }) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('Usuario no autenticado');
+
+    final reportIds = <String>[];
+    final now = DateTime.now();
+    
+    // 1. Crear reporte general (siempre se crea)
+    final basePoints = 15;
+    final bonusPoints = 0; // En el nuevo sistema, los puntos bonus vienen de cada problema específico
+    
+    final generalReport = SimplifiedReportModel(
+      id: '',
+      scope: 'station',
+      stationId: stationId,
+      userId: userId,
+      stationOperational: operational,
+      stationCrowd: crowdLevel,
+      isSpecificIssue: false,
+      createdAt: now,
+      basePoints: basePoints,
+      bonusPoints: bonusPoints,
+      totalPoints: basePoints + bonusPoints,
+      userLocation: userPosition != null
+          ? GeoPoint(userPosition.latitude, userPosition.longitude)
+          : null,
+      accuracy: userPosition?.accuracy,
+    );
+    
+    final generalDocRef = await _firestore.collection('reports').add(generalReport.toFirestore());
+    await generalDocRef.update({'id': generalDocRef.id});
+    
+    // Calcular y guardar confianza inicial para reporte general
+    final confidenceService = SimplifiedReportConfidenceService();
+    final generalConfidence = await confidenceService.calculateConfidence(
+      SimplifiedReportModel.fromFirestore(await generalDocRef.get()),
+    );
+    await generalDocRef.update({
+      'confidence': generalConfidence.confidence,
+      'confidenceReasons': generalConfidence.reasons,
+    });
+    
+    reportIds.add(generalDocRef.id);
+    
+    // 2. Crear un reporte separado por cada problema específico
+    if (specificIssues != null && specificIssues.isNotEmpty) {
+      for (final issue in specificIssues) {
+        final issueReportId = await _createSpecificIssueReport(
+          stationId: stationId,
+          parentReportId: generalDocRef.id,
+          issue: issue,
+          userPosition: userPosition,
+          userId: userId,
+          now: now,
+        );
+        reportIds.add(issueReportId);
+      }
+    }
+    
+    // 3. Otorgar puntos al usuario (total de todos los reportes)
+    final gamificationService = GamificationService();
+    final totalIssuePoints = (specificIssues?.length ?? 0) * 10; // 10 puntos por problema específico
+    final totalPoints = basePoints + totalIssuePoints;
+    
+    await gamificationService.awardPointsForSimplifiedReport(
+      userId: userId,
+      points: totalPoints,
+      stationId: stationId,
+      reportId: generalDocRef.id,
+    );
+    
+    return reportIds;
+  }
+  
+  /// Método privado para crear un reporte de problema específico
+  Future<String> _createSpecificIssueReport({
+    required String stationId,
+    required String parentReportId,
+    required SpecificIssue issue,
+    required Position? userPosition,
+    required String userId,
+    required DateTime now,
+  }) async {
+    final basePoints = 10; // 10 puntos por reportar un problema específico
+    
+    final issueReport = SimplifiedReportModel(
+      id: '',
+      scope: 'station',
+      stationId: stationId,
+      userId: userId,
+      issueType: issue.type,
+      issueLocation: issue.location,
+      issueStatus: issue.status,
+      parentReportId: parentReportId,
+      isSpecificIssue: true,
+      createdAt: now,
+      basePoints: basePoints,
+      bonusPoints: 0,
+      totalPoints: basePoints,
+      userLocation: userPosition != null
+          ? GeoPoint(userPosition.latitude, userPosition.longitude)
+          : null,
+      accuracy: userPosition?.accuracy,
+    );
+    
+    final docRef = await _firestore.collection('reports').add(issueReport.toFirestore());
+    await docRef.update({'id': docRef.id});
+    
+    // Calcular y guardar confianza inicial
+    final confidenceService = SimplifiedReportConfidenceService();
+    final confidenceResult = await confidenceService.calculateConfidence(
+      SimplifiedReportModel.fromFirestore(await docRef.get()),
+    );
+    await docRef.update({
+      'confidence': confidenceResult.confidence,
+      'confidenceReasons': confidenceResult.reasons,
+    });
+    
+    return docRef.id;
+  }
+
   /// Crear reporte de tren (simplificado)
   Future<String> createTrainReport({
     required String stationId,

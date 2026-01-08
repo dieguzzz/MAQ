@@ -1,5 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Clase helper para problemas específicos de infraestructura
+class SpecificIssue {
+  final String type; // 'ac', 'escalator', 'elevator', 'atm', 'recharge', 'bathroom', 'lights'
+  final String location; // Texto libre
+  final String status; // 'not_working', 'working_poorly', 'out_of_service'
+  
+  SpecificIssue({
+    required this.type,
+    required this.location,
+    required this.status,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type,
+      'location': location,
+      'status': status,
+    };
+  }
+}
+
 /// Modelo simplificado de reporte para el nuevo sistema
 /// Soporta reportes de estación (scope='station') y de tren (scope='train')
 class SimplifiedReportModel {
@@ -11,7 +32,14 @@ class SimplifiedReportModel {
   // Campos para reportes de estación (scope='station')
   final String? stationOperational; // 'yes' | 'partial' | 'no'
   final int? stationCrowd; // 1-5
-  final List<String>? stationIssues; // Lista de problemas
+  final List<String>? stationIssues; // Lista de problemas (legacy, mantener por compatibilidad)
+  
+  // NUEVO: Campos para problemas específicos de infraestructura
+  final String? issueType; // 'ac' | 'escalator' | 'elevator' | 'atm' | 'recharge' | 'bathroom' | 'lights'
+  final String? issueLocation; // Texto libre: "Escalera principal entrada norte"
+  final String? issueStatus; // 'not_working' | 'working_poorly' | 'out_of_service'
+  final String? parentReportId; // Si es un problema específico, referencia al reporte general
+  final bool isSpecificIssue; // true si es un problema específico, false si es reporte general
   
   // Campos para reportes de tren (scope='train')
   final int? trainCrowd; // 1-5
@@ -44,6 +72,11 @@ class SimplifiedReportModel {
     this.stationOperational,
     this.stationCrowd,
     this.stationIssues,
+    this.issueType,
+    this.issueLocation,
+    this.issueStatus,
+    this.parentReportId,
+    this.isSpecificIssue = false,
     this.trainCrowd,
     this.trainIssues,
     this.trainLine,
@@ -78,6 +111,11 @@ class SimplifiedReportModel {
       stationIssues: data['stationIssues'] != null
           ? List<String>.from(data['stationIssues'])
           : null,
+      issueType: data['issueType'] as String?,
+      issueLocation: data['issueLocation'] as String?,
+      issueStatus: data['issueStatus'] as String?,
+      parentReportId: data['parentReportId'] as String?,
+      isSpecificIssue: data['isSpecificIssue'] ?? false,
       trainCrowd: data['trainCrowd'] as int?,
       trainIssues: data['trainIssues'] != null
           ? List<String>.from(data['trainIssues'])
@@ -121,6 +159,11 @@ class SimplifiedReportModel {
       if (stationOperational != null) 'stationOperational': stationOperational,
       if (stationCrowd != null) 'stationCrowd': stationCrowd,
       if (stationIssues != null) 'stationIssues': stationIssues,
+      if (issueType != null) 'issueType': issueType,
+      if (issueLocation != null) 'issueLocation': issueLocation,
+      if (issueStatus != null) 'issueStatus': issueStatus,
+      if (parentReportId != null) 'parentReportId': parentReportId,
+      'isSpecificIssue': isSpecificIssue,
       if (trainCrowd != null) 'trainCrowd': trainCrowd,
       if (trainIssues != null) 'trainIssues': trainIssues,
       if (trainLine != null) 'trainLine': trainLine,

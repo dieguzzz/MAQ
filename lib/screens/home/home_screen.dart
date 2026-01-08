@@ -19,12 +19,9 @@ import '../../services/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
 import '../../widgets/location_permission_dialog.dart';
 import '../../widgets/confirm_reports_sheet.dart';
-import '../../widgets/train_arrival_animation.dart';
 import '../../widgets/pulsing_button.dart';
-import '../../services/eta_arrival_service.dart';
 import '../../widgets/train_time_report_flow_widget.dart';
 import '../../models/station_model.dart';
-import '../../services/location_service.dart';
 import '../../widgets/nearest_station_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -41,8 +38,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isCheckingLocation = false;
   bool _lastGpsStatus = true;
   bool _lastPermissionStatus = true;
-  DateTime? _lastTrainButtonTap;
-  Timer? _trainButtonTimer;
   final GlobalKey<MapWidgetState> _mapWidgetKey = GlobalKey<MapWidgetState>();
 
   @override
@@ -65,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _trainButtonTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -131,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Si el GPS está desactivado, mostrar diálogo para activarlo
     if (!status.isGpsEnabled) {
       if (mounted) {
-        final result = await LocationPermissionDialog.show(
+        await LocationPermissionDialog.show(
           context,
           isGpsEnabled: status.isGpsEnabled,
           hasPermission: status.hasPermission,
@@ -308,198 +302,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Maneja el botón "Ya llegó el metro"
-  void _handleTrainArrival() {
-    final now = DateTime.now();
-    
-    // Si hay un toque previo dentro de 500ms, es doble toque
-    if (_lastTrainButtonTap != null && 
-        now.difference(_lastTrainButtonTap!) < const Duration(milliseconds: 500)) {
-      // Cancelar el timer del primer toque
-      _trainButtonTimer?.cancel();
-      _trainButtonTimer = null;
-      _lastTrainButtonTap = null;
-      
-      // Doble toque: esperar medio segundo antes de enviar reporte
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          _sendTrainArrivalReport(showAnimationFirst: true);
-        }
-      });
-      return;
-    }
-    
-    // Registrar este toque
-    _lastTrainButtonTap = now;
-    
-    // Cancelar timer anterior si existe
-    _trainButtonTimer?.cancel();
-    
-    // Esperar 500ms para ver si hay un segundo toque
-    _trainButtonTimer = Timer(const Duration(milliseconds: 500), () {
-      // Si pasó el tiempo sin segundo toque, mostrar diálogo
-      _trainButtonTimer = null;
-      _lastTrainButtonTap = null;
-      
-      if (!mounted) return;
 
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Debes iniciar sesión para reportar'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('¿Llegó el metro?'),
-          content: const SizedBox(),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // No hacer nada
-              },
-              child: const Text('No'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _sendTrainArrivalReport(showAnimationFirst: true);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
-              child: const Text('Sí'),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  /// Envía el reporte de llegada del tren
-  Future<void> _sendTrainArrivalReport({bool showAnimationFirst = false}) async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.currentUser;
-      if (user == null) return;
-
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-      
-      // Obtener ubicación actual (sin esperar mucho)
-      Position? currentPosition = locationProvider.currentPosition;
-      if (currentPosition == null && locationProvider.hasPermission) {
-        try {
-          await locationProvider.getCurrentLocation().timeout(
-            const Duration(seconds: 2),
-          );
-          currentPosition = locationProvider.currentPosition;
-        } catch (e) {
-          // En caso de timeout o error, usar la posición actual (puede ser null)
-          currentPosition = locationProvider.currentPosition;
-        }
-      }
-
-      // Obtener estación más cercana (siempre, sin límite de distancia)
-      StationModel? nearestStation;
-      if (currentPosition != null && metroProvider.stations.isNotEmpty) {
-        double minDistance = double.infinity;
-        for (final station in metroProvider.stations) {
-          final distance = Geolocator.distanceBetween(
-            currentPosition.latitude,
-            currentPosition.longitude,
-            station.ubicacion.latitude,
-            station.ubicacion.longitude,
-          );
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestStation = station;
-          }
-        }
-      }
-
-      // Si no hay ubicación o estación cercana, usar la primera disponible
-      if (nearestStation == null && metroProvider.stations.isNotEmpty) {
-        nearestStation = metroProvider.stations.first;
-      }
-
-      if (nearestStation == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No se pudo determinar la estación'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      final station = nearestStation!;
-      Position? position;
-      try {
-        final locationService = LocationService();
-        final status = await locationService.checkLocationStatus();
-        if (status.hasPermission) {
-          position = await locationService.getCurrentPosition();
-        }
-      } catch (e) {
-        print('No se pudo obtener ubicación: $e');
-      }
-
-      final arrivalService = EtaArrivalService();
-      final result = await arrivalService.submitArrivalTap(
-        stationId: station.id,
-        userPosition: position,
-      );
-
-      if (!mounted) return;
-
-      if (!result.success) {
-        final msg = switch (result.reason) {
-          'no_active_group' =>
-            'Primero reporta el tiempo del panel para poder confirmar.',
-          'ambiguous_direction' =>
-            'Hay varias direcciones activas. Reporta el tiempo del panel para indicar tu dirección.',
-          'out_of_geofence' => 'Debes estar en la estación (≤150m) para que cuente.',
-          'no_gps' =>
-            'No pudimos validar tu GPS aquí. No cuenta ni otorga puntos, pero puedes reportar el panel.',
-          'cooldown' => 'Espera un poco antes de confirmar otra vez.',
-          'already_counted' => 'Ya registramos tu confirmación recientemente.',
-          _ => 'No se pudo confirmar. Intenta de nuevo.',
-        };
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
-        );
-        return;
-      }
-
-      TrainArrivalAnimation.show(
-        context,
-        points: result.pointsAwarded,
-        onComplete: () {},
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1096,10 +899,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           station: nearestStation,
                           backgroundColor: Colors.green,
                           heroTag: 'train_arrival_fab',
-                          onPressed: _handleTrainArrival,
                           child: FloatingActionButton(
                             heroTag: 'train_arrival_fab_inner',
-                            onPressed: _handleTrainArrival,
+                            onPressed: () {}, // Solo visual - no hace nada
                             backgroundColor: Colors.green,
                             child: Image.asset(
                               'assets/icons/metro-station_2340498.png',

@@ -39,6 +39,15 @@
       window.loadDebugLogs?.();
     } else if (tabName === 'timeAnalysis') {
       window.loadTimeAnalysis?.();
+    } else if (tabName === 'trainTimeReportsTesting') {
+      // Cargar estaciones para el testing de tiempos de tren
+      window.loadTrainTimeStations?.();
+    } else if (tabName === 'stationReportsTesting') {
+      // Cargar estaciones para el testing de reportes de estación
+      window.loadStationTestingStations?.();
+    } else if (tabName === 'multiReportsTesting') {
+      // Cargar estaciones para testing múltiple
+      window.loadMultiStations?.();
     } else {
       // Limpiar listeners cuando se sale de stations
       if (window.cleanupStationsListeners) {

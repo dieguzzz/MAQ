@@ -475,6 +475,10 @@ exports.processReportConfirmation = functions.firestore
         // Actualizar estado de estación/tren con agregación completa
         if (report.scope === 'station' && report.stationId) {
           await updateStationStatus(report.stationId, report);
+          // Si es un problema específico, actualizar también los problemas de la estación
+          if (report.isSpecificIssue) {
+            await updateStationIssues(report.stationId, report);
+          }
         } else if (report.scope === 'train' && report.stationId) {
           // Actualizar estado de tren cuando alcanza 3 confirmaciones
           await updateTrainStatusAggregated(report.stationId, report);
@@ -709,6 +713,10 @@ exports.onReportCreated = functions.firestore
       // 5. Actualizar estado de estación si aplica (con agregación completa)
       if (report.scope === 'station' && report.stationId) {
         await updateStationStatus(report.stationId, report);
+        // Si es un problema específico, actualizar también los problemas de la estación
+        if (report.isSpecificIssue) {
+          await updateStationIssues(report.stationId, report);
+        }
       }
       
       // 6. Actualizar estado de tren si aplica (con agregación completa)
@@ -1013,6 +1021,103 @@ async function updateStationStatus(stationId, newReport) {
     console.log(`Station ${stationId} status updated from ${recentReports.length} reports`);
   } catch (error) {
     console.error(`Error updating station status for ${stationId}:`, error);
+  }
+}
+
+// Función auxiliar: Actualizar problemas específicos de infraestructura de una estación
+async function updateStationIssues(stationId, issueReport) {
+  try {
+    const stationRef = db.collection('stations').doc(stationId);
+    const now = admin.firestore.Timestamp.now();
+    const thirtyMinutesAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 30 * 60 * 1000)
+    );
+
+    // Obtener todos los reportes de problemas específicos activos de los últimos 30 minutos
+    const issueReportsSnapshot = await db.collection('reports')
+      .where('stationId', '==', stationId)
+      .where('scope', '==', 'station')
+      .where('isSpecificIssue', '==', true)
+      .where('status', '==', 'active')
+      .get();
+
+    // Filtrar reportes recientes
+    const recentIssueReports = issueReportsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(report => {
+        const createdAt = report.createdAt?.toDate();
+        return createdAt && createdAt >= thirtyMinutesAgo.toDate();
+      });
+
+    // Agrupar por tipo de problema y calcular estadísticas
+    const issuesByType = {};
+    for (const report of recentIssueReports) {
+      const issueType = report.issueType;
+      if (!issueType) continue;
+
+      if (!issuesByType[issueType]) {
+        issuesByType[issueType] = {
+          locations: [],
+          statuses: [],
+          reportCount: 0,
+          confirmations: 0,
+          lastReported: report.createdAt,
+        };
+      }
+
+      issuesByType[issueType].locations.push(report.issueLocation || 'No especificada');
+      issuesByType[issueType].statuses.push(report.issueStatus || 'not_working');
+      issuesByType[issueType].reportCount += 1;
+      issuesByType[issueType].confirmations += (report.confirmations || 0);
+
+      // Mantener el reporte más reciente
+      const reportDate = report.createdAt?.toDate();
+      const currentDate = issuesByType[issueType].lastReported?.toDate();
+      if (!currentDate || reportDate > currentDate) {
+        issuesByType[issueType].lastReported = report.createdAt;
+      }
+    }
+
+    // Construir objeto de problemas activos
+    const activeIssues = {};
+    for (const [issueType, data] of Object.entries(issuesByType)) {
+      // Determinar ubicación más común (o la primera si todas son únicas)
+      const locationCounts = {};
+      for (const loc of data.locations) {
+        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+      }
+      const mostCommonLocation = Object.keys(locationCounts).reduce((a, b) =>
+        locationCounts[a] > locationCounts[b] ? a : b
+      );
+
+      // Determinar estado más común
+      const statusCounts = {};
+      for (const status of data.statuses) {
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      }
+      const mostCommonStatus = Object.keys(statusCounts).reduce((a, b) =>
+        statusCounts[a] > statusCounts[b] ? a : b
+      );
+
+      activeIssues[issueType] = {
+        location: mostCommonLocation,
+        status: mostCommonStatus,
+        reportCount: data.reportCount,
+        confirmations: data.confirmations,
+        lastReported: data.lastReported,
+      };
+    }
+
+    // Actualizar estación con problemas activos
+    await stationRef.update({
+      'active_issues': activeIssues,
+      'active_issues_count': Object.keys(activeIssues).length,
+      'active_issues_last_updated': now,
+    });
+
+    console.log(`Station ${stationId} issues updated: ${Object.keys(activeIssues).length} active issues`);
+  } catch (error) {
+    console.error(`Error updating station issues for ${stationId}:`, error);
   }
 }
 
