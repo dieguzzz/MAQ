@@ -1,26 +1,13 @@
-# Flutter files - no queremos que Railway los procese
-pubspec.yaml
-pubspec.lock
-.dart_tool/
-.metadata
+# Usar .nixpacksignore para control específico de Nixpacks
+# Este .dockerignore es más general para Docker builds
+
+# Node.js build artifacts
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
 build/
-.flutter-plugins
-.flutter-plugins-dependencies
-
-# Mobile platform files
-android/
-ios/
-linux/
-macos/
-windows/
-
-# Flutter lib
-lib/
-test/
-
-# Other Flutter specific
-analysis_options.yaml
-*.iml
 
 # Git
 .git/
@@ -31,11 +18,13 @@ analysis_options.yaml
 .vscode/
 .cursor/
 
-# Scripts
-*.ps1
-*.bat
+# OS
+.DS_Store
+Thumbs.db
 
-# Docs
-docs/
-README.md
-TESTING_CHECKLIST.md
+# Logs
+*.log
+
+# Firebase debug
+firebase-debug.log
+firestore-debug.log
