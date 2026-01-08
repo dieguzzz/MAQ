@@ -35,19 +35,19 @@ function initializeDashboardUI() {
   // Initialize enhanced search
   initSearch();
 
-  // Setup theme toggle
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', toggleTheme);
-  }
+  // Setup theme toggle (duplicado con ui.js, removido para evitar conflictos)
+  // const themeToggle = document.getElementById('themeToggle');
+  // if (themeToggle) {
+  //   themeToggle.addEventListener('click', toggleTheme);
+  // }
 
-  // Setup sidebar navigation
-  document.querySelectorAll('.menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const tabName = item.getAttribute('data-tab');
-      showTab(tabName);
-    });
-  });
+  // Setup sidebar navigation (movido a ui.js para evitar duplicados)
+  // document.querySelectorAll('.menu-item').forEach(item => {
+  //   item.addEventListener('click', () => {
+  //     const tabName = item.getAttribute('data-tab');
+  //     showTab(tabName);
+  //   });
+  // });
 
   // Setup testing cards navigation
   document.querySelectorAll('.testing-card').forEach(card => {
