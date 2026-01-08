@@ -203,20 +203,7 @@
         `;
       }).join('');
 
-      // Vista por líneas (opcional - agregar toggle)
-      const viewToggle = `
-        <div class="view-toggle">
-          <button class="view-btn active" onclick="setStationsView('cards')">📋 Tarjetas</button>
-          <button class="view-btn" onclick="setStationsView('lines')">📊 Por Líneas</button>
-        </div>
-      `;
-
-      const html = `
-        ${viewToggle}
-        <div id="stationsContainer" class="stations-grid">
-          ${stationsHtml}
-        </div>
-      `;
+      const html = `<div id="stationsContainer" class="stations-grid">${stationsHtml}</div>`;
 
       const loadingElement = document.querySelector('#stations .loading-state');
       if (loadingElement) {
@@ -396,12 +383,13 @@
 
   function setStationsView(viewType) {
     const container = document.getElementById('stationsContainer');
-    const viewBtns = document.querySelectorAll('.view-btn');
 
     if (!container) return;
 
-    // Actualizar botones
-    viewBtns.forEach(btn => btn.classList.remove('active'));
+    // Actualizar botones activos
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
     document.querySelector(`[onclick="setStationsView('${viewType}')"]`)?.classList.add('active');
 
     if (viewType === 'lines') {
@@ -488,14 +476,7 @@
       `;
     }).join('');
 
-    const viewToggle = `
-      <div class="view-toggle">
-        <button class="view-btn" onclick="setStationsView('cards')">📋 Tarjetas</button>
-        <button class="view-btn active" onclick="setStationsView('lines')">📊 Por Líneas</button>
-      </div>
-    `;
-
-    const html = `${viewToggle}<div id="stationsContainer">${groupsHtml}</div>`;
+    const html = `<div id="stationsContainer">${groupsHtml}</div>`;
 
     const section = document.getElementById('stations');
     if (section) {
