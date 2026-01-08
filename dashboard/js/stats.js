@@ -11,14 +11,21 @@
     return null;
   }
 
+  function updateElement(id, content) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = content;
+    }
+  }
+
   async function loadStats() {
     try {
       // Usuarios
       const usersSnapshot = await db.collection('users').get();
       const totalUsers = usersSnapshot.size;
-      document.getElementById('totalUsers').textContent = totalUsers;
-      document.getElementById('usersChange').textContent =
-        `Anterior: ${state.statsCache.users} | Cambio: ${totalUsers - state.statsCache.users >= 0 ? '+' : ''}${totalUsers - state.statsCache.users}`;
+      updateElement('totalUsers', totalUsers);
+      updateElement('usersChange',
+        `Anterior: ${state.statsCache.users} | Cambio: ${totalUsers - state.statsCache.users >= 0 ? '+' : ''}${totalUsers - state.statsCache.users}`);
       state.statsCache.users = totalUsers;
 
       // Reportes de hoy (excluyendo falsos/eliminados)
@@ -73,9 +80,9 @@
       });
 
       const reportsToday = activeReportsToday.length;
-      document.getElementById('reportsToday').textContent = reportsToday;
-      document.getElementById('reportsChange').textContent =
-        `Anterior: ${state.statsCache.reports} | Cambio: ${reportsToday - state.statsCache.reports >= 0 ? '+' : ''}${reportsToday - state.statsCache.reports}`;
+      updateElement('reportsToday', reportsToday);
+      updateElement('reportsChange',
+        `Anterior: ${state.statsCache.reports} | Cambio: ${reportsToday - state.statsCache.reports >= 0 ? '+' : ''}${reportsToday - state.statsCache.reports}`);
       state.statsCache.reports = reportsToday;
 
       // Estaciones activas
@@ -89,17 +96,17 @@
         if (isStation && objetivoId) activeStationsSet.add(objetivoId);
       });
       const activeStations = activeStationsSet.size;
-      document.getElementById('activeStations').textContent = activeStations;
-      document.getElementById('stationsChange').textContent =
-        `Anterior: ${state.statsCache.stations} | Cambio: ${activeStations - state.statsCache.stations >= 0 ? '+' : ''}${activeStations - state.statsCache.stations}`;
+      updateElement('activeStations', activeStations);
+      updateElement('stationsChange',
+        `Anterior: ${state.statsCache.stations} | Cambio: ${activeStations - state.statsCache.stations >= 0 ? '+' : ''}${activeStations - state.statsCache.stations}`);
       state.statsCache.stations = activeStations;
 
       // Trenes
       const trainsSnapshot = await db.collection('trains').get();
       const activeTrains = trainsSnapshot.size;
-      document.getElementById('activeTrains').textContent = activeTrains;
-      document.getElementById('trainsChange').textContent =
-        `Anterior: ${state.statsCache.trains} | Cambio: ${activeTrains - state.statsCache.trains >= 0 ? '+' : ''}${activeTrains - state.statsCache.trains}`;
+      updateElement('activeTrains', activeTrains);
+      updateElement('trainsChange',
+        `Anterior: ${state.statsCache.trains} | Cambio: ${activeTrains - state.statsCache.trains >= 0 ? '+' : ''}${activeTrains - state.statsCache.trains}`);
       state.statsCache.trains = activeTrains;
 
       // Confianza promedio (stations)
@@ -116,13 +123,13 @@
         }
       });
       const avgConfidence = stationsWithConfidence > 0 ? (totalConfidence / stationsWithConfidence).toFixed(1) : '0';
-      document.getElementById('avgConfidence').textContent = avgConfidence;
-      document.getElementById('confidenceChange').textContent = `${stationsWithConfidence} estaciones con datos`;
+      updateElement('avgConfidence', avgConfidence);
+      updateElement('confidenceChange', `${stationsWithConfidence} estaciones con datos`);
 
       // Prioritarios hoy
       const priorityReportsToday = activeReportsToday.filter(doc => doc.data().prioridad === true).length;
-      document.getElementById('priorityReports').textContent = priorityReportsToday;
-      document.getElementById('priorityChange').textContent = 'Reportes urgentes hoy';
+      updateElement('priorityReports', priorityReportsToday);
+      updateElement('priorityChange', 'Reportes urgentes hoy');
 
       // Verificación hoy
       let verifiedCount = 0;
@@ -131,8 +138,8 @@
         if (verificationStatus === 'verified' || verificationStatus === 'community_verified') verifiedCount++;
       });
       const verificationRate = reportsToday > 0 ? ((verifiedCount / reportsToday) * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('verificationRate').textContent = verificationRate;
-      document.getElementById('verificationChange').textContent = `${verifiedCount} de ${reportsToday} verificados`;
+      updateElement('verificationRate', verificationRate);
+      updateElement('verificationChange', `${verifiedCount} de ${reportsToday} verificados`);
     } catch (error) {
       console.error('Error loading stats:', error);
     }
