@@ -55,6 +55,9 @@ function showTab(tabName) {
   const targetTab = document.getElementById(tabName);
   if (targetTab) {
     targetTab.classList.add('active');
+
+    // Inicializar datos del tab si es la primera vez que se activa
+    initializeTabData(tabName);
   }
 
   // Actualizar sidebar
@@ -69,6 +72,45 @@ function showTab(tabName) {
 
   // Actualizar título de página
   updatePageTitle(tabName);
+}
+
+// Inicializar datos específicos de cada tab
+function initializeTabData(tabName) {
+  switch (tabName) {
+    case 'stations':
+      if (window.loadStations && !document.querySelector('#stations #stationsContainer')) {
+        window.loadStations(true);
+        // Inicializar listeners en tiempo real
+        if (window.initStationsRealtimeListeners) {
+          window.initStationsRealtimeListeners();
+        }
+      }
+      break;
+
+    case 'trains':
+      if (window.loadTrains && !document.querySelector('#trains .trains-container')) {
+        window.loadTrains(true);
+      }
+      break;
+
+    case 'reports':
+      if (window.loadReports && !document.querySelector('#reports .reports-container')) {
+        window.loadReports(true);
+      }
+      break;
+
+    case 'users':
+      if (window.loadUsers && !document.querySelector('#users .users-container')) {
+        window.loadUsers(true);
+      }
+      break;
+
+    case 'analytics':
+      if (window.loadAnalytics && !document.querySelector('#analytics .analytics-container')) {
+        window.loadAnalytics(true);
+      }
+      break;
+  }
 }
 
 // Navegación por sub-tabs de testing

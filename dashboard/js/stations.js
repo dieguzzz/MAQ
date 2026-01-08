@@ -23,7 +23,7 @@
   function getLoadingStateHtml() {
     return `
       <div class="loading-state">
-        <div class="loading-spinner"></div>
+        <i class="fas fa-spinner fa-spin"></i>
         <p>Cargando estaciones...</p>
       </div>
     `;
@@ -43,7 +43,7 @@
   async function loadStations(showLoading = true) {
     try {
       if (showLoading) {
-        const loadingElement = document.querySelector('#stations .loading');
+        const loadingElement = document.querySelector('#stations .data-loading');
         if (loadingElement) {
           loadingElement.outerHTML = getLoadingStateHtml();
         }
@@ -133,7 +133,7 @@
 
       const html = `<div id="stationsContainer">${groupsHtml}</div>`;
 
-      const loadingElement = document.querySelector('#stations .loading');
+      const loadingElement = document.querySelector('#stations .loading-state');
       if (loadingElement) {
         loadingElement.outerHTML = html;
       } else {
@@ -171,7 +171,9 @@
       } else {
         const section = document.getElementById('stations');
         if (section) {
-          section.insertAdjacentHTML('beforeend', errorHtml);
+          const existingContainer = section.querySelector('#stationsContainer');
+          if (existingContainer) existingContainer.outerHTML = errorHtml;
+          else section.insertAdjacentHTML('beforeend', errorHtml);
         }
       }
     }
@@ -233,10 +235,70 @@
     }
   }
 
+  // Inicializar filtros y búsqueda
+  function initStationsFilters() {
+    const searchInput = document.getElementById('filterStations');
+    const filterBtn = document.querySelector('#stations .filter-btn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        filterStations(e.target.value);
+      });
+    }
+
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        // TODO: Implementar filtros avanzados
+        alert('Funcionalidad de filtros avanzados próximamente');
+      });
+    }
+  }
+
+  function filterStations(query) {
+    const rows = document.querySelectorAll('#stationsContainer tr[data-station-name]');
+    const normalizedQuery = query.toLowerCase().trim();
+
+    rows.forEach(row => {
+      const stationName = row.getAttribute('data-station-name') || '';
+      const stationLine = row.getAttribute('data-station-line') || '';
+      const stationState = row.getAttribute('data-station-state') || '';
+
+      const matches = stationName.includes(normalizedQuery) ||
+                     stationLine.includes(normalizedQuery) ||
+                     stationState.includes(normalizedQuery);
+
+      row.style.display = matches || !normalizedQuery ? '' : 'none';
+    });
+
+    // Ocultar líneas que no tienen estaciones visibles
+    const lineGroups = document.querySelectorAll('.line-group');
+    lineGroups.forEach(group => {
+      const visibleRows = group.querySelectorAll('tr[data-station-name]:not([style*="display: none"])');
+      const lineStations = group.querySelector('.line-stations');
+      if (lineStations) {
+        lineStations.style.display = visibleRows.length > 0 || !normalizedQuery ? '' : 'none';
+      }
+
+      // Actualizar contador
+      const lineCount = group.querySelector('.line-count');
+      if (lineCount) {
+        const totalRows = group.querySelectorAll('tr[data-station-name]').length;
+        const visibleCount = visibleRows.length;
+        lineCount.textContent = normalizedQuery ? `${visibleCount}/${totalRows}` : totalRows;
+      }
+    });
+  }
+
+  // Inicializar cuando se carga el DOM
+  document.addEventListener('DOMContentLoaded', () => {
+    initStationsFilters();
+  });
+
   window.loadStations = loadStations;
   window.toggleLine = toggleLine;
   window.initStationsRealtimeListeners = initStationsRealtimeListeners;
   window.cleanupStationsListeners = cleanupStationsListeners;
+  window.filterStations = filterStations;
 })();
 
 
