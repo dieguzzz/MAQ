@@ -269,10 +269,21 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="filterStations" placeholder="Buscar estaciones...">
                         </div>
-                        <button class="filter-btn">
-                            <i class="fas fa-filter"></i>
-                            Filtros
-                        </button>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">Todos los estados</option>
+                            <option value="normal">Normal</option>
+                            <option value="moderado">Moderado</option>
+                            <option value="lleno">Lleno</option>
+                            <option value="retraso">Retraso</option>
+                            <option value="cerrado">Cerrado</option>
+                        </select>
+                        <select id="confidenceFilter" class="filter-select">
+                            <option value="">Toda confianza</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Media</option>
+                            <option value="low">Baja</option>
+                            <option value="estimated">Estimada</option>
+                        </select>
                     </div>
                 </div>
 

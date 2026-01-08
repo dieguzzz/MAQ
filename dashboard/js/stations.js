@@ -323,7 +323,8 @@
   // Inicializar filtros y búsqueda
   function initStationsFilters() {
     const searchInput = document.getElementById('filterStations');
-    const filterBtn = document.querySelector('#stations .filter-btn');
+    const statusFilter = document.getElementById('statusFilter');
+    const confidenceFilter = document.getElementById('confidenceFilter');
 
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
@@ -331,35 +332,66 @@
       });
     }
 
-    if (filterBtn) {
-      filterBtn.addEventListener('click', () => {
-        // TODO: Implementar filtros avanzados
-        alert('Funcionalidad de filtros avanzados próximamente');
+    if (statusFilter) {
+      statusFilter.addEventListener('change', () => {
+        filterStations(searchInput?.value || '');
+      });
+    }
+
+    if (confidenceFilter) {
+      confidenceFilter.addEventListener('change', () => {
+        filterStations(searchInput?.value || '');
       });
     }
   }
 
   function filterStations(query) {
-    const cards = document.querySelectorAll('.station-card[data-station-name]');
+    const statusFilter = document.getElementById('statusFilter')?.value || '';
+    const confidenceFilter = document.getElementById('confidenceFilter')?.value || '';
     const normalizedQuery = query.toLowerCase().trim();
 
+    const cards = document.querySelectorAll('.station-card');
     cards.forEach(card => {
       const stationName = card.getAttribute('data-station-name') || '';
       const stationLine = card.getAttribute('data-station-line') || '';
       const stationState = card.getAttribute('data-station-state') || '';
 
-      const matches = stationName.includes(normalizedQuery) ||
-                     stationLine.includes(normalizedQuery) ||
-                     stationState.includes(normalizedQuery);
+      // Obtener datos de confianza del DOM
+      const confidenceBadge = card.querySelector('.badge');
+      let stationConfidence = '';
+      if (confidenceBadge) {
+        const badgeText = confidenceBadge.textContent;
+        if (badgeText.includes('Alta')) stationConfidence = 'high';
+        else if (badgeText.includes('Media')) stationConfidence = 'medium';
+        else if (badgeText.includes('Estimado')) stationConfidence = 'estimated';
+        else stationConfidence = 'low';
+      }
 
-      card.style.display = matches || !normalizedQuery ? '' : 'none';
+      // Aplicar filtros
+      const matchesQuery = !normalizedQuery ||
+                          stationName.includes(normalizedQuery) ||
+                          stationLine.includes(normalizedQuery) ||
+                          stationState.includes(normalizedQuery);
+
+      const matchesStatus = !statusFilter || stationState === statusFilter;
+      const matchesConfidence = !confidenceFilter || stationConfidence === confidenceFilter;
+
+      const shouldShow = matchesQuery && matchesStatus && matchesConfidence;
+      card.style.display = shouldShow ? '' : 'none';
     });
 
-    // Actualizar contador
+    // Actualizar contador con filtros aplicados
     const visibleCards = document.querySelectorAll('.station-card:not([style*="display: none"])');
     const totalCards = document.querySelectorAll('.station-card');
-    document.getElementById('stationsCount').textContent =
-      normalizedQuery ? `${visibleCards.length}/${totalCards.length} estaciones` : `${totalCards.length} estaciones`;
+
+    let countText = `${totalCards.length} estaciones`;
+    if (query || statusFilter || confidenceFilter) {
+      countText = `${visibleCards.length}/${totalCards.length} estaciones`;
+      if (statusFilter) countText += ` (estado: ${statusFilter})`;
+      if (confidenceFilter) countText += ` (confianza: ${confidenceFilter})`;
+    }
+
+    document.getElementById('stationsCount').textContent = countText;
   }
 
   function setStationsView(viewType) {
