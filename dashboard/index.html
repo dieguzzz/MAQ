@@ -74,6 +74,8 @@
             <button class="tab" onclick="showTab('users')">Usuarios Top</button>
             <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
             <button class="tab" onclick="showTab('timeAnalysis')">⏱️ Análisis de Tiempo</button>
+            <button class="tab" onclick="showTab('trainTimeReportsTesting')">🕰️ Testing Tiempos de Tren</button>
+            <button class="tab" onclick="showTab('multiReportsTesting')">📊 Testing Múltiples Reportes</button>
             <button class="tab" onclick="showTab('debugLogs')">🐛 Debug Logs</button>
         </div>
         
@@ -273,8 +275,244 @@
                 <div class="loading" style="color: #d4d4d4;">Cargando logs...</div>
             </div>
         </div>
+
+        <div id="trainTimeReportsTesting" class="tab-content section">
+            <h2>🕰️ Testing de Reportes de Tiempos de Tren</h2>
+            <p>Genera reportes de tiempos de tren basados en pantallas digitales oficiales</p>
+
+            <!-- Configuración de reportes de tiempos -->
+            <div class="train-time-config">
+                <div class="config-section">
+                    <h4>🎯 Estación y Dirección</h4>
+                    <div class="station-direction-selector">
+                        <label>
+                            Estación:
+                            <select id="trainTimeStationSelect" onchange="onTrainTimeStationChanged()">
+                                <option value="">Selecciona estación...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                        <label>
+                            Dirección:
+                            <select id="trainTimeDirectionSelect">
+                                <option value="">Selecciona dirección...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>⏰ Tiempos de Llegada</h4>
+                    <div class="time-inputs">
+                        <label>
+                            Próximo tren:
+                            <select id="nextTrainTimeSelect">
+                                <option value="">No sé</option>
+                                <option value="1">1 minuto</option>
+                                <option value="2">2 minutos</option>
+                                <option value="3">3 minutos</option>
+                                <option value="4">4 minutos</option>
+                                <option value="5">5 minutos</option>
+                                <option value="6">6 minutos</option>
+                                <option value="7">7 minutos</option>
+                                <option value="8">8 minutos</option>
+                                <option value="9">9 minutos</option>
+                                <option value="10">10 minutos</option>
+                                <option value="11">11 minutos</option>
+                                <option value="12">12+ minutos</option>
+                            </select>
+                        </label>
+                        <label>
+                            Siguiente tren (opcional):
+                            <select id="followingTrainTimeSelect">
+                                <option value="">No reportar</option>
+                                <option value="1">1 min</option>
+                                <option value="2">2 min</option>
+                                <option value="3">3 min</option>
+                                <option value="4">4 min</option>
+                                <option value="5">5 min</option>
+                                <option value="6">6 min</option>
+                                <option value="7">7 min</option>
+                                <option value="8">8 min</option>
+                                <option value="9">9 min</option>
+                                <option value="10">10 min</option>
+                                <option value="11">11 min</option>
+                                <option value="12">12+ min</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>📊 Generación Múltiple</h4>
+                    <div class="multi-time-config">
+                        <label>
+                            Número de reportes:
+                            <input type="number" id="trainTimeReportCount" min="1" max="20" value="5">
+                        </label>
+                        <label>
+                            Intervalo entre reportes (seg):
+                            <input type="number" id="trainTimeInterval" min="1" max="300" value="30">
+                        </label>
+                        <div class="time-variation">
+                            <label><input type="checkbox" id="addTimeVariation" checked> Agregar variación (±2 min)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista previa y acciones -->
+            <div class="train-time-actions">
+                <button class="test-btn test-btn-primary" onclick="previewTrainTimeReports()" id="previewTrainTimeBtn">
+                    👁️ Vista Previa
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateTrainTimeReports()" id="generateTrainTimeBtn">
+                    🚀 Generar Reportes
+                </button>
+                <button class="test-btn test-btn-warning" onclick="clearTrainTimeReports()" id="clearTrainTimeBtn">
+                    🗑️ Limpiar Reportes
+                </button>
+                <button class="test-btn test-btn-info" onclick="showTrainTimeAnalytics()" id="analyticsTrainTimeBtn">
+                    📈 Ver Analytics
+                </button>
+            </div>
+
+            <!-- Vista previa -->
+            <div id="trainTimePreview" class="train-time-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes</h4>
+                <div id="trainTimePreviewContent"></div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="trainTimeResults" class="train-time-results" style="display: none;">
+                <h4>📊 Resultados de Generación</h4>
+                <div id="trainTimeResultsContent"></div>
+            </div>
+
+            <!-- Analytics -->
+            <div id="trainTimeAnalytics" class="train-time-analytics" style="display: none;">
+                <h4>📈 Analytics de Tiempos de Tren</h4>
+                <div id="trainTimeAnalyticsContent"></div>
+            </div>
+
+            <!-- Status -->
+            <div id="trainTimeStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
+
+        <div id="multiReportsTesting" class="tab-content section">
+            <h2>📊 Testing Múltiples Reportes</h2>
+            <p>Genera varios reportes con diferentes tiempos para probar la lógica de agregación de estados</p>
+
+            <!-- Configuración general -->
+            <div class="multi-config">
+                <div class="config-section">
+                    <h4>🎯 Estaciones Objetivo</h4>
+                    <div class="station-selector">
+                        <label>
+                            <input type="checkbox" id="selectAllStations" onchange="toggleAllStations()">
+                            Seleccionar todas las estaciones
+                        </label>
+                        <div id="stationsMultiSelect" class="stations-grid">
+                            <!-- Las estaciones se cargarán aquí -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>⏰ Distribución de Tiempos</h4>
+                    <div class="time-distribution">
+                        <label>
+                            Número de reportes por estación:
+                            <input type="number" id="reportsPerStation" min="1" max="10" value="3" style="width: 80px;">
+                        </label>
+                        <label>
+                            Rango de tiempo (minutos):
+                            <input type="number" id="timeRange" min="1" max="60" value="15" style="width: 80px;">
+                        </label>
+                        <div style="margin-top: 0.5rem;">
+                            <label><input type="radio" name="timeDistribution" value="sequential" checked> Secuencial (1, 5, 10 min)</label>
+                            <label><input type="radio" name="timeDistribution" value="random"> Aleatorio</label>
+                            <label><input type="radio" name="timeDistribution" value="clustered"> Agrupado (varios cercanos)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>📋 Variedad de Estados</h4>
+                    <div class="state-variety">
+                        <label>
+                            <input type="checkbox" id="useVariedStates" checked onchange="toggleStateVariety()">
+                            Usar estados variados
+                        </label>
+                        <div id="stateOptions" class="state-options">
+                            <label><input type="checkbox" name="states" value="normal" checked> 🟢 Normal</label>
+                            <label><input type="checkbox" name="states" value="moderado"> 🟡 Moderado</label>
+                            <label><input type="checkbox" name="states" value="lleno"> 🔴 Lleno</label>
+                            <label><input type="checkbox" name="states" value="retraso"> ⚠️ Retraso</label>
+                            <label><input type="checkbox" name="states" value="cerrado"> 🚫 Cerrado</label>
+                        </div>
+                        <div id="fixedState" style="display: none;">
+                            <label>
+                                Estado fijo:
+                                <select id="fixedStateSelect">
+                                    <option value="normal">🟢 Normal</option>
+                                    <option value="moderado">🟡 Moderado</option>
+                                    <option value="lleno">🔴 Lleno</option>
+                                    <option value="retraso">⚠️ Retraso</option>
+                                    <option value="cerrado">🚫 Cerrado</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>👥 Sistema de Confirmaciones</h4>
+                    <div class="confirmation-system">
+                        <label>
+                            <input type="checkbox" id="simulateConfirmations" checked>
+                            Simular confirmaciones automáticas
+                        </label>
+                        <label style="margin-left: 1rem;">
+                            Máximo confirmaciones por reporte:
+                            <input type="number" id="maxConfirmations" min="0" max="5" value="2" style="width: 60px;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista previa y acciones -->
+            <div class="multi-actions">
+                <button class="test-btn test-btn-primary" onclick="previewMultiReports()" id="previewBtn">
+                    👁️ Vista Previa
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateMultiReports()" id="generateBtn">
+                    🚀 Generar Reportes
+                </button>
+                <button class="test-btn test-btn-warning" onclick="clearMultiTestReports()" id="clearMultiBtn">
+                    🗑️ Limpiar Reportes de Prueba
+                </button>
+            </div>
+
+            <!-- Vista previa de reportes -->
+            <div id="multiPreview" class="multi-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes a Generar</h4>
+                <div id="previewTable"></div>
+            </div>
+
+            <!-- Resultados después de generación -->
+            <div id="multiResults" class="multi-results" style="display: none;">
+                <h4>📊 Resultados de Generación</h4>
+                <div id="resultsSummary"></div>
+                <div id="resultsStations" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Status de acciones -->
+            <div id="multiStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
     </div>
-    
+
     <!-- Modal de Detalles de Reporte -->
     <div id="reportModal" class="modal-overlay" onclick="if(event.target === this) closeReportModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -304,6 +542,8 @@
     <script src="js/community.js"></script>
     <script src="js/logs.js"></script>
     <script src="js/test_reports.js"></script>
+    <script src="js/multi_reports_testing.js"></script>
+    <script src="js/train_time_reports_testing.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/app.js"></script>
 </body>

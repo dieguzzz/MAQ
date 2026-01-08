@@ -9,6 +9,10 @@
 
   // Autenticación automática (sin bloquear)
   window.authenticateDashboard?.().catch(() => {});
+
+  // Inicializar generadores
+  window.loadAvailableStations?.();
+  window.loadTrainTimeStations?.();
 })();
 
 
