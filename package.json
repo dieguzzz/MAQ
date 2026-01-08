@@ -1,0 +1,18 @@
+{
+  "name": "metropty-dashboard-root",
+  "version": "1.0.0",
+  "description": "Root package.json for Railway - delegates to dashboard/",
+  "main": "dashboard/index.html",
+  "scripts": {
+    "build": "cd dashboard && npm install && npm run build",
+    "start": "cd dashboard && npm start",
+    "dev": "cd dashboard && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "railway": {
+    "buildCommand": "npm run build",
+    "startCommand": "npm start"
+  }
+}
