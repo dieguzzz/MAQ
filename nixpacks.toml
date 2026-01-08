@@ -2,10 +2,12 @@
 nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
-cmds = ["cd dashboard && npm ci"]
+dependsOn = ["setup"]
+cmds = ["npm ci --prefix dashboard"]
 
 [phases.build]
-cmds = ["cd dashboard && npm run build"]
+dependsOn = ["install"]
+cmds = ["npm run build --prefix dashboard"]
 
 [start]
-cmd = "cd dashboard && npm start"
+cmd = "npm start --prefix dashboard"
