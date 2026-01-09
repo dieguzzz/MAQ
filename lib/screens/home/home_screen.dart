@@ -578,7 +578,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           // Panel de acciones flotantes (Barra inferior personalizada)
           Positioned(
-            bottom: 24,
+            bottom: 40, // Subido de 24 a 40 para mejor visibilidad
             left: 16,
             right: 16,
             child: Row(

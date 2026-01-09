@@ -144,70 +144,207 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingProgress) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(MetroColors.blue),
+        ),
+      );
     }
 
-    return Column(
-      children: [
-        // Header con título y progreso
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Reportar: ${widget.station.nombre}',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Handle superior
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Header con progreso animado
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reportar Estación',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
                                 color: MetroColors.grayDark,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.8,
                               ),
-                    ),
-                  ),
-                  Text(
-                    '${_currentPage + 1} de 3',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: MetroColors.grayDark,
                         ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Indicadores de página
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _PageIndicator(isActive: _currentPage == 0),
-                  const SizedBox(width: 8),
-                  _PageIndicator(isActive: _currentPage == 1),
-                  const SizedBox(width: 8),
-                  _PageIndicator(isActive: _currentPage == 2),
-                ],
-              ),
-            ],
+                        Text(
+                          widget.station.nombre,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: MetroColors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: MetroColors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Paso ${_currentPage + 1}/3',
+                        style: TextStyle(
+                          color: MetroColors.blue,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Barra de progreso elegante
+                Stack(
+                  children: [
+                    Container(
+                      height: 8,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      height: 8,
+                      width: MediaQuery.of(context).size.width *
+                          ((_currentPage + 1) / 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [MetroColors.blue, Color(0xFF66B2FF)],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: MetroColors.blue.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Contenido con PageView
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              children: [
+                _buildPage1(),
+                _buildPage2(),
+                _buildPage3(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    VoidCallback? onPressed,
+    bool isSubmitting = false,
+    Color color = MetroColors.blue,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: color.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
         ),
-        // Contenido con PageView
-        Expanded(
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            children: [
-              _buildPage1(),
-              _buildPage2(),
-              _buildPage3(),
-            ],
-          ),
+        child: isSubmitting
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 3, color: Colors.white),
+              )
+            : Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton(
+      {required VoidCallback onPressed, required String label}) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        side: BorderSide(color: Colors.grey[300]!, width: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
-      ],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: MetroColors.grayMedium,
+          fontWeight: FontWeight.w800,
+          fontSize: 16,
+        ),
+      ),
     );
   }
 
@@ -215,81 +352,75 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
   Widget _buildPage1() {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '1. ¿La estación está funcionando?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: MetroColors.grayDark,
-                ),
+          Row(
+            children: [
+              const Text('🏢', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Text(
+                '¿Cómo está la estación?',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: MetroColors.grayDark,
+                      letterSpacing: -0.5,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Piensa en lo básico: entrar, pasar torniquetes, movilidad y servicio.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            'Piensa en lo básico: accesos, torniquetes y movilidad general.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: MetroColors.grayMedium,
-                  fontSize: 13,
+                  height: 1.4,
                 ),
           ),
           const SizedBox(height: 24),
           _buildOptionCard(
             value: 'yes',
-            icon: Icons.check_circle,
+            icon: Icons.check_circle_rounded,
             iconColor: Colors.green,
-            title: '✅ Sí, todo normal',
+            title: 'Sí, todo normal',
             isSelected: _operational == 'yes',
             onTap: () {
+              HapticFeedback.selectionClick();
               setState(() => _operational = 'yes');
               _saveProgress();
             },
           ),
           _buildOptionCard(
             value: 'partial',
-            icon: Icons.warning,
+            icon: Icons.warning_rounded,
             iconColor: Colors.orange,
-            title: '⚠️ Sí, pero con fallas',
+            title: 'Sí, pero con fallas',
             isSelected: _operational == 'partial',
             onTap: () {
+              HapticFeedback.selectionClick();
               setState(() => _operational = 'partial');
               _saveProgress();
             },
           ),
           _buildOptionCard(
             value: 'no',
-            icon: Icons.cancel,
+            icon: Icons.cancel_rounded,
             iconColor: Colors.red,
-            title: '🚫 No / cerrada',
+            title: 'No / cerrada / bloqueada',
             isSelected: _operational == 'no',
             onTap: () {
+              HapticFeedback.selectionClick();
               setState(() => _operational = 'no');
               _saveProgress();
             },
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _operational != null
-                  ? () {
-                      HapticFeedback.lightImpact();
-                      _nextPage();
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: MetroColors.blue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                'SIGUIENTE',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+          const SizedBox(height: 32),
+          _buildActionButton(
+            label: 'CONTINUAR',
+            onPressed: _operational != null ? _nextPage : null,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -299,63 +430,53 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
   Widget _buildPage2() {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const Text('👥', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Text(
+                'Nivel de gente',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: MetroColors.grayDark,
+                      letterSpacing: -0.5,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Text(
-            '2. ¿Qué tan llena está la estación ahora?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: MetroColors.grayDark,
+            '¿Qué tan llena se siente la estación en este momento?',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: MetroColors.grayMedium,
+                  height: 1.4,
                 ),
           ),
           const SizedBox(height: 24),
-          _buildCrowdOption(1, '🟢 Baja', 'Caminas fácil', Colors.green),
+          _buildCrowdOption(1, 'Baja', 'Caminas fácil', Colors.green),
           _buildCrowdOption(
-              2, '🟡 Moderada', 'Hay fila / se siente', Colors.orange),
-          _buildCrowdOption(3, '🟠 Llena', 'Cuesta moverse', Colors.deepOrange),
-          _buildCrowdOption(4, '🔴 Muy llena', 'Apretado', Colors.red),
-          _buildCrowdOption(
-              5, '💀 Sardina', 'No se puede avanzar', Colors.purple),
-          const SizedBox(height: 24),
+              2, 'Moderada', 'Hay fila / se siente', Colors.orange),
+          _buildCrowdOption(3, 'Llena', 'Cuesta moverse', Colors.deepOrange),
+          _buildCrowdOption(4, 'Muy llena', 'Apretado / empujones', Colors.red),
+          _buildCrowdOption(5, 'Crítica', 'No se puede avanzar', Colors.purple),
+          const SizedBox(height: 32),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    _previousPage();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('ANTERIOR'),
-                ),
-              ),
+              _buildSecondaryButton(onPressed: _previousPage, label: 'ATRÁS'),
               const SizedBox(width: 16),
               Expanded(
-                child: ElevatedButton(
-                  onPressed: _crowdLevel != null
-                      ? () {
-                          HapticFeedback.lightImpact();
-                          _nextPage();
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: MetroColors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text(
-                    'SIGUIENTE',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                child: _buildActionButton(
+                  label: 'CONTINUAR',
+                  onPressed: _crowdLevel != null ? _nextPage : null,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -363,132 +484,108 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
 
   // Página 3: ¿Qué está fallando? (opcional)
   Widget _buildPage3() {
+    final totalPoints = 15 + (_specificIssues.length * 10);
+
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '3. ¿Qué está fallando? (opcional)',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: MetroColors.grayDark,
-                ),
+          Row(
+            children: [
+              const Text('⚠️', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Text(
+                '¿Hay fallas?',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: MetroColors.grayDark,
+                      letterSpacing: -0.5,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Marca solo lo que NO está funcionando.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            'Reporta equipo dañado o servicios fuera de servicio.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: MetroColors.grayMedium,
-                  fontSize: 13,
+                  height: 1.4,
                 ),
           ),
-          const SizedBox(height: 16),
-          _buildOptionalDetails(),
           const SizedBox(height: 24),
-          // Resumen antes de enviar
-          if (_operational != null && _crowdLevel != null) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Vas a reportar:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue[900],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _buildSummaryText(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blue[800],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          _buildOptionalDetails(),
+          const SizedBox(height: 32),
+          // Resumen de puntos con diseño Duolingo
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.green[50]!,
-                  Colors.green[100]!.withValues(alpha: 0.5),
-                ],
+                colors: [Colors.white, Colors.green.withValues(alpha: 0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.3), width: 2),
             ),
             child: Row(
               children: [
-                const Icon(Icons.stars, color: Colors.green),
-                const SizedBox(width: 8),
-                Text(
-                  'Ganas: +${15 + (_specificIssues.length * 10)} puntos',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text('✨', style: TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'REPORTE VALIOSO',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green[700],
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      Text(
+                        '+$totalPoints PUNTOS',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green[800],
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _canSubmit() && !_isSubmitting
-                  ? () {
-                      HapticFeedback.mediumImpact();
-                      _submitReport();
-                    }
-                  : null,
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.send, color: Colors.white),
-              label: _isSubmitting
-                  ? const SizedBox.shrink()
-                  : const Text(
-                      'ENVIAR REPORTE',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              _buildSecondaryButton(onPressed: _previousPage, label: 'VOLVER'),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  label: 'ENVIAR REPORTE',
+                  onPressed:
+                      _canSubmit() && !_isSubmitting ? _submitReport : null,
+                  isSubmitting: _isSubmitting,
+                  color: Colors.green[600]!,
                 ),
-                elevation: 8,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -964,43 +1061,6 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  String _buildSummaryText() {
-    final parts = <String>[];
-
-    // Estado operativo
-    if (_operational == 'yes') {
-      parts.add('Funciona ✅');
-    } else if (_operational == 'partial') {
-      parts.add('Funciona con fallas ⚠️');
-    } else if (_operational == 'no') {
-      parts.add('No funciona / cerrada 🚫');
-    }
-
-    // Nivel de llenura
-    if (_crowdLevel != null) {
-      final crowdLabels = {
-        1: 'Baja 🟢',
-        2: 'Moderada 🟡',
-        3: 'Llena 🟠',
-        4: 'Muy llena 🔴',
-        5: 'Sardina 💀',
-      };
-      parts.add(crowdLabels[_crowdLevel] ?? '');
-    }
-
-    // Problemas específicos
-    if (_specificIssues.isNotEmpty) {
-      final issuesList = _specificIssues
-          .map((issue) => _getIssueTypeName(issue.type))
-          .join(', ');
-      parts.add('${_specificIssues.length} problema(s): $issuesList');
-    } else {
-      parts.add('Sin problemas específicos');
-    }
-
-    return parts.join(' • ');
-  }
-
   bool _canSubmit() {
     return _operational != null && _crowdLevel != null && !_isSubmitting;
   }
@@ -1066,24 +1126,5 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         setState(() => _isSubmitting = false);
       }
     }
-  }
-}
-
-/// Indicador de página
-class _PageIndicator extends StatelessWidget {
-  const _PageIndicator({required this.isActive});
-
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: isActive ? 24 : 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: isActive ? MetroColors.blue : MetroColors.grayMedium,
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
   }
 }
