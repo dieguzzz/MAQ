@@ -28,8 +28,8 @@
         : 'N/A';
       const levelColor = log.level === 'error' ? '#cd3131'
         : log.level === 'warning' ? '#d7ba7d'
-        : log.level === 'success' ? '#6a9955'
-        : '#569cd6';
+          : log.level === 'success' ? '#6a9955'
+            : '#569cd6';
 
       return `
         <div class="log-entry" style="margin-bottom: 0.5rem; padding: 0.5rem; border-left: 3px solid ${levelColor}; background: rgba(255,255,255,0.02);">
@@ -52,6 +52,7 @@
     try {
       if (state.logsUnsubscribe) {
         state.logsUnsubscribe();
+        state.logsUnsubscribe = null;
       }
 
       db.collection('debug_logs')
@@ -67,31 +68,7 @@
             level: doc.data().level || 'info',
           }));
           renderLogs();
-
-          state.logsUnsubscribe = db.collection('debug_logs')
-            .orderBy('timestamp', 'desc')
-            .limit(500)
-            .onSnapshot((snap) => {
-              snap.docChanges().forEach((change) => {
-                if (change.type !== 'added') return;
-                const logData = change.doc.data();
-                const newLog = {
-                  id: change.doc.id,
-                  timestamp: logData.timestamp,
-                  category: logData.category || 'Unknown',
-                  message: logData.message || '',
-                  level: logData.level || 'info',
-                };
-
-                if (!state.allLogs.find(l => l.id === newLog.id)) {
-                  state.allLogs.unshift(newLog);
-                  if (state.allLogs.length > 500) state.allLogs = state.allLogs.slice(0, 500);
-                  renderLogs();
-                }
-              });
-            }, (error) => {
-              console.error('Error en listener de logs:', error);
-            });
+          console.log('ℹ️ Logs cargados. Listeners en tiempo real deshabilitados.');
         })
         .catch((error) => {
           console.error('Error cargando logs:', error);

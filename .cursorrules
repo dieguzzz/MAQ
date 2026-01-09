@@ -785,3 +785,36 @@ Si necesitas agregar funcionalidad nueva:
 5. Actualizar documentaciÃ³n
 
 **Â¡Gracias por contribuir a MetroPTY!  ðŸš‡ðŸ‡µðŸ‡¦**
+
+  DESIGN SYSTEM & UI RULES (DUOLINGO + PANAMA)
+
+
+## Estilo Visual Obligatorio
+1. **Cards:** Bordes redondeados 24px, gradientes suaves, sombras difusas (blur: 20, offset: 8).
+2. **Colores:**
+   - Línea 1: MetroColors.blue con gradiente [White -> 0xFFF0F7FF]
+   - Línea 2: MetroColors.green con gradiente [White -> 0xFFF0FFF4]
+   - Acción/Info: Fondos claros [White -> 0xFFFFF8F0]
+3. **Tipografía:**
+   - Headers: Bold, LetterSpacing -0.5
+   - Countdowns: ExtraBold (w900), size 22-24
+   - Emojis: Usar como íconos de sección (, , )
+
+## Componentes Standard
+`dart
+// Estilo base de contenedores principales
+Container(
+  decoration: BoxDecoration(
+    gradient: LinearGradient(colors: [Colors.white, colorSuave]),
+    borderRadius: BorderRadius.circular(24),
+    boxShadow: [BoxShadow(color: color.withOpacity(0.12), blurRadius: 20, offset: Offset(0, 8))],
+  ),
+  child: ...
+)
+`
+
+## Anti-Patterns UI
+-  No usar sombras negras duras
+-  No usar esquinas rectas (< 12px)
+-  No usar colores planos oscuros en fondos de tarjetas
+

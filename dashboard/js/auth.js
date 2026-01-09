@@ -91,19 +91,15 @@
       if (user) {
         if (state.refreshInterval) {
           clearInterval(state.refreshInterval);
+          state.refreshInterval = null;
         }
 
         // Cargar datos iniciales
         window.refreshAll?.();
 
-        // Inicializar listeners en tiempo real para la pestaña activa
-        const stationsTab = document.getElementById('stations');
-        if (stationsTab && stationsTab.classList.contains('active')) {
-          window.initStationsRealtimeListeners?.();
-        }
-
-        // Mantener refresh periódico como fallback
-        state.refreshInterval = setInterval(() => window.refreshAll?.(), 30000);
+        // Real-time listeners y refresh automático deshabilitados.
+        // Solo se actualiza con el botón "Actualizar".
+        console.log('ℹ️ Modo manual: usa el botón Actualizar para refrescar datos.');
       } else {
         // Limpiar listeners cuando no hay usuario
         if (window.cleanupStationsListeners) {
@@ -119,7 +115,7 @@
           state.authInitialized = true;
           try {
             await authenticateDashboard();
-          } catch (_) {}
+          } catch (_) { }
         }
       }
     });

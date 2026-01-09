@@ -21,24 +21,35 @@ class StationReportFlowWidget extends StatefulWidget {
   });
 
   @override
-  State<StationReportFlowWidget> createState() => _StationReportFlowWidgetState();
+  State<StationReportFlowWidget> createState() =>
+      _StationReportFlowWidgetState();
 }
 
 class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
   late PageController _pageController;
   int _currentPage = 0;
-  
+
   // Pregunta 1: Información básica
   String? _operational; // 'yes' | 'partial' | 'no'
   int? _crowdLevel; // 1-5
-  
+
   // Pregunta 3: Problemas específicos con ubicación detallada (nuevo sistema)
   final List<SpecificIssue> _specificIssues = [];
-  
+
   final SimplifiedReportService _reportService = SimplifiedReportService();
   final ReportProgressService _progressService = ReportProgressService();
   bool _isSubmitting = false;
   bool _isLoadingProgress = true;
+
+  final List<Map<String, dynamic>> _issueTypes = [
+    {'id': 'ac', 'name': 'Aire Acond.', 'icon': '❄️'},
+    {'id': 'escalator', 'name': 'Escalera', 'icon': '🪜'},
+    {'id': 'elevator', 'name': 'Ascensor', 'icon': '🛗'},
+    {'id': 'atm', 'name': 'Cajero', 'icon': '🏧'},
+    {'id': 'recharge', 'name': 'Recarga', 'icon': '💳'},
+    {'id': 'bathroom', 'name': 'Baño', 'icon': '🚻'},
+    {'id': 'lights', 'name': 'Luces', 'icon': '💡'},
+  ];
 
   @override
   void initState() {
@@ -56,7 +67,8 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
 
   Future<void> _loadProgress() async {
     try {
-      final progress = await _progressService.getStationReportProgress(widget.station.id);
+      final progress =
+          await _progressService.getStationReportProgress(widget.station.id);
       if (progress != null && mounted) {
         setState(() {
           _operational = progress['operational'] as String?;
@@ -95,7 +107,9 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
 
   Future<void> _saveProgress() async {
     try {
-      if (_operational != null || _crowdLevel != null || _specificIssues.isNotEmpty) {
+      if (_operational != null ||
+          _crowdLevel != null ||
+          _specificIssues.isNotEmpty) {
         await _progressService.saveStationReportProgress(
           stationId: widget.station.id,
           operational: _operational,
@@ -146,17 +160,18 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                   Expanded(
                     child: Text(
                       'Reportar: ${widget.station.nombre}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: MetroColors.grayDark,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
                   ),
                   Text(
                     '${_currentPage + 1} de 3',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayDark,
-                    ),
+                          color: MetroColors.grayDark,
+                        ),
                   ),
                 ],
               ),
@@ -207,17 +222,17 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           Text(
             '1. ¿La estación está funcionando?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Piensa en lo básico: entrar, pasar torniquetes, movilidad y servicio.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayMedium,
-              fontSize: 13,
-            ),
+                  color: MetroColors.grayMedium,
+                  fontSize: 13,
+                ),
           ),
           const SizedBox(height: 24),
           _buildOptionCard(
@@ -258,11 +273,11 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _operational != null
-                ? () {
-                    HapticFeedback.lightImpact();
-                    _nextPage();
-                  }
-                : null,
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      _nextPage();
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: MetroColors.blue,
@@ -291,40 +306,42 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           Text(
             '2. ¿Qué tan llena está la estación ahora?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 24),
           _buildCrowdOption(1, '🟢 Baja', 'Caminas fácil', Colors.green),
-          _buildCrowdOption(2, '🟡 Moderada', 'Hay fila / se siente', Colors.orange),
+          _buildCrowdOption(
+              2, '🟡 Moderada', 'Hay fila / se siente', Colors.orange),
           _buildCrowdOption(3, '🟠 Llena', 'Cuesta moverse', Colors.deepOrange),
           _buildCrowdOption(4, '🔴 Muy llena', 'Apretado', Colors.red),
-          _buildCrowdOption(5, '💀 Sardina', 'No se puede avanzar', Colors.purple),
+          _buildCrowdOption(
+              5, '💀 Sardina', 'No se puede avanzar', Colors.purple),
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _previousPage();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text('ANTERIOR'),
+                child: OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _previousPage();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
+                  child: const Text('ANTERIOR'),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _crowdLevel != null
-                        ? () {
-                            HapticFeedback.lightImpact();
-                            _nextPage();
-                          }
-                        : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _crowdLevel != null
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _nextPage();
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: MetroColors.blue,
@@ -355,17 +372,17 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           Text(
             '3. ¿Qué está fallando? (opcional)',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Marca solo lo que NO está funcionando.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayMedium,
-              fontSize: 13,
-            ),
+                  color: MetroColors.grayMedium,
+                  fontSize: 13,
+                ),
           ),
           const SizedBox(height: 16),
           _buildOptionalDetails(),
@@ -481,69 +498,186 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Lista de problemas específicos agregados
-        if (_specificIssues.isNotEmpty) ...[
-          ..._specificIssues.asMap().entries.map((entry) {
-            final index = entry.key;
-            final issue = entry.value;
-            return _buildSpecificIssueCard(issue, index);
-          }),
-          const SizedBox(height: 16),
-        ],
-        
-        // Botón para agregar problema
-        OutlinedButton.icon(
-          onPressed: _showAddIssueDialog,
-          icon: const Icon(Icons.add, color: MetroColors.blue),
-          label: const Text(
-            'Agregar Problema Específico',
-            style: TextStyle(
-              color: MetroColors.blue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            side: const BorderSide(color: MetroColors.blue, width: 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+        const Text(
+          '¿Hay algún problema específico?',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: MetroColors.grayDark,
           ),
         ),
-        
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.9,
+          children: _issueTypes.map((type) {
+            final isAdded = _specificIssues.any((i) => i.type == type['id']);
+            return _buildIssueTypeChip(type, isAdded);
+          }).toList(),
+        ),
         if (_specificIssues.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue[200]!),
+          const SizedBox(height: 24),
+          const Text(
+            'Problemas agregados:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: MetroColors.grayDark,
             ),
-            child: Row(
+          ),
+          const SizedBox(height: 12),
+          ..._specificIssues.asMap().entries.map((entry) {
+            return _buildSpecificIssueCard(entry.value, entry.key);
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildIssueTypeChip(Map<String, dynamic> type, bool isAdded) {
+    return InkWell(
+      onTap: () {
+        if (isAdded) {
+          setState(() {
+            _specificIssues.removeWhere((i) => i.type == type['id']);
+          });
+        } else {
+          _showAddIssueDialogWithType(type['id'], type['name'], type['icon']);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color:
+              isAdded ? MetroColors.blue.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isAdded ? MetroColors.blue : Colors.grey[300]!,
+            width: isAdded ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              type['icon'],
+              style: const TextStyle(fontSize: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              type['name'],
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isAdded ? FontWeight.bold : FontWeight.w500,
+                color: isAdded ? MetroColors.blue : MetroColors.grayDark,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddIssueDialogWithType(String typeId, String name, String icon) {
+    final locationController = TextEditingController();
+    String status = 'not_working';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Text(icon),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Reportar $name')),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.stars, color: Colors.blue, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  '+${_specificIssues.length * 10} puntos por problemas específicos',
-                  style: TextStyle(
-                    color: Colors.blue[800],
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                const Text('Ubicación específica:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: locationController,
+                  decoration: InputDecoration(
+                    hintText: 'Ej: Entrada norte, Andén 2...',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('¿Cómo está?',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  onChanged: (val) => setDialogState(() => status = val!),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'not_working', child: Text('No funciona')),
+                    DropdownMenuItem(
+                        value: 'working_poorly', child: Text('Funciona mal')),
+                    DropdownMenuItem(
+                        value: 'out_of_service',
+                        child: Text('Fuera de servicio')),
+                  ],
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCELAR'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (locationController.text.isNotEmpty) {
+                  setState(() {
+                    _specificIssues.add(SpecificIssue(
+                      type: typeId,
+                      location: locationController.text,
+                      status: status,
+                    ));
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MetroColors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('AGREGAR'),
+            ),
+          ],
+        ),
+      ),
     );
   }
-  
+
   Widget _buildSpecificIssueCard(SpecificIssue issue, int index) {
     final icon = _getIssueIcon(issue.type);
     final statusColor = _getStatusColor(issue.status);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -626,7 +760,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       ),
     );
   }
-  
+
   String _getIssueIcon(String type) {
     switch (type) {
       case 'ac':
@@ -647,7 +781,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         return '⚠️';
     }
   }
-  
+
   String _getIssueTypeName(String type) {
     switch (type) {
       case 'ac':
@@ -668,7 +802,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         return type;
     }
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'not_working':
@@ -681,7 +815,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         return Colors.grey;
     }
   }
-  
+
   String _getStatusName(String status) {
     switch (status) {
       case 'not_working':
@@ -693,109 +827,6 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       default:
         return status;
     }
-  }
-  
-  Future<void> _showAddIssueDialog() async {
-    String? selectedType;
-    final locationController = TextEditingController();
-    String? selectedStatus;
-    
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Agregar Problema Específico'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Selector de tipo
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de Problema',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: selectedType,
-                  items: const [
-                    DropdownMenuItem(value: 'ac', child: Text('❄️ Aire Acondicionado')),
-                    DropdownMenuItem(value: 'escalator', child: Text('🎢 Escalera Eléctrica')),
-                    DropdownMenuItem(value: 'elevator', child: Text('🛗 Elevador')),
-                    DropdownMenuItem(value: 'atm', child: Text('🏧 Cajero/ATM')),
-                    DropdownMenuItem(value: 'recharge', child: Text('💳 Máquina de Recarga')),
-                    DropdownMenuItem(value: 'bathroom', child: Text('🚻 Baño')),
-                    DropdownMenuItem(value: 'lights', child: Text('💡 Iluminación')),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectedType = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Campo de texto para ubicación
-                TextField(
-                  controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Ubicación / Descripción',
-                    hintText: 'Ej: Escalera principal entrada norte',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLength: 100,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                // Selector de estado
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Estado',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: selectedStatus,
-                  items: const [
-                    DropdownMenuItem(value: 'not_working', child: Text('🔴 No Funciona')),
-                    DropdownMenuItem(value: 'working_poorly', child: Text('🟡 Funciona Mal')),
-                    DropdownMenuItem(value: 'out_of_service', child: Text('⚫ Fuera de Servicio')),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectedStatus = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: selectedType != null &&
-                      locationController.text.isNotEmpty &&
-                      selectedStatus != null
-                  ? () {
-                      setState(() {
-                        _specificIssues.add(SpecificIssue(
-                          type: selectedType!,
-                          location: locationController.text,
-                          status: selectedStatus!,
-                        ));
-                      });
-                      _saveProgress();
-                      Navigator.pop(context);
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: MetroColors.blue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Agregar'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildOptionCard({
@@ -862,7 +893,8 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                       title,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? iconColor : Colors.grey[800],
                       ),
                     ),
@@ -893,9 +925,10 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     );
   }
 
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+  Widget _buildCrowdOption(
+      int level, String emoji, String subtitle, Color color) {
     final isSelected = _crowdLevel == level;
-    
+
     // Mapear emoji a icono para consistencia con página 1
     IconData icon;
     switch (level) {
@@ -917,7 +950,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       default:
         icon = Icons.circle;
     }
-    
+
     return _buildOptionCard(
       value: level.toString(),
       icon: icon,
@@ -933,7 +966,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
 
   String _buildSummaryText() {
     final parts = <String>[];
-    
+
     // Estado operativo
     if (_operational == 'yes') {
       parts.add('Funciona ✅');
@@ -942,7 +975,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     } else if (_operational == 'no') {
       parts.add('No funciona / cerrada 🚫');
     }
-    
+
     // Nivel de llenura
     if (_crowdLevel != null) {
       final crowdLabels = {
@@ -954,15 +987,17 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       };
       parts.add(crowdLabels[_crowdLevel] ?? '');
     }
-    
+
     // Problemas específicos
     if (_specificIssues.isNotEmpty) {
-      final issuesList = _specificIssues.map((issue) => _getIssueTypeName(issue.type)).join(', ');
-      parts.add('${ _specificIssues.length} problema(s): $issuesList');
+      final issuesList = _specificIssues
+          .map((issue) => _getIssueTypeName(issue.type))
+          .join(', ');
+      parts.add('${_specificIssues.length} problema(s): $issuesList');
     } else {
       parts.add('Sin problemas específicos');
     }
-    
+
     return parts.join(' • ');
   }
 
@@ -1008,12 +1043,12 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       if (!mounted) return;
 
       Navigator.of(context).pop();
-      
+
       final issueCount = reportIds.length - 1; // Restar el reporte general
       final message = issueCount > 0
           ? '✅ Reporte enviado: Estado general + $issueCount problema(s) específico(s). Ganaste +$totalPoints puntos'
           : '✅ Reporte de estado general enviado. Ganaste +$totalPoints puntos';
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
@@ -1052,4 +1087,3 @@ class _PageIndicator extends StatelessWidget {
     );
   }
 }
-

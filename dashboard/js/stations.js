@@ -261,40 +261,12 @@
     header?.classList.toggle('expanded');
   }
 
-  // Nueva función para inicializar listeners en tiempo real
+  // Función para inicializar listeners en tiempo real (DESHABILITADA)
+  // Ahora solo se actualiza con el botón "Actualizar"
   function initStationsRealtimeListeners() {
-    // Limpiar listeners existentes
-    cleanupStationsListeners();
-
-    // Listener para cambios en estaciones
-    stationsUnsubscribe = db.collection('stations')
-      .orderBy('nombre')
-      .onSnapshot((snapshot) => {
-        console.log('📍 Estaciones actualizadas en tiempo real');
-        loadStations(false); // false para no mostrar loading en updates
-      }, (error) => {
-        console.error('Error en listener de estaciones:', error);
-      });
-
-    // Listener para reportes (sin filtros para evitar índices compuestos)
-    // El nuevo sistema usa 'scope' en vez de 'tipo', así que mejor escuchar todos los reportes
-    try {
-      reportsUnsubscribe = db.collection('reports')
-        .orderBy('createdAt', 'desc')
-        .limit(20)
-        .onSnapshot((snapshot) => {
-          console.log('📊 Reportes actualizados');
-          if (!snapshot.empty && snapshot.docChanges().length > 0) {
-            loadStations(false);
-            window.loadStats?.();
-            showRealtimeIndicator('Nuevo reporte recibido');
-          }
-        }, (error) => {
-          console.warn('Error en listener de reportes:', error);
-        });
-    } catch (e) {
-      console.warn('No se pudieron inicializar listeners de reportes:', e);
-    }
+    console.log('ℹ️ Listeners en tiempo real deshabilitados. Usa el botón Actualizar.');
+    // No se inicializan listeners de onSnapshot
+    return;
   }
 
   // Función para limpiar listeners

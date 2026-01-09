@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -7,7 +7,6 @@ import '../models/train_model.dart';
 import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
-import '../providers/metro_data_provider.dart';
 import '../services/schedule_service.dart';
 import '../services/time_estimation_service.dart';
 import '../services/simplified_report_service.dart';
@@ -23,8 +22,10 @@ class StationReportSheet extends StatefulWidget {
   final StationModel station;
   final List<TrainModel>? trains; // Trenes cercanos para reporte de tren
   final int initialPage; // Página inicial (0 = info estación, 1 = reporte)
-  final double? initialChildSize; // Tamaño inicial del sheet (null = usar default)
-  final String? initialReportType; // 'station' | 'train' | null - para abrir directamente el formulario
+  final double?
+      initialChildSize; // Tamaño inicial del sheet (null = usar default)
+  final String?
+      initialReportType; // 'station' | 'train' | null - para abrir directamente el formulario
 
   const StationReportSheet({
     super.key,
@@ -271,8 +272,9 @@ class _HeaderSection extends StatelessWidget {
           children: [
             _InfoChip(
               label: station.linea == 'linea1' ? 'Línea 1' : 'Línea 2',
-              color:
-                  station.linea == 'linea1' ? MetroColors.blue : MetroColors.green,
+              color: station.linea == 'linea1'
+                  ? MetroColors.blue
+                  : MetroColors.green,
             ),
             const SizedBox(width: 8),
             StreamBuilder<List<SimplifiedReportModel>>(
@@ -280,11 +282,11 @@ class _HeaderSection extends StatelessWidget {
               builder: (context, snapshot) {
                 int reportCount = 0;
                 bool hasReports = false;
-                
+
                 if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   final now = DateTime.now();
                   final cutoffTime = now.subtract(const Duration(minutes: 10));
-                  
+
                   // Contar todos los reportes activos de esta estación (station + train)
                   final stationReports = snapshot.data!
                       .where((r) =>
@@ -292,18 +294,16 @@ class _HeaderSection extends StatelessWidget {
                           r.status == 'active' &&
                           r.createdAt.isAfter(cutoffTime))
                       .toList();
-                  
+
                   reportCount = stationReports.length;
                   hasReports = reportCount > 0;
                 }
-                
+
                 return _InfoChip(
-                  label: hasReports 
+                  label: hasReports
                       ? '$reportCount ${reportCount == 1 ? 'reporte' : 'reportes'}'
                       : 'No hay reportes',
-                  color: hasReports 
-                      ? MetroColors.blue 
-                      : MetroColors.grayMedium,
+                  color: hasReports ? MetroColors.blue : MetroColors.grayMedium,
                 );
               },
             ),
@@ -331,7 +331,7 @@ class _TrainsAndArrivalRow extends StatelessWidget {
       children: [
         // Próximos trenes (izquierda)
         Expanded(
-          child: _EtaSectionBox(station: station, trains: trains),
+          child: _EtaSection(station: station, trains: trains),
         ),
         const SizedBox(width: 12),
         // Llegó el metro (derecha)
@@ -343,256 +343,328 @@ class _TrainsAndArrivalRow extends StatelessWidget {
   }
 }
 
-/// Box de Próximos trenes
-class _EtaSectionBox extends StatelessWidget {
-  const _EtaSectionBox({
-    required this.station,
-    this.trains,
-  });
+enum DirectionKey {
+  toAlbrook(label: 'Hacia Albrook', icon: Icons.arrow_downward_rounded),
+  toSanIsidro(label: 'Hacia San Isidro', icon: Icons.arrow_upward_rounded),
+  toNuevoTocumen(
+      label: 'Hacia Nuevo Tocumen', icon: Icons.arrow_forward_rounded),
+  toSanMiguelito(label: 'Hacia San Miguelito', icon: Icons.arrow_back_rounded);
 
+  final String label;
+  final IconData icon;
+  const DirectionKey({required this.label, required this.icon});
+}
+
+class DirectionEtaGroup {
+  final DirectionKey key;
+  final List<_EtaData> etas;
+
+  DirectionEtaGroup({required this.key, required this.etas});
+
+  bool get isEmpty => etas.isEmpty;
+}
+
+/// Helper para combinar reportes de usuarios con datos de trenes reales
+class _CombinedEtaService {
+  final TimeEstimationService _timeEstimationService = TimeEstimationService();
+
+  List<DirectionEtaGroup> calculateDirectionGroups(
+    StationModel station,
+    List<TrainModel>? trains,
+    List<SimplifiedReportModel> activeReports,
+  ) {
+    // 1. Determine valid directions for this station's line
+    final List<DirectionKey> validKeys = station.linea == 'L1'
+        ? [DirectionKey.toAlbrook, DirectionKey.toSanIsidro]
+        : [DirectionKey.toNuevoTocumen, DirectionKey.toSanMiguelito];
+
+    final groups = <DirectionEtaGroup>[];
+    final now = DateTime.now();
+
+    for (final key in validKeys) {
+      final etas = <_EtaData>[];
+
+      // 2. Filter User Reports for this direction key
+      final relevantReports = activeReports.where((r) {
+        if (r.scope != 'train' || r.stationId != station.id) return false;
+        final age = now.difference(r.createdAt).inMinutes;
+        if (age >= 10) return false;
+
+        // Map report direction string to key
+        final reportKey = _mapStringToKey(station.linea, r.direction);
+        return reportKey == key;
+      }).toList();
+
+      relevantReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      // Get best user report
+      _EtaData? userNextTrain;
+      for (final report in relevantReports) {
+        if (userNextTrain == null) {
+          final elapsed = now.difference(report.createdAt).inMinutes;
+          if (report.etaBucket != null && report.etaBucket != 'unknown') {
+            userNextTrain = _EtaData(
+              label: 'Próximo',
+              minutes: _parseBucket(report.etaBucket!),
+              confidence: 'Reportado hace $elapsed min',
+              isUserReport: true,
+              rawText: report.etaBucket,
+            );
+          } else if (report.etaExpectedAt != null) {
+            final remainingInSeconds =
+                report.etaExpectedAt!.difference(now).inSeconds;
+            final remaining = (remainingInSeconds / 60).ceil();
+
+            if (remaining >= -1) {
+              userNextTrain = _EtaData(
+                label: 'Próximo',
+                minutes: remaining > 0 ? remaining : 0,
+                confidence: 'Reportado hace $elapsed min',
+                isUserReport: true,
+              );
+            }
+          }
+        }
+      }
+
+      // 3. Filter Real Trains
+      final realTrainEtas = <_TrainEta>[];
+      if (trains != null) {
+        final relevantTrains = trains.where((t) {
+          if (t.linea != station.linea) return false;
+          final trainKey = _mapTrainToKey(station.linea, t.direccion);
+          return trainKey == key;
+        }).toList();
+
+        for (final train in relevantTrains) {
+          final minutes = _timeEstimationService.calculateEstimatedArrivalTime(
+              train, station);
+          if (minutes >= -1) {
+            realTrainEtas.add(_TrainEta(
+              train: train,
+              minutes: minutes > 0 ? minutes : 0,
+              confidence: train.confidence ?? 'medium',
+            ));
+          }
+        }
+        realTrainEtas.sort((a, b) => a.minutes.compareTo(b.minutes));
+      }
+
+      // 4. Combine (Max 2 items)
+      if (userNextTrain != null) {
+        etas.add(userNextTrain);
+        if (realTrainEtas.isNotEmpty) {
+          final nextReal = realTrainEtas.firstWhere(
+              (t) => t.minutes > userNextTrain!.minutes + 2,
+              orElse: () => realTrainEtas.last);
+
+          if (nextReal.minutes > userNextTrain.minutes + 2) {
+            etas.add(_EtaData(
+              label: 'Siguiente',
+              minutes: nextReal.minutes,
+              confidence: _getConfidenceText(nextReal.confidence),
+            ));
+          }
+        }
+      } else if (realTrainEtas.isNotEmpty) {
+        final next = realTrainEtas[0];
+        etas.add(_EtaData(
+          label: 'Próximo',
+          minutes: next.minutes,
+          confidence: _getConfidenceText(next.confidence),
+        ));
+        if (realTrainEtas.length > 1) {
+          final following = realTrainEtas[1];
+          if (following.minutes != next.minutes || realTrainEtas.length > 2) {
+            etas.add(_EtaData(
+              label: 'Siguiente',
+              minutes: following.minutes,
+              confidence: _getConfidenceText(following.confidence),
+            ));
+          }
+        }
+      }
+
+      groups.add(DirectionEtaGroup(key: key, etas: etas));
+    }
+
+    return groups;
+  }
+
+  DirectionKey? _mapStringToKey(String line, String? directionStr) {
+    if (directionStr == null) return null;
+    final d = directionStr.toLowerCase();
+    if (line == 'L1') {
+      if (d.contains('albrook') || d.contains('sur') || d == 's')
+        return DirectionKey.toAlbrook;
+      if (d.contains('san isidro') ||
+          d.contains('villazaita') ||
+          d.contains('norte')) return DirectionKey.toSanIsidro;
+    } else {
+      if (d.contains('tocumen') || d.contains('este') || d == 'e')
+        return DirectionKey.toNuevoTocumen;
+      if (d.contains('san miguelito') || d.contains('oeste') || d == 'o')
+        return DirectionKey.toSanMiguelito;
+    }
+    return null;
+  }
+
+  DirectionKey? _mapTrainToKey(String line, DireccionTren dir) {
+    if (line == 'L1') {
+      return dir == DireccionTren.sur
+          ? DirectionKey.toAlbrook
+          : DirectionKey.toSanIsidro;
+    } else {
+      if (dir == DireccionTren.norte) return DirectionKey.toSanMiguelito;
+      return DirectionKey.toNuevoTocumen;
+    }
+  }
+
+  int _parseBucket(String bucket) {
+    if (bucket.contains('-')) {
+      final parts = bucket.split('-');
+      return int.tryParse(parts[0]) ?? 5;
+    }
+    return 5;
+  }
+
+  String _getConfidenceText(String confidence) {
+    switch (confidence) {
+      case 'high':
+        return '✅ Alta confianza';
+      case 'medium':
+        return '⚠️ Confianza media';
+      default:
+        return '❓ Baja confianza';
+    }
+  }
+}
+
+class _EtaSection extends StatelessWidget {
+  const _EtaSection({required this.station, this.trains});
   final StationModel station;
   final List<TrainModel>? trains;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final etaGroupService = EtaGroupService();
+    final reportService = SimplifiedReportService();
+    final etaService = _CombinedEtaService();
 
-    return StreamBuilder<Map<String, EtaGroupModel?>>(
-      stream: etaGroupService.watchActiveGroupsByDirectionForStation(station.id),
+    return StreamBuilder<List<SimplifiedReportModel>>(
+      stream: reportService.getActiveReportsStream(),
       builder: (context, snapshot) {
-        final groupsByDirection = snapshot.data ?? {'A': null, 'B': null};
-        final groupA = groupsByDirection['A'];
-        final groupB = groupsByDirection['B'];
+        final activeReports = snapshot.data ?? [];
+        final etaGroups =
+            etaService.calculateDirectionGroups(station, trains, activeReports);
 
-        // Si hay al menos un grupo, mostrar panel con direcciones
-        if (groupA != null || groupB != null) {
-          return _EtaDualDirectionBox(
-            groupA: groupA,
-            groupB: groupB,
-            stationId: station.id,
-            stationLine: station.linea,
-          );
-        }
-
-        // Fallback si no hay grupos: usar trenes/horario existente
-        if (trains == null || trains!.isEmpty) {
-          return Consumer<MetroDataProvider>(
-            builder: (context, metroProvider, child) {
-              final etas = _calculateRealEtas(metroProvider.trains);
-              return _buildBox(theme, etas);
-            },
-          );
-        }
-
-        final etas = _calculateRealEtas(trains);
-        return _buildBox(theme, etas);
+        return Column(
+          children: etaGroups.map((group) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _DirectionCard(group: group),
+            );
+          }).toList(),
+        );
       },
     );
   }
+}
 
-  int? _midpointFromBucket(String? bucket) {
-    switch (bucket) {
-      case '1-2':
-        return 2;
-      case '3-5':
-        return 4;
-      case '6-8':
-        return 7;
-      case '9+':
-        return 10;
-      default:
-        return null;
-    }
-  }
+class _DirectionCard extends StatelessWidget {
+  final DirectionEtaGroup group;
+  const _DirectionCard({required this.group});
 
-  List<_EtaData> _calculateRealEtas(
-    List<TrainModel>? availableTrains,
-  ) {
-    // Si no hay reportes con tiempo, verificar si hay trenes disponibles
-    if (availableTrains == null || availableTrains.isEmpty) {
-      final baseMinutes = ScheduleService.getEstimatedArrivalTimeSync(
-        station.id,
-        station.linea,
-        DateTime.now(),
-      );
-      
-      return [
-        _EtaData(
-          label: 'Próximo',
-          minutes: baseMinutes,
-          confidence: 'Horario base',
-        ),
-      ];
-    }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
-    final timeEstimationService = TimeEstimationService();
-    final etas = <_EtaData>[];
-
-    final relevantTrains = availableTrains
-        .where((train) => train.linea == station.linea)
-        .toList();
-
-    if (relevantTrains.isEmpty) {
-      final baseMinutes = ScheduleService.getEstimatedArrivalTimeSync(
-        station.id,
-        station.linea,
-        DateTime.now(),
-      );
-      
-      return [
-        _EtaData(
-          label: 'Próximo',
-          minutes: baseMinutes,
-          confidence: 'Horario base',
-        ),
-      ];
-    }
-
-    final trainEtas = relevantTrains.map((train) {
-      final minutes = timeEstimationService.calculateEstimatedArrivalTime(
-        train,
-        station,
-      );
-      return _TrainEta(
-        train: train,
-        minutes: minutes,
-        confidence: train.confidence ?? 'medium',
-      );
-    }).toList();
-
-    trainEtas.sort((a, b) => a.minutes.compareTo(b.minutes));
-
-    if (trainEtas.isNotEmpty) {
-      final next = trainEtas[0];
-      String confidenceText = _getConfidenceText(next.confidence, next.train);
-      
-      etas.add(
-        _EtaData(
-          label: 'Próximo',
-          minutes: next.minutes,
-          confidence: confidenceText,
-        ),
-      );
-
-      if (trainEtas.length > 1) {
-        final following = trainEtas[1];
-        String confidenceText2 = _getConfidenceText(following.confidence, following.train);
-        
-        etas.add(
-          _EtaData(
-            label: 'Siguiente',
-            minutes: following.minutes,
-            confidence: confidenceText2,
-          ),
-        );
-      }
-    }
-
-    return etas;
-  }
-
-  String _confidenceEmoji(double confidence) {
-    if (confidence >= 0.75) return '🟢';
-    if (confidence >= 0.5) return '🟡';
-    return '🔴';
-  }
-
-  String _getConfidenceText(String confidence, TrainModel train) {
-    if (train.isEstimated == true) {
-      return 'Estimado';
-    }
-
-    switch (confidence) {
-      case 'high':
-        return '✅ Alta';
-      case 'medium':
-        return '⚠️ Media';
-      case 'low':
-      default:
-        return '❓ Baja';
-    }
-  }
-
-  String _getConfidenceEmoji(String confidence) {
-    switch (confidence) {
-      case 'Alta':
-        return '✅';
-      case 'Media':
-        return '⚠️';
-      case 'Baja':
-      default:
-        return '❓';
-    }
-  }
-
-  Widget _buildBox(ThemeData theme, List<_EtaData> etas) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: MetroColors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: MetroColors.grayMedium,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey[200]!, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Próximos trenes',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: MetroColors.blue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(group.key.icon, size: 16, color: MetroColors.blue),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  group.key.label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: MetroColors.grayDark,
+                  ),
+                ),
+              ),
+              if (group.isEmpty)
+                Text('Sin datos',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+            ],
           ),
           const SizedBox(height: 12),
-          ...etas.take(2).map(
-            (eta) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          eta.label,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: MetroColors.grayDark,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          eta.confidence,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: MetroColors.grayDark.withOpacity(0.7),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _EtaCountdownText(
-                    midpointMinutes: eta.midpointMinutes,
-                    baseTime: eta.baseTime,
-                    expiresAt: eta.expiresAt,
-                    expectedAt: eta.expectedAt,
-                    fallbackText: eta.minutes == 0 && eta.confidence == 'Sin datos'
-                        ? 'Sin datos'
-                        : '${eta.minutes} min',
-                    textStyle: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: eta.minutes == 0 && eta.confidence == 'Sin datos'
-                          ? MetroColors.grayMedium
-                          : MetroColors.blue,
-                    ),
-                  ),
-                ],
+          if (group.isEmpty)
+            const Center(
+                child: Text('No hay trenes próximos',
+                    style: TextStyle(color: Colors.grey, fontSize: 12)))
+          else
+            ...group.etas.map((eta) => _buildMiniEtaRow(context, eta)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniEtaRow(BuildContext context, _EtaData eta) {
+    final theme = Theme.of(context);
+    final isArriving = eta.minutes <= 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eta.label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                eta.confidence,
+                style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(
+              isArriving ? 'Llegando' : (eta.rawText ?? '${eta.minutes} min'),
+              key: ValueKey('${eta.label}_${eta.minutes}'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isArriving ? MetroColors.green : MetroColors.grayDark,
               ),
             ),
           ),
@@ -699,7 +771,8 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
         final arrivedCount = group?.arrivedCount ?? 0;
         final ageMin = group?.ageMinutes ?? 999;
 
-        final hasRecentArrivals = group != null && arrivedCount > 0 && ageMin <= 5;
+        final hasRecentArrivals =
+            group != null && arrivedCount > 0 && ageMin <= 5;
         final isStale = group != null && (ageMin > 5 && ageMin <= 10);
 
         // Detectar cuando hay un nuevo reporte (incluyendo el primer reporte)
@@ -721,7 +794,8 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: hasRecentArrivals
-                    ? MetroColors.blue.withOpacity(0.05 + (_pulseAnimation.value * 0.1))
+                    ? MetroColors.blue
+                        .withOpacity(0.05 + (_pulseAnimation.value * 0.1))
                     : MetroColors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
@@ -730,12 +804,15 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                       : isStale
                           ? MetroColors.grayMedium
                           : MetroColors.grayMedium,
-                  width: hasRecentArrivals ? (1.5 + (_pulseAnimation.value * 0.5)) : 1,
+                  width: hasRecentArrivals
+                      ? (1.5 + (_pulseAnimation.value * 0.5))
+                      : 1,
                 ),
                 boxShadow: hasRecentArrivals
                     ? [
                         BoxShadow(
-                          color: MetroColors.blue.withOpacity(0.3 * _pulseAnimation.value),
+                          color: MetroColors.blue
+                              .withOpacity(0.3 * _pulseAnimation.value),
                           blurRadius: 8 + (_pulseAnimation.value * 8),
                           spreadRadius: _pulseAnimation.value * 2,
                         ),
@@ -754,7 +831,8 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                   ),
                   const SizedBox(height: 12),
                   AnimatedBuilder(
-                    animation: Listenable.merge([_pulseAnimation, _starGlowAnimation]),
+                    animation:
+                        Listenable.merge([_pulseAnimation, _starGlowAnimation]),
                     builder: (context, child) {
                       return Transform.scale(
                         scale: hasRecentArrivals
@@ -766,9 +844,12 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                             boxShadow: hasRecentArrivals
                                 ? [
                                     BoxShadow(
-                                      color: MetroColors.blue.withOpacity(0.6 * _starGlowAnimation.value),
-                                      blurRadius: 12 + (_starGlowAnimation.value * 12),
-                                      spreadRadius: _starGlowAnimation.value * 4,
+                                      color: MetroColors.blue.withOpacity(
+                                          0.6 * _starGlowAnimation.value),
+                                      blurRadius:
+                                          12 + (_starGlowAnimation.value * 12),
+                                      spreadRadius:
+                                          _starGlowAnimation.value * 4,
                                     ),
                                   ]
                                 : null,
@@ -819,206 +900,6 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
   }
 }
 
-/// Sección de próximos trenes - ahora con datos reales (mantener para compatibilidad)
-class _EtaSection extends StatelessWidget {
-  const _EtaSection({
-    required this.station,
-    this.trains,
-  });
-
-  final StationModel station;
-  final List<TrainModel>? trains;
-
-  /// Calcula los tiempos de llegada de los trenes que vienen hacia la estación
-  List<_EtaData> _calculateRealEtas(List<TrainModel>? availableTrains) {
-    if (availableTrains == null || availableTrains.isEmpty) {
-      // Si no hay trenes, usar horario base
-      return [
-        _EtaData(
-          label: 'Próximo',
-          minutes: ScheduleService.getEstimatedArrivalTimeSync(
-            station.id,
-            station.linea,
-            DateTime.now(),
-          ),
-          confidence: 'Horario base',
-        ),
-      ];
-    }
-
-    final timeEstimationService = TimeEstimationService();
-    final etas = <_EtaData>[];
-
-    // Filtrar trenes de la misma línea y calcular tiempos
-    final relevantTrains = availableTrains
-        .where((train) => train.linea == station.linea)
-        .toList();
-
-    if (relevantTrains.isEmpty) {
-      // Si no hay trenes de la misma línea, usar horario base
-      return [
-        _EtaData(
-          label: 'Próximo',
-          minutes: ScheduleService.getEstimatedArrivalTimeSync(
-            station.id,
-            station.linea,
-            DateTime.now(),
-          ),
-          confidence: 'Horario base',
-        ),
-      ];
-    }
-
-    // Calcular ETA para cada tren
-    final trainEtas = relevantTrains.map((train) {
-      final minutes = timeEstimationService.calculateEstimatedArrivalTime(
-        train,
-        station,
-      );
-      return _TrainEta(
-        train: train,
-        minutes: minutes,
-        confidence: train.confidence ?? 'medium',
-      );
-    }).toList();
-
-    // Ordenar por tiempo de llegada (más cercano primero)
-    trainEtas.sort((a, b) => a.minutes.compareTo(b.minutes));
-
-    // Tomar solo los 2 primeros (próximo y siguiente)
-    if (trainEtas.isNotEmpty) {
-      final next = trainEtas[0];
-      final confidenceText = _getConfidenceText(next.confidence, next.train);
-      etas.add(
-        _EtaData(
-          label: 'Próximo',
-          minutes: next.minutes,
-          confidence: confidenceText,
-        ),
-      );
-
-      if (trainEtas.length > 1) {
-        final following = trainEtas[1];
-        final confidenceText2 = _getConfidenceText(following.confidence, following.train);
-        etas.add(
-          _EtaData(
-            label: 'Siguiente',
-            minutes: following.minutes,
-            confidence: confidenceText2,
-          ),
-        );
-      }
-    }
-
-    return etas;
-  }
-
-  String _getConfidenceText(String confidence, TrainModel train) {
-    // Contar reportes recientes para este tren
-    // Por ahora, usar la confianza del tren y su estado
-    if (train.isEstimated == true) {
-      return 'Estimado';
-    }
-
-    switch (confidence) {
-      case 'high':
-        return '✅ Alta confianza';
-      case 'medium':
-        return '⚠️ Confianza media';
-      case 'low':
-      default:
-        return '❓ Baja confianza';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    // Si no hay trenes pasados, obtener del provider
-    if (trains == null || trains!.isEmpty) {
-      return Consumer<MetroDataProvider>(
-        builder: (context, metroProvider, child) {
-          final availableTrains = metroProvider.trains;
-          final etas = _calculateRealEtas(availableTrains);
-          
-          if (etas.isEmpty) {
-            return const SizedBox.shrink();
-          }
-
-          return _buildEtaList(theme, etas);
-        },
-      );
-    }
-
-    final etas = _calculateRealEtas(trains);
-    
-    if (etas.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return _buildEtaList(theme, etas);
-  }
-
-  Widget _buildEtaList(ThemeData theme, List<_EtaData> etas) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Próximos trenes',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...etas.map(
-          (eta) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: MetroColors.grayLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          eta.label,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: MetroColors.grayDark,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          eta.confidence,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: MetroColors.grayDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${eta.minutes} min',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Helper class para datos de ETA de trenes
 class _TrainEta {
   final TrainModel train;
@@ -1062,7 +943,7 @@ class _StatusSection extends StatelessWidget {
                   // Verificar si hay reportes activos para esta estación
                   bool hasActiveReports = false;
                   int? reportedCrowd;
-                  
+
                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                     final stationReports = snapshot.data!
                         .where((r) =>
@@ -1070,12 +951,13 @@ class _StatusSection extends StatelessWidget {
                             r.scope == 'station' &&
                             r.status == 'active')
                         .toList();
-                    
+
                     // Ordenar por fecha (más reciente primero)
-                    stationReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                    
+                    stationReports
+                        .sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
                     hasActiveReports = stationReports.isNotEmpty;
-                    
+
                     // Obtener aglomeración de reportes si hay
                     if (hasActiveReports && stationReports.isNotEmpty) {
                       // Usar el reporte más reciente
@@ -1085,7 +967,7 @@ class _StatusSection extends StatelessWidget {
                       }
                     }
                   }
-                  
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1099,8 +981,10 @@ class _StatusSection extends StatelessWidget {
                       const SizedBox(height: 6),
                       if (hasActiveReports && reportedCrowd != null)
                         _buildStars(reportedCrowd)
-                      else if (snapshot.connectionState == ConnectionState.waiting)
-                        const Text('Cargando...', style: TextStyle(color: MetroColors.grayMedium))
+                      else if (snapshot.connectionState ==
+                          ConnectionState.waiting)
+                        const Text('Cargando...',
+                            style: TextStyle(color: MetroColors.grayMedium))
                       else
                         const Text(
                           'No hay reportes',
@@ -1113,7 +997,8 @@ class _StatusSection extends StatelessWidget {
                       Text(
                         hasActiveReports && reportedCrowd != null
                             ? _getCrowdText(reportedCrowd)
-                            : snapshot.connectionState == ConnectionState.waiting
+                            : snapshot.connectionState ==
+                                    ConnectionState.waiting
                                 ? ''
                                 : 'Sin datos actuales',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -1257,9 +1142,8 @@ class _StatusSection extends StatelessWidget {
       'recharge': 'Recarga',
     };
 
-    final formatted = issues
-        .map((issue) => issueNames[issue] ?? issue)
-        .join(' • ');
+    final formatted =
+        issues.map((issue) => issueNames[issue] ?? issue).join(' • ');
 
     return formatted;
   }
@@ -1542,6 +1426,8 @@ class _EtaData {
     required this.label,
     required this.minutes,
     required this.confidence,
+    this.isUserReport = false,
+    this.rawText,
     this.baseTime,
     this.expiresAt,
     this.expectedAt,
@@ -1551,6 +1437,8 @@ class _EtaData {
   final String label;
   final int minutes;
   final String confidence;
+  final bool isUserReport;
+  final String? rawText;
 
   /// Base estable del countdown (NO usar updatedAt).
   final DateTime? baseTime;
@@ -1725,14 +1613,17 @@ class _EtaLiveGroupBoxState extends State<_EtaLiveGroupBox> {
     final now = DateTime.now();
 
     // Calcular tiempos restantes
-    final nextRem = group.nextEtaExpectedAt?.difference(now).inSeconds ?? 999999;
-    final followRem = group.followingEtaExpectedAt?.difference(now).inSeconds ?? -1;
+    final nextRem =
+        group.nextEtaExpectedAt?.difference(now).inSeconds ?? 999999;
+    final followRem =
+        group.followingEtaExpectedAt?.difference(now).inSeconds ?? -1;
 
     // Rollover: si nextRem <= 0 y hay following válido (followRem > 0)
     final rolled = (nextRem <= 0 && followRem > 0);
-    
+
     // No follow expired: cuando nextRem <= -30s y no hay following válido
-    final noFollowExpired = (nextRem <= -NO_FOLLOW_GRACE_SECONDS && followRem <= 0);
+    final noFollowExpired =
+        (nextRem <= -NO_FOLLOW_GRACE_SECONDS && followRem <= 0);
 
     // Si no hay following y ya expiró la gracia, mostrar "Sin datos" con CTA
     if (noFollowExpired) {
@@ -1749,7 +1640,8 @@ class _EtaLiveGroupBoxState extends State<_EtaLiveGroupBox> {
 
     final etas = <_EtaData>[];
     final nextMidpointMin = _effectiveMinutes(
-      minutesP50: rolled ? group.followingEtaMinutesP50 : group.nextEtaMinutesP50,
+      minutesP50:
+          rolled ? group.followingEtaMinutesP50 : group.nextEtaMinutesP50,
       bucket: nextBucket,
     );
 
@@ -1758,7 +1650,8 @@ class _EtaLiveGroupBoxState extends State<_EtaLiveGroupBox> {
         _EtaData(
           label: 'Próximo',
           minutes: nextMidpointMin,
-          confidence: _confidenceEmoji(group.confidence) + ' ${group.reportCount}',
+          confidence:
+              _confidenceEmoji(group.confidence) + ' ${group.reportCount}',
           baseTime: baseTime,
           expiresAt: expiresAt,
           expectedAt: nextExpectedAt,
@@ -1819,52 +1712,54 @@ class _EtaLiveGroupBoxState extends State<_EtaLiveGroupBox> {
           ),
           const SizedBox(height: 12),
           ...etas.take(2).map(
-            (eta) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          eta.label,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: MetroColors.grayDark,
-                            fontWeight: FontWeight.w600,
-                          ),
+                (eta) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              eta.label,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              eta.confidence,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: MetroColors.grayDark.withOpacity(0.7),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          eta.confidence,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: MetroColors.grayDark.withOpacity(0.7),
-                            fontSize: 11,
-                          ),
+                      ),
+                      _EtaCountdownText(
+                        midpointMinutes: eta.midpointMinutes,
+                        baseTime: eta.baseTime,
+                        expiresAt: eta.expiresAt,
+                        expectedAt: eta.expectedAt,
+                        fallbackText:
+                            eta.minutes == 0 && eta.confidence == 'Sin datos'
+                                ? 'Sin datos'
+                                : '${eta.minutes} min',
+                        textStyle: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color:
+                              eta.minutes == 0 && eta.confidence == 'Sin datos'
+                                  ? MetroColors.grayMedium
+                                  : MetroColors.blue,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  _EtaCountdownText(
-                    midpointMinutes: eta.midpointMinutes,
-                    baseTime: eta.baseTime,
-                    expiresAt: eta.expiresAt,
-                    expectedAt: eta.expectedAt,
-                    fallbackText: eta.minutes == 0 && eta.confidence == 'Sin datos'
-                        ? 'Sin datos'
-                        : '${eta.minutes} min',
-                    textStyle: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: eta.minutes == 0 && eta.confidence == 'Sin datos'
-                          ? MetroColors.grayMedium
-                          : MetroColors.blue,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
         ],
       ),
     );
@@ -1949,7 +1844,7 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2036,17 +1931,21 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
     }
 
     final now = DateTime.now();
-    final nextRem = group.nextEtaExpectedAt?.difference(now).inSeconds ?? 999999;
-    final followRem = group.followingEtaExpectedAt?.difference(now).inSeconds ?? -1;
+    final nextRem =
+        group.nextEtaExpectedAt?.difference(now).inSeconds ?? 999999;
+    final followRem =
+        group.followingEtaExpectedAt?.difference(now).inSeconds ?? -1;
     final rolled = (nextRem <= 0 && followRem > 0);
-    final noFollowExpired = (nextRem <= -NO_FOLLOW_GRACE_SECONDS && followRem <= 0);
+    final noFollowExpired =
+        (nextRem <= -NO_FOLLOW_GRACE_SECONDS && followRem <= 0);
 
     if (noFollowExpired) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _getDirectionTitle(directionCode, stationLine, group.directionLabel),
+            _getDirectionTitle(
+                directionCode, stationLine, group.directionLabel),
             style: theme.textTheme.labelMedium?.copyWith(
               color: MetroColors.grayMedium,
               fontWeight: FontWeight.w600,
@@ -2065,10 +1964,12 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
       );
     }
 
-    final nextExpectedAt = rolled ? group.followingEtaExpectedAt : group.nextEtaExpectedAt;
+    final nextExpectedAt =
+        rolled ? group.followingEtaExpectedAt : group.nextEtaExpectedAt;
     final nextBucket = rolled ? group.followingEtaBucket : group.nextEtaBucket;
     final nextMidpointMin = _effectiveMinutes(
-      minutesP50: rolled ? group.followingEtaMinutesP50 : group.nextEtaMinutesP50,
+      minutesP50:
+          rolled ? group.followingEtaMinutesP50 : group.nextEtaMinutesP50,
       bucket: nextBucket,
     );
 
@@ -2093,7 +1994,7 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
           ),
         ),
         const SizedBox(height: 8),
-        
+
         // Próximo
         if (nextMidpointMin != null && nextMidpointMin > 0)
           _buildEtaRow(
@@ -2106,9 +2007,11 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
             confidence: _confidenceEmoji(group.confidence),
             reportCount: group.reportCount,
           ),
-        
+
         // Siguiente (solo si hay datos reales)
-        if (showFollowing && followingMidpointMin != null && followingMidpointMin > 0) ...[
+        if (showFollowing &&
+            followingMidpointMin != null &&
+            followingMidpointMin > 0) ...[
           const SizedBox(height: 6),
           _buildEtaRow(
             theme: theme,
@@ -2188,27 +2091,35 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
     );
   }
 
-  String _getDirectionTitle(String directionCode, String stationLine, [String? directionLabel]) {
+  String _getDirectionTitle(String directionCode, String stationLine,
+      [String? directionLabel]) {
     if (directionLabel != null && directionLabel.isNotEmpty) {
       return 'Hacia $directionLabel';
     }
-    
+
     if (stationLine == 'linea1') {
       return directionCode == 'A' ? 'Hacia Villa Zaita' : 'Hacia Albrook';
     } else if (stationLine == 'linea2') {
-      return directionCode == 'A' ? 'Hacia Nuevo Tocumen' : 'Hacia San Miguelito';
+      return directionCode == 'A'
+          ? 'Hacia Nuevo Tocumen'
+          : 'Hacia San Miguelito';
     }
-    
+
     return 'Dirección $directionCode';
   }
 
   int? _midpointFromBucket(String? bucket) {
     switch (bucket) {
-      case '1-2': return 2;
-      case '3-5': return 4;
-      case '6-8': return 7;
-      case '9+': return 10;
-      default: return null;
+      case '1-2':
+        return 2;
+      case '3-5':
+        return 4;
+      case '6-8':
+        return 7;
+      case '9+':
+        return 10;
+      default:
+        return null;
     }
   }
 
@@ -2243,12 +2154,12 @@ class _TrainArrivalAggregator {
   /// Calcula la moda (valor más común) de una lista
   static int? mode(List<int> values) {
     if (values.isEmpty) return null;
-    
+
     final counts = <int, int>{};
     for (final value in values) {
       counts[value] = (counts[value] ?? 0) + 1;
     }
-    
+
     int? mostCommon;
     int maxCount = 0;
     for (final entry in counts.entries) {
@@ -2257,23 +2168,23 @@ class _TrainArrivalAggregator {
         mostCommon = entry.key;
       }
     }
-    
+
     return mostCommon;
   }
 
   /// Calcula la moda de strings (para etaBucket)
   static String? modeString(List<String> values) {
     if (values.isEmpty) return null;
-    
+
     final counts = <String, int>{};
     for (final value in values) {
       if (value.isNotEmpty && value != 'unknown') {
         counts[value] = (counts[value] ?? 0) + 1;
       }
     }
-    
+
     if (counts.isEmpty) return null;
-    
+
     String? mostCommon;
     int maxCount = 0;
     for (final entry in counts.entries) {
@@ -2282,7 +2193,7 @@ class _TrainArrivalAggregator {
         mostCommon = entry.key;
       }
     }
-    
+
     return mostCommon;
   }
 
@@ -2326,9 +2237,7 @@ class _TrainArrivalAggregator {
 
     // 1) Filtrar reportes de tren de esta estación
     final trainReports = reports
-        .where((r) =>
-            r.stationId == stationId &&
-            r.scope == 'train')
+        .where((r) => r.stationId == stationId && r.scope == 'train')
         .toList();
 
     if (trainReports.isEmpty) return null;
@@ -2336,19 +2245,18 @@ class _TrainArrivalAggregator {
     // 2) Separar en dos grupos:
     //    - Reportes con arrivalTime (llegadas confirmadas)
     //    - Reportes con etaBucket sin arrivalTime (ETAs futuros)
-    final arrivalReports = trainReports
-        .where((r) => r.arrivalTime != null)
-        .toList();
-    
+    final arrivalReports =
+        trainReports.where((r) => r.arrivalTime != null).toList();
+
     final futureEtaReports = trainReports
-        .where((r) => 
-            r.arrivalTime == null && 
-            r.etaBucket != null && 
+        .where((r) =>
+            r.arrivalTime == null &&
+            r.etaBucket != null &&
             r.etaBucket!.isNotEmpty &&
             r.etaBucket != 'unknown' &&
             // Validar que el ETA no haya expirado
-            (r.etaExpectedAt == null || 
-             now.isBefore(r.etaExpectedAt!.add(const Duration(minutes: 5)))))
+            (r.etaExpectedAt == null ||
+                now.isBefore(r.etaExpectedAt!.add(const Duration(minutes: 5)))))
         .toList();
 
     // 3) Procesar reportes de llegadas confirmadas (arrivalTime)
@@ -2372,23 +2280,23 @@ class _TrainArrivalAggregator {
         if (ageMin <= activeWindowMin) {
           final count = bucketReports.length;
           final confidence = calculateConfidence(count, ageMin);
-          
+
           // Extraer etaBucket de los reportes y calcular moda
           final etaBuckets = bucketReports
               .where((r) => r.etaBucket != null && r.etaBucket!.isNotEmpty)
               .map((r) => r.etaBucket!)
               .toList();
-          
+
           String? reportedEtaBucket;
           int? reportedMinutes;
-          
+
           if (etaBuckets.isNotEmpty) {
             reportedEtaBucket = modeString(etaBuckets);
             if (reportedEtaBucket != null) {
               reportedMinutes = bucketToMinutes(reportedEtaBucket);
             }
           }
-          
+
           arrivalData = _AggregatedArrivalData(
             count: count,
             ageMin: ageMin,
@@ -2409,12 +2317,13 @@ class _TrainArrivalAggregator {
           if (fallbackAge <= staleWindowMin) {
             String? reportedEtaBucket;
             int? reportedMinutes;
-            
-            if (mostRecent.etaBucket != null && mostRecent.etaBucket!.isNotEmpty) {
+
+            if (mostRecent.etaBucket != null &&
+                mostRecent.etaBucket!.isNotEmpty) {
               reportedEtaBucket = mostRecent.etaBucket;
               reportedMinutes = bucketToMinutes(reportedEtaBucket);
             }
-            
+
             arrivalData = _AggregatedArrivalData(
               count: 1,
               ageMin: fallbackAge,
@@ -2433,13 +2342,12 @@ class _TrainArrivalAggregator {
     int? futureReportedMinutes;
     String? futureReportedEtaBucket;
     int futureReportCount = 0;
-    
+
     if (futureEtaReports.isNotEmpty) {
       // Extraer etaBucket de los reportes futuros y calcular moda
-      final futureEtaBuckets = futureEtaReports
-          .map((r) => r.etaBucket!)
-          .toList();
-      
+      final futureEtaBuckets =
+          futureEtaReports.map((r) => r.etaBucket!).toList();
+
       if (futureEtaBuckets.isNotEmpty) {
         futureReportedEtaBucket = modeString(futureEtaBuckets);
         if (futureReportedEtaBucket != null) {
@@ -2453,7 +2361,8 @@ class _TrainArrivalAggregator {
     if (arrivalData != null && arrivalData.isActive) {
       // Si hay llegadas confirmadas recientes, usar esos datos
       // Pero si no tienen reportedMinutes, intentar usar ETAs futuros
-      if (arrivalData.reportedMinutes == null && futureReportedMinutes != null) {
+      if (arrivalData.reportedMinutes == null &&
+          futureReportedMinutes != null) {
         return _AggregatedArrivalData(
           count: arrivalData.count + futureReportCount,
           ageMin: arrivalData.ageMin,
@@ -2470,8 +2379,9 @@ class _TrainArrivalAggregator {
     // 6) Si no hay llegadas recientes pero hay ETAs futuros, usar esos
     if (futureReportedMinutes != null && futureReportCount > 0) {
       // Calcular confianza basada en conteo de reportes futuros
-      final confidence = calculateConfidence(futureReportCount, 0); // ageMin = 0 porque son futuros
-      
+      final confidence = calculateConfidence(
+          futureReportCount, 0); // ageMin = 0 porque son futuros
+
       return _AggregatedArrivalData(
         count: futureReportCount,
         ageMin: 0, // Son reportes futuros, no pasados
@@ -2513,4 +2423,3 @@ class _AggregatedArrivalData {
     this.reportedEtaBucket,
   });
 }
-

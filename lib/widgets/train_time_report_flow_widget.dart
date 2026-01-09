@@ -20,7 +20,8 @@ class TrainTimeReportFlowWidget extends StatefulWidget {
   });
 
   @override
-  State<TrainTimeReportFlowWidget> createState() => _TrainTimeReportFlowWidgetState();
+  State<TrainTimeReportFlowWidget> createState() =>
+      _TrainTimeReportFlowWidgetState();
 }
 
 class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
@@ -28,7 +29,8 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
   int _currentPage = 0;
 
   // Estado del formulario
-  String? _selectedDirection; // Nombre de destino: 'Villa Zaita', 'Albrook', etc.
+  String?
+      _selectedDirection; // Nombre de destino: 'Villa Zaita', 'Albrook', etc.
   int? _nextTrainMinutes; // 1..12
   bool _nextTrainUnknown = false;
   int? _followingTrainMinutes; // 1..12 (opcional)
@@ -54,10 +56,10 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
     // Verificar en segundo plano sin bloquear la UI
     try {
       final locationService = LocationService();
-      
+
       // Intentar obtener permisos (solicitará si están denegados)
       final hasPermission = await locationService.checkLocationPermission();
-      
+
       if (hasPermission) {
         final position = await locationService.getCurrentPosition();
         if (position != null) {
@@ -70,7 +72,8 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
           // Si está fuera de 150 metros, mostrar advertencia pero permitir continuar
           if (distance > 150) {
-            print('Advertencia: Usuario fuera de la estación (${distance.toStringAsFixed(0)}m)');
+            print(
+                'Advertencia: Usuario fuera de la estación (${distance.toStringAsFixed(0)}m)');
           }
         }
       }
@@ -113,17 +116,18 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
                   Expanded(
                     child: Text(
                       'Próximos trenes',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: MetroColors.grayDark,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
                   ),
                   Text(
                     '${_currentPage + 1} de 3',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayDark,
-                    ),
+                          color: MetroColors.grayDark,
+                        ),
                   ),
                 ],
               ),
@@ -131,8 +135,8 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
               Text(
                 widget.station.nombre,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: MetroColors.grayDark.withValues(alpha: 0.7),
-                ),
+                      color: MetroColors.grayDark.withValues(alpha: 0.7),
+                    ),
               ),
               const SizedBox(height: 12),
               // Indicadores de página
@@ -172,7 +176,8 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
   // Página 1: ¿Hacia dónde vas?
   Widget _buildPage1() {
-    final directions = TrainDirectionHelper.getAvailableDirections(widget.station.linea);
+    final directions =
+        TrainDirectionHelper.getAvailableDirections(widget.station.linea);
 
     return SingleChildScrollView(
       controller: widget.scrollController,
@@ -183,26 +188,26 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
           Text(
             '1. ¿Hacia dónde vas?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Selecciona la dirección del tren que estás esperando',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayMedium,
-              fontSize: 13,
-            ),
+                  color: MetroColors.grayMedium,
+                  fontSize: 13,
+                ),
           ),
           const SizedBox(height: 24),
           ...directions.map((direction) => _buildDirectionCard(
-            direction: direction,
-            isSelected: _selectedDirection == direction,
-            onTap: () {
-              setState(() => _selectedDirection = direction);
-            },
-          )),
+                direction: direction,
+                isSelected: _selectedDirection == direction,
+                onTap: () {
+                  setState(() => _selectedDirection = direction);
+                },
+              )),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -243,17 +248,17 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
           Text(
             '2. ¿En cuántos minutos llega el próximo tren?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Copia exactamente lo que ves en la pantalla de la estación',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayMedium,
-              fontSize: 13,
-            ),
+                  color: MetroColors.grayMedium,
+                  fontSize: 13,
+                ),
           ),
           const SizedBox(height: 24),
           _buildMinutesGrid(
@@ -338,17 +343,17 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
           Text(
             '3. ¿Y el siguiente tren? (opcional)',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Si también viste el tiempo del siguiente tren, compártelo',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayMedium,
-              fontSize: 13,
-            ),
+                  color: MetroColors.grayMedium,
+                  fontSize: 13,
+                ),
           ),
           const SizedBox(height: 24),
           _buildMinutesGrid(
@@ -531,35 +536,41 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
               ),
               child: Row(
                 children: [
-                  const Text('🚇', style: TextStyle(fontSize: 32)),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? MetroColors.blue.withValues(alpha: 0.1)
+                          : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      direction.contains('Albrook') ||
+                              direction.contains('Miguelito')
+                          ? Icons.south_rounded
+                          : Icons.north_rounded,
+                      color: isSelected ? MetroColors.blue : Colors.grey[400],
+                      size: 24,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       direction,
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? MetroColors.blue : Colors.grey[800],
                       ),
                     ),
                   ),
-                  AnimatedScale(
-                    scale: isSelected ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.elasticOut,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: MetroColors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                  if (isSelected)
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: MetroColors.blue,
+                      size: 24,
                     ),
-                  ),
                 ],
               ),
             ),
@@ -643,7 +654,8 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
                       label,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? color : Colors.grey[800],
                       ),
                     ),
@@ -683,24 +695,24 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
 
   String _buildSummaryText() {
     final parts = <String>[];
-    
+
     // Dirección
     if (_selectedDirection != null) {
       parts.add('🚇 $_selectedDirection');
     }
-    
+
     // Próximo tren
     if (_nextTrainMinutes != null) {
       parts.add('Próximo: $_nextTrainMinutes min');
     } else if (_nextTrainUnknown) {
       parts.add('Próximo: No sé');
     }
-    
+
     // Siguiente tren (si existe)
     if (_followingTrainMinutes != null) {
       parts.add('Siguiente: $_followingTrainMinutes min');
     }
-    
+
     return parts.join(' • ');
   }
 
@@ -754,7 +766,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
       if (!mounted) return;
 
       final totalPoints = 5 + (_followingTrainMinutes != null ? 3 : 0);
-      
+
       // Mostrar animación de puntos
       PointsRewardHelper.showCreateReportPoints(context, points: totalPoints);
 
@@ -868,7 +880,9 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? color.withValues(alpha: 0.8) : Colors.grey[600],
+                  color: isSelected
+                      ? color.withValues(alpha: 0.8)
+                      : Colors.grey[600],
                 ),
               ),
               if (isSelected) ...[
@@ -912,4 +926,3 @@ class _PageIndicator extends StatelessWidget {
     );
   }
 }
-

@@ -322,10 +322,10 @@ Future<void> main() async {
       }
 
       if (existingIds.contains(stationId)) {
-        currentBatch!.update(docRef, stationDoc);
+        currentBatch.update(docRef, stationDoc);
         updatedCount++;
       } else {
-        currentBatch!.set(docRef, stationDoc);
+        currentBatch.set(docRef, stationDoc);
         createdCount++;
       }
       operationsInBatch++;
