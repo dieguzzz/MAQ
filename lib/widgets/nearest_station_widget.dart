@@ -114,9 +114,11 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
   }
 
   void _openStationDetails(BuildContext context, StationModel station) {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-    final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
-    
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
+    final trains =
+        metroProvider.trains.where((t) => t.linea == station.linea).toList();
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -131,7 +133,7 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
   @override
   Widget build(BuildContext context) {
     final etaGroupService = EtaGroupService();
-    
+
     return Consumer<LocationProvider>(
       builder: (context, locationProvider, child) {
         return Consumer<MetroDataProvider>(
@@ -158,12 +160,14 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
             }
 
             return StreamBuilder<EtaGroupModel?>(
-              stream: etaGroupService.watchBestActiveGroupForStation(nearestStation.id),
+              stream: etaGroupService
+                  .watchBestActiveGroupForStation(nearestStation.id),
               builder: (context, snapshot) {
                 final group = snapshot.data;
                 final ageMin = group?.ageMinutes ?? 999;
                 final recentCount = group?.arrivedCount ?? 0;
-                final hasRecentArrivals = group != null && recentCount > 0 && ageMin <= 5;
+                final hasRecentArrivals =
+                    group != null && recentCount > 0 && ageMin <= 5;
 
                 // Detectar cuando hay un nuevo reporte
                 if (recentCount > _previousCount) {
@@ -178,92 +182,145 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
                 return GestureDetector(
                   onTap: () => _openStationDetails(context, nearestStation),
                   child: Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    constraints: const BoxConstraints(maxWidth: 300),
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    constraints: const BoxConstraints(maxWidth: 320),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white,
+                          Colors.grey[50]!,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _getStationStatusColor(nearestStation)
+                            .withValues(alpha: 0.5),
+                        width: 2.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: hasRecentArrivals
-                              ? MetroColors.blue.withOpacity(0.2)
-                              : Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
                         ),
+                        if (hasRecentArrivals)
+                          BoxShadow(
+                            color: MetroColors.blue.withValues(alpha: 0.15),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
                       ],
-                      border: Border.all(
-                        color: _getStationStatusColor(nearestStation),
-                        width: 2,
-                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Estación ${nearestStation.nombre}',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: _getStationStatusColor(nearestStation),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _getStationStatusColor(nearestStation)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            nearestStation.linea == 'linea1' ||
+                                    nearestStation.linea == 'L1'
+                                ? '🚇'
+                                : '🚆',
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ESTACIÓN CERCANA',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: MetroColors.grayMedium,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _getLineaText(nearestStation.linea),
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: nearestStation.linea == 'linea1' || nearestStation.linea == 'L1'
-                                    ? MetroColors.blue
-                                    : MetroColors.green,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 2),
+                              Text(
+                                nearestStation.nombre,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: MetroColors.grayDark,
+                                      fontSize: 18,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            if (group != null) ...[
-                              const SizedBox(height: 6),
-                              _MiniEtaCountdown(
-                                label: 'Próximo',
-                                baseTime: group.firstReportedAt ?? group.bucketStart,
-                                primaryExpectedAt: group.nextEtaExpectedAt,
-                                primaryBucket: group.nextEtaBucket,
-                                secondaryExpectedAt: group.followingEtaExpectedAt,
-                                secondaryBucket: group.followingEtaBucket,
-                                primaryMinutes: group.nextEtaMinutesP50,
-                                secondaryMinutes: group.followingEtaMinutesP50,
-                                expiresAt: group.expiresAt,
-                                confidence: group.confidence,
-                              ),
+                              const SizedBox(height: 4),
+                              if (group != null)
+                                _MiniEtaCountdown(
+                                  label: 'Próximo',
+                                  baseTime: group.firstReportedAt ??
+                                      group.bucketStart,
+                                  primaryExpectedAt: group.nextEtaExpectedAt,
+                                  primaryBucket: group.nextEtaBucket,
+                                  secondaryExpectedAt:
+                                      group.followingEtaExpectedAt,
+                                  secondaryBucket: group.followingEtaBucket,
+                                  primaryMinutes: group.nextEtaMinutesP50,
+                                  secondaryMinutes:
+                                      group.followingEtaMinutesP50,
+                                  expiresAt: group.expiresAt,
+                                  confidence: group.confidence,
+                                )
+                              else
+                                Text(
+                                  _getLineaText(nearestStation.linea),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: nearestStation.linea == 'linea1' ||
+                                            nearestStation.linea == 'L1'
+                                        ? MetroColors.blue
+                                        : MetroColors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                             ],
-                          ],
+                          ),
                         ),
                         if (hasRecentArrivals) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           AnimatedBuilder(
                             animation: _starGlowAnimation,
                             builder: (context, child) {
                               return Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: MetroColors.blue.withOpacity(0.1 + (_starGlowAnimation.value * 0.2)),
+                                  color: MetroColors.blue.withValues(
+                                      alpha: 0.1 +
+                                          (_starGlowAnimation.value * 0.2)),
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: MetroColors.blue.withOpacity(0.5 * _starGlowAnimation.value),
-                                      blurRadius: 8 + (_starGlowAnimation.value * 8),
-                                      spreadRadius: _starGlowAnimation.value * 2,
-                                    ),
-                                  ],
                                 ),
-                                child: Icon(
-                                  Icons.star,
-                                  color: MetroColors.blue,
-                                  size: 18,
+                                child: Text(
+                                  '✨',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    shadows: [
+                                      Shadow(
+                                        color: MetroColors.blue.withValues(
+                                            alpha:
+                                                0.5 * _starGlowAnimation.value),
+                                        blurRadius:
+                                            10 * _starGlowAnimation.value,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -353,22 +410,27 @@ class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
     }
 
     // Calcular tiempos restantes
-    final primaryRem = widget.primaryExpectedAt?.difference(now).inSeconds ?? 999999;
-    final secondaryRem = widget.secondaryExpectedAt?.difference(now).inSeconds ?? -1;
+    final primaryRem =
+        widget.primaryExpectedAt?.difference(now).inSeconds ?? 999999;
+    final secondaryRem =
+        widget.secondaryExpectedAt?.difference(now).inSeconds ?? -1;
 
     // Rollover: si primaryRem <= 0 y hay secondary válido (secondaryRem > 0)
     final rolled = (primaryRem <= 0 && secondaryRem > 0);
-    
+
     // No follow expired: cuando primaryRem <= -30s y no hay secondary válido
-    final noFollowExpired = (primaryRem <= -NO_FOLLOW_GRACE_SECONDS && secondaryRem <= 0);
+    final noFollowExpired =
+        (primaryRem <= -NO_FOLLOW_GRACE_SECONDS && secondaryRem <= 0);
 
     // Si no hay following y ya expiró la gracia, ocultar
     if (noFollowExpired) {
       return const SizedBox.shrink();
     }
 
-    final effectiveExpectedAt = rolled ? widget.secondaryExpectedAt : widget.primaryExpectedAt;
-    final effectiveBucket = rolled ? widget.secondaryBucket : widget.primaryBucket;
+    final effectiveExpectedAt =
+        rolled ? widget.secondaryExpectedAt : widget.primaryExpectedAt;
+    final effectiveBucket =
+        rolled ? widget.secondaryBucket : widget.primaryBucket;
     final effectiveMidpoint = rolled
         ? (widget.secondaryMinutes ?? _midpointFromBucket(effectiveBucket))
         : (widget.primaryMinutes ?? _midpointFromBucket(effectiveBucket));
@@ -439,12 +501,12 @@ class _TrainArrivalAggregator {
   /// Calcula la moda (valor más común) de una lista
   static int? mode(List<int> values) {
     if (values.isEmpty) return null;
-    
+
     final counts = <int, int>{};
     for (final value in values) {
       counts[value] = (counts[value] ?? 0) + 1;
     }
-    
+
     int? mostCommon;
     int maxCount = 0;
     for (final entry in counts.entries) {
@@ -453,23 +515,23 @@ class _TrainArrivalAggregator {
         mostCommon = entry.key;
       }
     }
-    
+
     return mostCommon;
   }
 
   /// Calcula la moda de strings (para etaBucket)
   static String? modeString(List<String> values) {
     if (values.isEmpty) return null;
-    
+
     final counts = <String, int>{};
     for (final value in values) {
       if (value.isNotEmpty && value != 'unknown') {
         counts[value] = (counts[value] ?? 0) + 1;
       }
     }
-    
+
     if (counts.isEmpty) return null;
-    
+
     String? mostCommon;
     int maxCount = 0;
     for (final entry in counts.entries) {
@@ -478,7 +540,7 @@ class _TrainArrivalAggregator {
         mostCommon = entry.key;
       }
     }
-    
+
     return mostCommon;
   }
 
@@ -522,9 +584,7 @@ class _TrainArrivalAggregator {
 
     // 1) Filtrar reportes de tren de esta estación
     final trainReports = reports
-        .where((r) =>
-            r.stationId == stationId &&
-            r.scope == 'train')
+        .where((r) => r.stationId == stationId && r.scope == 'train')
         .toList();
 
     if (trainReports.isEmpty) return null;
@@ -532,19 +592,18 @@ class _TrainArrivalAggregator {
     // 2) Separar en dos grupos:
     //    - Reportes con arrivalTime (llegadas confirmadas)
     //    - Reportes con etaBucket sin arrivalTime (ETAs futuros)
-    final arrivalReports = trainReports
-        .where((r) => r.arrivalTime != null)
-        .toList();
-    
+    final arrivalReports =
+        trainReports.where((r) => r.arrivalTime != null).toList();
+
     final futureEtaReports = trainReports
-        .where((r) => 
-            r.arrivalTime == null && 
-            r.etaBucket != null && 
+        .where((r) =>
+            r.arrivalTime == null &&
+            r.etaBucket != null &&
             r.etaBucket!.isNotEmpty &&
             r.etaBucket != 'unknown' &&
             // Validar que el ETA no haya expirado
-            (r.etaExpectedAt == null || 
-             now.isBefore(r.etaExpectedAt!.add(const Duration(minutes: 5)))))
+            (r.etaExpectedAt == null ||
+                now.isBefore(r.etaExpectedAt!.add(const Duration(minutes: 5)))))
         .toList();
 
     // 3) Procesar reportes de llegadas confirmadas (arrivalTime)
@@ -568,7 +627,7 @@ class _TrainArrivalAggregator {
         if (ageMin <= activeWindowMin) {
           final count = bucketReports.length;
           final confidence = calculateConfidence(count, ageMin);
-          
+
           arrivalData = _AggregatedArrivalData(
             count: count,
             ageMin: ageMin,
@@ -598,10 +657,11 @@ class _TrainArrivalAggregator {
     }
 
     // 4) Procesar reportes de ETAs futuros (etaBucket sin arrivalTime)
-    if (futureEtaReports.isNotEmpty && (arrivalData == null || !arrivalData.isActive)) {
+    if (futureEtaReports.isNotEmpty &&
+        (arrivalData == null || !arrivalData.isActive)) {
       // Si no hay llegadas recientes pero hay ETAs futuros, considerar activos
       final confidence = calculateConfidence(futureEtaReports.length, 0);
-      
+
       return _AggregatedArrivalData(
         count: futureEtaReports.length,
         ageMin: 0,
@@ -641,4 +701,3 @@ class _AggregatedArrivalData {
     this.reportedEtaBucket,
   });
 }
-

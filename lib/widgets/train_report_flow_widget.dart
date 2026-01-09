@@ -25,17 +25,17 @@ class TrainReportFlowWidget extends StatefulWidget {
 class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   late PageController _pageController;
   int _currentPage = 0;
-  
+
   // Pregunta 1: Tiempo del panel digital
   String? _etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown'
   bool _isFromPanel = false; // Si viene del panel digital oficial
-  
+
   // Pregunta 2: Aglomeración
   int? _crowdLevel; // 1-5
-  
+
   // Pregunta 3: Problemas específicos (opcional)
   final Set<String> _selectedIssues = {};
-  
+
   final SimplifiedReportService _reportService = SimplifiedReportService();
   final LocationService _locationService = LocationService();
   bool _isSubmitting = false;
@@ -63,7 +63,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   /// Valida si el usuario está dentro del geofence de la estación (200m)
   bool _isWithinStationGeofence() {
     if (_currentPosition == null) return false;
-    
+
     try {
       final distance = Geolocator.distanceBetween(
         _currentPosition!.latitude,
@@ -117,17 +117,18 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                   Expanded(
                     child: Text(
                       'Reportar: ${widget.station.nombre}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: MetroColors.grayDark,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
                   ),
                   Text(
                     '${_currentPage + 1} de 3',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayDark,
-                    ),
+                          color: MetroColors.grayDark,
+                        ),
                   ),
                 ],
               ),
@@ -175,127 +176,210 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '1. ¿Qué dice el panel digital?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+          Row(
+            children: [
+              const Text('📺', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '¿Qué dice el panel digital?',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: MetroColors.grayDark,
+                        letterSpacing: -0.5,
+                      ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Mira el panel oficial de la estación y copia el tiempo que muestra',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MetroColors.grayDark,
-            ),
+            'Mira el panel oficial de la estación y selecciona el tiempo.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: MetroColors.grayDark,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 24),
           // Simulación visual del panel
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[700]!, width: 2),
+              color: const Color(0xFF1E293B), // Dark slate
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF334155), width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Text(
-                  'PRÓXIMO TREN',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'PRÓXIMO TREN',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   _etaBucket != null && _etaBucket != 'unknown'
                       ? _getPanelDisplayTime(_etaBucket!)
                       : '--',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    fontFeatures: [FontFeature.tabularFigures()],
+                    color: Color(0xFFFFCC00), // LED Amber
+                    fontSize: 56,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Courier', // Monospace feel
+                    letterSpacing: 4,
+                    shadows: [
+                      BoxShadow(
+                        color: Color(0x66FFCC00),
+                        blurRadius: 20,
+                      )
+                    ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'minutos',
+                  'MINUTOS',
                   style: TextStyle(
-                    color: Colors.grey[400],
+                    color: Colors.grey[500],
                     fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          _buildEtaOption('1-2', '🕐 1-2 MINUTOS', Colors.green),
-          _buildEtaOption('3-5', '🕑 3-5 MINUTOS', Colors.orange),
-          _buildEtaOption('6-8', '🕒 6-8 MINUTOS', Colors.deepOrange),
-          _buildEtaOption('9+', '🕓 9+ MINUTOS', Colors.red),
-          _buildEtaOption('unknown', '🚫 APAGADO / NO FUNCIONA', Colors.grey),
+          _buildEtaOption('1-2', '🕐 1-2 min', 'Llegando ya', Colors.green),
+          _buildEtaOption('3-5', '🕑 3-5 min', 'Espera corta', Colors.teal),
+          _buildEtaOption('6-8', '🕒 6-8 min', 'Espera media', Colors.orange),
+          _buildEtaOption('9+', '🕓 9+ min', 'Demora', Colors.red),
+          _buildEtaOption('unknown', '🚫 Apagado', 'No funciona', Colors.grey),
           const SizedBox(height: 24),
           // Checkbox para "Fuente: Pantalla del andén"
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _isFromPanel ? Colors.blue[50] : Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _isFromPanel ? Colors.blue : Colors.grey[300]!,
-                width: _isFromPanel ? 2 : 1,
+          GestureDetector(
+            onTap: () {
+              bool newValue = !_isFromPanel;
+              if (newValue == true) {
+                // Validar geofence antes de permitir
+                if (!_isWithinStationGeofence()) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Debes estar en la estación para validar panel oficial'),
+                      backgroundColor: Colors.orange,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+              }
+              setState(() {
+                _isFromPanel = newValue;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _isFromPanel
+                    ? MetroColors.blue.withValues(alpha: 0.1)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _isFromPanel ? MetroColors.blue : Colors.grey[200]!,
+                  width: _isFromPanel ? 2 : 1.5,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: _isFromPanel,
-                  onChanged: (value) {
-                    if (value == true) {
-                      // Validar geofence antes de permitir
-                      if (!_isWithinStationGeofence()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Debes estar dentro de la estación (200m) para marcar como panel digital'),
-                            backgroundColor: Colors.orange,
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
-                        return;
-                      }
-                    }
-                    setState(() {
-                      _isFromPanel = value ?? false;
-                    });
-                  },
-                  activeColor: Colors.blue,
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Fuente: Pantalla del andén',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: MetroColors.grayDark,
-                        ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color:
+                          _isFromPanel ? MetroColors.blue : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color:
+                            _isFromPanel ? MetroColors.blue : Colors.grey[400]!,
+                        width: 2,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Marca esto si copiaste el tiempo directamente del panel digital oficial de la estación',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: MetroColors.grayDark.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
+                    ),
+                    child: _isFromPanel
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        : null,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('👀', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Lo vi en la pantalla',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: _isFromPanel
+                                        ? MetroColors.blue
+                                        : MetroColors.grayDark,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Ganas +20 puntos extras por confirmar',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: MetroColors.grayMedium, // No opacity
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -303,19 +387,27 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _etaBucket != null
-                ? () {
-                    HapticFeedback.lightImpact();
-                    _nextPage();
-                  }
-                : null,
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      _nextPage();
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: MetroColors.blue,
                 foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: MetroColors.blue.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               child: const Text(
                 'SIGUIENTE',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5),
               ),
             ),
           ),
@@ -340,7 +432,8 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
     }
   }
 
-  Widget _buildEtaOption(String bucket, String label, Color color) {
+  Widget _buildEtaOption(
+      String bucket, String title, String subtitle, Color color) {
     final isSelected = _etaBucket == bucket;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
@@ -348,14 +441,14 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Transform.scale(
-          scale: 1.0 - (value * 0.02),
+          scale: 1.0 + (value * 0.02),
           child: GestureDetector(
             onTap: () {
               setState(() => _etaBucket = bucket);
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
@@ -367,25 +460,23 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: !isSelected ? Colors.grey[50] : null,
-                borderRadius: BorderRadius.circular(16),
+                color: !isSelected ? Colors.white : null,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected
-                      ? color.withValues(alpha: 0.5)
-                      : Colors.grey[300]!,
-                  width: isSelected ? 2 : 1,
+                  color: isSelected ? color : Colors.grey[200]!,
+                  width: isSelected ? 2 : 1.5,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: color.withValues(alpha: 0.3),
+                          color: color.withValues(alpha: 0.2),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -393,16 +484,45 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
               ),
               child: Row(
                 children: [
-                  Text(label.split(' ')[0], style: const TextStyle(fontSize: 28)),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        title.split(' ')[0], // Emoji
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? color : Colors.grey[800],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title.substring(
+                              title.indexOf(' ') + 1), // Remove emoji
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? color : MetroColors.grayDark,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSelected
+                                ? color.withValues(alpha: 0.8)
+                                : MetroColors.grayMedium,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   AnimatedScale(
@@ -410,15 +530,15 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.elasticOut,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: color,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.check,
                         color: Colors.white,
-                        size: 20,
+                        size: 16,
                       ),
                     ),
                   ),
@@ -439,47 +559,78 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const Text('👥', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '¿Qué tan lleno está?',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: MetroColors.grayDark,
+                        letterSpacing: -0.5,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            '2. ¿Qué tan lleno está?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+            'Informa sobre la cantidad de personas en el tren.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: MetroColors.grayDark,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 24),
-          _buildCrowdOption(1, '🟢 BAJA', 'Cómodo moverse', Colors.green),
-          _buildCrowdOption(2, '🟡 MODERADA', 'Algo llena', Colors.orange),
-          _buildCrowdOption(3, '🟠 LLENA', 'Difícil moverse', Colors.deepOrange),
-          _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
-          _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
-          const SizedBox(height: 24),
+          _buildCrowdOption(
+              1, '🟢', 'BAJA', 'Muchos asientos vacíos', Colors.green),
+          _buildCrowdOption(
+              2, '🟡', 'MEDIA', 'Gente de pie, pero cómodo', Colors.teal),
+          _buildCrowdOption(
+              3, '🟠', 'ALTA', 'Bien lleno, poco espacio', Colors.orange),
+          _buildCrowdOption(
+              4, '🔴', 'SARDINA', 'No cabe un alma más', Colors.purple),
+          const SizedBox(height: 32),
           Row(
             children: [
               Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _previousPage();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                child: TextButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _previousPage();
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                  ),
+                  child: Text(
+                    'ATRÁS',
+                    style: TextStyle(
+                      color: MetroColors.grayMedium,
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: const Text('ANTERIOR'),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _crowdLevel != null
-                        ? () {
-                            HapticFeedback.lightImpact();
-                            _nextPage();
-                          }
-                        : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _crowdLevel != 0
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _nextPage();
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    backgroundColor: MetroColors.blue,
                     foregroundColor: Colors.white,
+                    elevation: 4,
+                    shadowColor: MetroColors.blue.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: const Text(
                     'SIGUIENTE',
@@ -503,60 +654,90 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Problemas rápidos (opcional)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
+          Row(
+            children: [
+              const Text('⚠️', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '¿Algo más que reportar?',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: MetroColors.grayDark,
+                        letterSpacing: -0.5,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Informa sobre problemas específicos para ganar más puntos.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: MetroColors.grayDark,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 16),
           _buildOptionalDetails(),
           const SizedBox(height: 32),
+          // Resumen de puntos
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.green[50]!,
-                  Colors.green[100]!.withValues(alpha: 0.5),
+                  Colors.green.withValues(alpha: 0.1),
+                  Colors.green.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.green.withValues(alpha: 0.3),
+                width: 2,
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.stars, color: Colors.green),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text('✨', style: TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ganas: +${10 + (_selectedIssues.length * 5)} puntos',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                        'TOTAL PUNTOS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green[700],
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      if (_etaBucket != null && _etaBucket != 'unknown')
-                        Text(
-                          '+20 puntos al validar llegada',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green[700],
-                          ),
+                      Text(
+                        '+${10 + (_selectedIssues.length * 5)} PUNTOS',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green[800],
                         ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -571,11 +752,11 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
+                        strokeWidth: 3,
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.send, color: Colors.white),
+                  : const Icon(Icons.send_rounded, color: Colors.white),
               label: _isSubmitting
                   ? const SizedBox.shrink()
                   : const Text(
@@ -583,17 +764,32 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                        letterSpacing: 0.5,
                       ),
                     ),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: MetroColors.blue,
                 foregroundColor: Colors.white,
+                elevation: 6,
+                shadowColor: MetroColors.blue.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                elevation: 8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton(
+              onPressed: () => _previousPage(),
+              child: Text(
+                'VOLVER A EDITAR',
+                style: TextStyle(
+                  color: MetroColors.grayMedium,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -616,44 +812,44 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ...issues.map((issue) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildIssueCheckbox(
-            issue['id']!,
-            issue['icon']!,
-            issue['title']!,
-          ),
-        )),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildIssueCheckbox(
+                issue['id']!,
+                issue['icon']!,
+                issue['title']!,
+              ),
+            )),
         if (_selectedIssues.isNotEmpty) ...[
           const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green[200]!),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.green, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+${_selectedIssues.length * 5} puntos por problemas',
-                    style: TextStyle(
-                      color: Colors.green[800],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green[200]!),
             ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.green, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '+${_selectedIssues.length * 5} puntos por problemas',
+                  style: TextStyle(
+                    color: Colors.green[800],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );
   }
 
-
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+  Widget _buildCrowdOption(
+      int level, String emoji, String title, String subtitle, Color color) {
     final isSelected = _crowdLevel == level;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
@@ -661,43 +857,42 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Transform.scale(
-          scale: 1.0 - (value * 0.02),
+          scale: 1.0 + (value * 0.02),
           child: GestureDetector(
             onTap: () {
               setState(() => _crowdLevel = level);
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
                         colors: [
-                          color.withValues(alpha: 0.2),
+                          color.withValues(alpha: 0.15),
                           color.withValues(alpha: 0.05),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: !isSelected ? Colors.grey[50] : null,
-                borderRadius: BorderRadius.circular(16),
+                color: !isSelected ? Colors.white : null,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? color : Colors.grey[300]!,
-                  width: isSelected ? 2.5 : 1,
+                  color: isSelected ? color : Colors.grey[200]!,
+                  width: isSelected ? 2 : 1.5,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: color.withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                          spreadRadius: 1,
+                          color: color.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -705,16 +900,44 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
               ),
               child: Row(
                 children: [
-                  Text(emoji, style: const TextStyle(fontSize: 28)),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      '$emoji $subtitle',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? color : Colors.grey[800],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? color : MetroColors.grayDark,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSelected
+                                ? color.withValues(alpha: 0.8)
+                                : MetroColors.grayMedium,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   AnimatedScale(
@@ -726,18 +949,11 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
                       ),
                       child: const Icon(
                         Icons.check,
                         color: Colors.white,
-                        size: 18,
+                        size: 16,
                       ),
                     ),
                   ),
@@ -752,80 +968,111 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
 
   Widget _buildIssueCheckbox(String id, String icon, String title) {
     final isSelected = _selectedIssues.contains(id);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.green[50] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? Colors.green : Colors.grey[300]!,
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                _selectedIssues.remove(id);
-              } else {
-                _selectedIssues.add(id);
-              }
-            });
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.green.withValues(alpha: 0.1) : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 + (value * 0.02),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isSelected) {
+                  _selectedIssues.remove(id);
+                } else {
+                  _selectedIssues.add(id);
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [
+                          Color(0x26EF4444), // Red 0.15
+                          Color(0x0DEF4444), // Red 0.05
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: !isSelected ? Colors.white : null,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? Colors.red : Colors.grey[200]!,
+                  width: isSelected ? 2 : 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        icon,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
                   ),
-                  child: Center(
+                  const SizedBox(width: 16),
+                  Expanded(
                     child: Text(
-                      icon,
-                      style: const TextStyle(fontSize: 24),
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        color:
+                            isSelected ? Colors.red[800] : MetroColors.grayDark,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? Colors.green[800] : Colors.grey[800],
+                  AnimatedScale(
+                    scale: isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.elasticOut,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
-                ),
-                AnimatedScale(
-                  scale: isSelected ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.elasticOut,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -870,7 +1117,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       if (!mounted) return;
 
       Navigator.of(context).pop();
-      
+
       // Mostrar mensaje informando sobre la validación
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

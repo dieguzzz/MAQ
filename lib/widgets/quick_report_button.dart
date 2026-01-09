@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
+import '../theme/metro_theme.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../models/station_model.dart';
@@ -43,30 +44,31 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     return nearest;
   }
 
-
   /// Maneja el reporte de estación (1 toque) - Abre directamente el formulario
   Future<void> _handleStationReport() async {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
+    final locationProvider =
+        Provider.of<LocationProvider>(context, listen: false);
+
     // Intentar obtener ubicación rápidamente (con timeout corto)
     Position? userPosition = locationProvider.currentPosition;
     if (userPosition == null && locationProvider.hasPermission) {
       try {
         await locationProvider.getCurrentLocation().timeout(
-          const Duration(milliseconds: 800),
-        );
+              const Duration(milliseconds: 800),
+            );
         userPosition = locationProvider.currentPosition;
       } catch (e) {
         // Si falla, continuar sin ubicación
         userPosition = locationProvider.currentPosition;
       }
     }
-    
+
     // Determinar estación a usar
     StationModel? selectedStation;
     final stations = metroProvider.stations;
-    
+
     if (stations.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +81,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
       }
       return;
     }
-    
+
     // Si hay ubicación, buscar la más cercana
     if (userPosition != null) {
       selectedStation = _findNearestStation(
@@ -88,7 +90,7 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         userPosition.longitude,
       );
     }
-    
+
     // Si no hay estación seleccionada, usar la primera de L1 como fallback
     if (selectedStation == null) {
       selectedStation = stations.firstWhere(
@@ -106,24 +108,30 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         builder: (sheetContext) => StationReportSheet(
           station: selectedStation!,
           initialPage: 1, // Abrir directamente en la vista de reporte
-          initialReportType: 'station', // Abrir directamente en formulario de estación
+          initialReportType:
+              'station', // Abrir directamente en formulario de estación
         ),
       );
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: _handleStationReport,
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.white,
+      foregroundColor: MetroColors.blue,
       heroTag: "report_station",
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey[200]!, width: 2),
+      ),
       child: Image.asset(
         'assets/icons/train-station_11991245.png',
-        width: 24,
-        height: 24,
-        color: Colors.white,
+        width: 28,
+        height: 28,
+        color: MetroColors.blue,
       ),
     );
   }
