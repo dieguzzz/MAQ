@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/gamification_model.dart' hide Badge;
 import '../models/gamification_model.dart' as gamification show Badge;
+import '../screens/profile/achievements_screen.dart';
 
 /// Widget que muestra un preview de los últimos badges desbloqueados
 class ProfileBadgesPreview extends StatelessWidget {
@@ -73,7 +74,12 @@ class ProfileBadgesPreview extends StatelessWidget {
                 if (badges.length > 6)
                   TextButton(
                     onPressed: () {
-                      // TODO: Navegar a pantalla completa de badges
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AchievementsScreen(),
+                        ),
+                      );
                     },
                     child: const Text('Ver todos'),
                   ),
