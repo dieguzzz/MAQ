@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../widgets/custom_metro_map.dart';
-import '../../widgets/train_report_flow_widget.dart';
+import '../../widgets/train_time_report_flow_widget.dart';
 import '../../widgets/station_report_sheet.dart';
 import '../../widgets/station_coordinates_log.dart';
 import '../../models/station_model.dart';
@@ -117,9 +117,11 @@ class CustomMapScreen extends StatelessWidget {
   }) {
     if (station != null) {
       // Para estaciones: mostrar StationReportSheet con deslizamiento
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-      final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
-      
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
+      final trains =
+          metroProvider.trains.where((t) => t.linea == station.linea).toList();
+
       showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -131,9 +133,10 @@ class CustomMapScreen extends StatelessWidget {
       );
     } else if (train != null) {
       // Para trenes: abrir pantalla de reporte de tren
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
       final stations = metroProvider.stations;
-      
+
       // Buscar una estación de la misma línea
       StationModel? station;
       if (stations.isNotEmpty) {
@@ -142,7 +145,7 @@ class CustomMapScreen extends StatelessWidget {
           orElse: () => stations.first,
         );
       }
-      
+
       if (station != null) {
         showModalBottomSheet<void>(
           context: context,
@@ -159,7 +162,7 @@ class CustomMapScreen extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                 ),
-                child: TrainReportFlowWidget(
+                child: TrainTimeReportFlowWidget(
                   station: station!,
                   scrollController: scrollController,
                 ),
@@ -171,4 +174,3 @@ class CustomMapScreen extends StatelessWidget {
     }
   }
 }
-

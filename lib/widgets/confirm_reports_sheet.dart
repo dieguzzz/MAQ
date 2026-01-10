@@ -468,27 +468,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     );
   }
 
-  IconData _getIssueIconData(String type) {
-    switch (type) {
-      case 'ac':
-        return Icons.ac_unit;
-      case 'escalator':
-        return Icons.stairs;
-      case 'elevator':
-        return Icons.elevator;
-      case 'atm':
-        return Icons.atm;
-      case 'recharge':
-        return Icons.credit_card;
-      case 'bathroom':
-        return Icons.wc;
-      case 'lights':
-        return Icons.lightbulb;
-      default:
-        return Icons.warning;
-    }
-  }
-
   Widget _buildReportCard(
     BuildContext context,
     SimplifiedReportModel report,
