@@ -4,6 +4,7 @@ echo   MetroPTY Dashboard - Servidor Local
 echo ========================================
 echo.
 echo Iniciando servidor en http://localhost:3000
+echo (No abre navegador automaticamente - usa Browser Control)
 echo Presiona Ctrl+C para detener
 echo.
 
@@ -13,9 +14,7 @@ if not exist "node_modules" (
     npm install
 )
 
-REM Abrir navegador después de un pequeño delay
-start /b cmd /c "timeout /t 2 >nul && start http://localhost:3000"
-
-REM Iniciar servidor Vite
+REM Iniciar servidor Vite (sin abrir navegador)
 echo Usando Vite dev server...
-npm run dev
+npm run dev -- --open=false
+

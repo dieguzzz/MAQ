@@ -208,8 +208,16 @@
     const interval = parseInt(document.getElementById('trainTimeInterval').value) || 30;
     const addVariation = document.getElementById('addTimeVariation').checked;
 
-    if (!stationId || !direction || !nextTrainTime) {
-      showTrainTimeStatus('❌ Configuración incompleta', 'error');
+    if (!stationId) {
+      showTrainTimeStatus('❌ Selecciona una estación', 'error');
+      return;
+    }
+    if (!direction) {
+      showTrainTimeStatus('❌ Selecciona una dirección', 'error');
+      return;
+    }
+    if (!nextTrainTime) {
+      showTrainTimeStatus('❌ Selecciona el tiempo del próximo tren', 'error');
       return;
     }
 
