@@ -141,19 +141,21 @@ class _RoutePlannerState extends State<RoutePlanner> {
   }
 
   int _calculateEstimatedTime(StationModel origen, StationModel destino) {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
     final routeStations = RouteCalculationService.calculateRoute(
       origen,
       destino,
       metroProvider.stations,
     );
-    
-    int tiempoBase = RouteCalculationService.calculateEstimatedTime(routeStations);
-    
+
+    int tiempoBase =
+        RouteCalculationService.calculateEstimatedTime(routeStations);
+
     if (origen.linea != destino.linea) {
       tiempoBase += 3;
     }
-    
+
     return tiempoBase;
   }
 
@@ -163,14 +165,15 @@ class _RoutePlannerState extends State<RoutePlanner> {
     for (int i = 0; i < staticStations.length; i++) {
       orderMap[staticStations[i].id] = i;
     }
-    
-    final linea1Stations = allStations.where((s) => s.linea == 'linea1').toList();
+
+    final linea1Stations =
+        allStations.where((s) => s.linea == 'linea1').toList();
     linea1Stations.sort((a, b) {
       final orderA = orderMap[a.id] ?? 999;
       final orderB = orderMap[b.id] ?? 999;
       return orderA.compareTo(orderB);
     });
-    
+
     return linea1Stations;
   }
 
@@ -180,12 +183,13 @@ class _RoutePlannerState extends State<RoutePlanner> {
     for (int i = 0; i < staticStations.length; i++) {
       orderMap[staticStations[i].id] = i;
     }
-    
-    final linea2Stations = allStations.where((s) => s.linea == 'linea2').toList();
-    
+
+    final linea2Stations =
+        allStations.where((s) => s.linea == 'linea2').toList();
+
     final mainLineStations = <StationModel>[];
     final airportBranchStations = <StationModel>[];
-    
+
     for (var station in linea2Stations) {
       if (station.id == 'l2_itse' || station.id == 'l2_aeropuerto') {
         airportBranchStations.add(station);
@@ -193,27 +197,28 @@ class _RoutePlannerState extends State<RoutePlanner> {
         mainLineStations.add(station);
       }
     }
-    
+
     mainLineStations.sort((a, b) {
       final orderA = orderMap[a.id] ?? 999;
       final orderB = orderMap[b.id] ?? 999;
       return orderA.compareTo(orderB);
     });
-    
+
     airportBranchStations.sort((a, b) {
       final orderA = orderMap[a.id] ?? 999;
       final orderB = orderMap[b.id] ?? 999;
       return orderA.compareTo(orderB);
     });
-    
-    final corredorSurIndex = mainLineStations.indexWhere((s) => s.id == 'l2_corredor_sur');
-    
+
+    final corredorSurIndex =
+        mainLineStations.indexWhere((s) => s.id == 'l2_corredor_sur');
+
     if (corredorSurIndex != -1 && airportBranchStations.isNotEmpty) {
       mainLineStations.insertAll(corredorSurIndex + 1, airportBranchStations);
     } else {
       mainLineStations.addAll(airportBranchStations);
     }
-    
+
     return mainLineStations;
   }
 
@@ -236,28 +241,30 @@ class _RoutePlannerState extends State<RoutePlanner> {
                     Text(
                       'Planificador de Rutas',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: MetroColors.grayDark,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: MetroColors.grayDark,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Selecciona tu estación de origen y destino para calcular la mejor ruta y tiempo estimado de viaje.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: MetroColors.grayDark.withValues(alpha: 0.7),
-                      ),
+                            color: MetroColors.grayDark.withValues(alpha: 0.7),
+                          ),
                     ),
                   ],
                 ),
               ),
-              
+
               // PageView con pasos del formulario
               Expanded(
                 child: PageView(
                   controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(), // Deshabilitar swipe
+                  physics:
+                      const NeverScrollableScrollPhysics(), // Deshabilitar swipe
                   onPageChanged: (index) {
                     setState(() {
                       _currentStep = index;
@@ -269,7 +276,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
                       title: 'Selecciona la línea de origen',
                       onLineSelected: _selectOrigenLinea,
                     ),
-                    
+
                     // Paso 1: Seleccionar estación de origen
                     _buildStationSelectionStep(
                       title: 'Selecciona la estación de origen',
@@ -285,13 +292,13 @@ class _RoutePlannerState extends State<RoutePlanner> {
                       showOrigen: true,
                       showDestino: false,
                     ),
-                    
+
                     // Paso 2: Seleccionar línea de destino
                     _buildLineSelectionStep(
                       title: 'Selecciona la línea de destino',
                       onLineSelected: _selectDestinoLinea,
                     ),
-                    
+
                     // Paso 3: Seleccionar estación de destino
                     _buildStationSelectionStep(
                       title: 'Selecciona la estación de destino',
@@ -310,7 +317,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
                   ],
                 ),
               ),
-              
+
               // Botones de navegación
               Container(
                 padding: const EdgeInsets.all(16.0),
@@ -332,21 +339,26 @@ class _RoutePlannerState extends State<RoutePlanner> {
                       flex: _currentStep > 0 ? 1 : 1,
                       child: _currentStep == 3
                           ? ElevatedButton(
-                              onPressed: (_destino == null || _isCalculating) ? null : _calculateRoute,
+                              onPressed: (_destino == null || _isCalculating)
+                                  ? null
+                                  : _calculateRoute,
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
                               ),
                               child: _isCalculating
                                   ? const CircularProgressIndicator()
                                   : const Text('Calcular Ruta'),
                             )
                           : ElevatedButton(
-                              onPressed: (_currentStep == 1 && _origen == null) ||
-                                        (_currentStep == 3 && _destino == null)
+                              onPressed: (_currentStep == 1 &&
+                                          _origen == null) ||
+                                      (_currentStep == 3 && _destino == null)
                                   ? null
                                   : _nextStep,
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
                               ),
                               child: const Text('Siguiente'),
                             ),
@@ -378,7 +390,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
             ),
           ),
           const SizedBox(height: 32),
-          
+
           // Botón Línea 1
           Card(
             elevation: 4,
@@ -440,7 +452,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Botón Línea 2
           Card(
             elevation: 4,
@@ -516,9 +528,10 @@ class _RoutePlannerState extends State<RoutePlanner> {
     required bool showOrigen,
     required bool showDestino,
   }) {
-    final stations = selectedLinea == 'linea1' ? linea1Stations : linea2Stations;
+    final stations =
+        selectedLinea == 'linea1' ? linea1Stations : linea2Stations;
     final lineColor = selectedLinea == 'linea1' ? Colors.blue : Colors.orange;
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -533,7 +546,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Resumen lado a lado (origen y destino)
           Row(
             children: [
@@ -559,7 +572,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: showOrigen ? lineColor[700] : Colors.grey,
+                                color:
+                                    showOrigen ? lineColor[700] : Colors.grey,
                               ),
                             ),
                           ],
@@ -567,7 +581,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                         const SizedBox(height: 8),
                         if (_selectedOrigenLinea != null) ...[
                           Text(
-                            _selectedOrigenLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                            _selectedOrigenLinea == 'linea1'
+                                ? 'Línea 1'
+                                : 'Línea 2',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -631,7 +647,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: showDestino ? lineColor[700] : Colors.grey,
+                                color:
+                                    showDestino ? lineColor[700] : Colors.grey,
                               ),
                             ),
                           ],
@@ -639,7 +656,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                         const SizedBox(height: 8),
                         if (_selectedDestinoLinea != null) ...[
                           Text(
-                            _selectedDestinoLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                            _selectedDestinoLinea == 'linea1'
+                                ? 'Línea 1'
+                                : 'Línea 2',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -683,7 +702,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
             ],
           ),
           const SizedBox(height: 24),
-          
+
           // Selector de estación
           if (selectedLinea != null) ...[
             Card(
@@ -709,13 +728,14 @@ class _RoutePlannerState extends State<RoutePlanner> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<StationModel>(
-                      value: selectedStation,
+                      initialValue: selectedStation,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         hintText: 'Selecciona una estación',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
                         filled: true,
                         fillColor: Colors.white,
                       ),

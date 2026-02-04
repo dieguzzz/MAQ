@@ -37,7 +37,8 @@ class PointsHistoryService {
   }
 
   /// Obtiene el historial de puntos del usuario
-  Stream<List<PointsTransaction>> getPointsHistory(String userId, {int limit = 50}) {
+  Stream<List<PointsTransaction>> getPointsHistory(String userId,
+      {int limit = 50}) {
     return _firestore
         .collection('users')
         .doc(userId)
@@ -51,7 +52,8 @@ class PointsHistoryService {
   }
 
   /// Obtiene el historial de puntos del usuario de forma asíncrona
-  Future<List<PointsTransaction>> getPointsHistoryOnce(String userId, {int limit = 50}) async {
+  Future<List<PointsTransaction>> getPointsHistoryOnce(String userId,
+      {int limit = 50}) async {
     try {
       final snapshot = await _firestore
           .collection('users')
@@ -81,10 +83,12 @@ class PointsHistoryService {
 
       final Map<String, int> pointsByType = {};
       for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final type = data['type'] ?? 'unknown';
         final pointsValue = data['points'];
-        final points = pointsValue is int ? pointsValue : (pointsValue as num?)?.toInt() ?? 0;
+        final points = pointsValue is int
+            ? pointsValue
+            : (pointsValue as num?)?.toInt() ?? 0;
         pointsByType[type] = (pointsByType[type] ?? 0) + points;
       }
       return pointsByType;
@@ -94,4 +98,3 @@ class PointsHistoryService {
     }
   }
 }
-

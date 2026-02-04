@@ -44,26 +44,26 @@ class _DevLogsTabState extends State<DevLogsTab> {
     final userId = authProvider.currentUser?.uid;
 
     return FutureBuilder<bool>(
-      future: userId != null 
+      future: userId != null
           ? AppModeService().isTestMode(userId)
           : Future.value(false),
       builder: (context, snapshot) {
         final isTestMode = snapshot.data ?? false;
 
         if (!isTestMode) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.info_outline, size: 48, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
+                Icon(Icons.info_outline, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
                   'Los logs solo están disponibles en modo test',
                   style: TextStyle(color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Activa el modo test en Configuración',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                   textAlign: TextAlign.center,
@@ -91,16 +91,16 @@ class _DevLogsTabState extends State<DevLogsTab> {
                       isExpanded: true,
                       dropdownColor: Colors.grey[800],
                       style: const TextStyle(color: Colors.white, fontSize: 12),
-                      items: [
-                        const DropdownMenuItem<String>(
+                      items: const [
+                        DropdownMenuItem<String>(
                           value: null,
                           child: Text('Todas las categorías'),
                         ),
-                        const DropdownMenuItem<String>(
+                        DropdownMenuItem<String>(
                           value: 'ReportsStream',
                           child: Text('ReportsStream'),
                         ),
-                        const DropdownMenuItem<String>(
+                        DropdownMenuItem<String>(
                           value: 'ConfirmReports',
                           child: Text('ConfirmReports'),
                         ),
@@ -124,7 +124,9 @@ class _DevLogsTabState extends State<DevLogsTab> {
                         _autoScroll = !_autoScroll;
                       });
                     },
-                    tooltip: _autoScroll ? 'Auto-scroll activado' : 'Auto-scroll desactivado',
+                    tooltip: _autoScroll
+                        ? 'Auto-scroll activado'
+                        : 'Auto-scroll desactivado',
                   ),
                   IconButton(
                     icon: const Icon(
@@ -190,22 +192,22 @@ class _DevLogsTabState extends State<DevLogsTab> {
 
     switch (log.level) {
       case LogLevel.info:
-        backgroundColor = Colors.blue.withOpacity(0.2);
+        backgroundColor = Colors.blue.withValues(alpha: 0.2);
         textColor = Colors.blue[200]!;
         icon = Icons.info_outline;
         break;
       case LogLevel.success:
-        backgroundColor = Colors.green.withOpacity(0.2);
+        backgroundColor = Colors.green.withValues(alpha: 0.2);
         textColor = Colors.green[200]!;
         icon = Icons.check_circle_outline;
         break;
       case LogLevel.warning:
-        backgroundColor = Colors.orange.withOpacity(0.2);
+        backgroundColor = Colors.orange.withValues(alpha: 0.2);
         textColor = Colors.orange[200]!;
         icon = Icons.warning_amber_rounded;
         break;
       case LogLevel.error:
-        backgroundColor = Colors.red.withOpacity(0.2);
+        backgroundColor = Colors.red.withValues(alpha: 0.2);
         textColor = Colors.red[200]!;
         icon = Icons.error_outline;
         break;
@@ -217,7 +219,7 @@ class _DevLogsTabState extends State<DevLogsTab> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: textColor.withOpacity(0.3)),
+        border: Border.all(color: textColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,16 +235,17 @@ class _DevLogsTabState extends State<DevLogsTab> {
                     Text(
                       log.formattedTime,
                       style: TextStyle(
-                        color: textColor.withOpacity(0.7),
+                        color: textColor.withValues(alpha: 0.7),
                         fontSize: 10,
                         fontFamily: 'monospace',
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
-                        color: textColor.withOpacity(0.2),
+                        color: textColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -273,4 +276,3 @@ class _DevLogsTabState extends State<DevLogsTab> {
     );
   }
 }
-

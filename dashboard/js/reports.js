@@ -349,11 +349,18 @@
     }
   }
 
+  function filterReportsListByStation(stationId) {
+    const filterInput = document.getElementById('filterReports');
+    if (filterInput) {
+      filterInput.value = stationId;
+      filterInput.dispatchEvent(new Event('input'));
+      filterReportsAdvanced();
+    }
+  }
+
   window.loadRecentReports = loadRecentReports;
   window.filterReportsAdvanced = filterReportsAdvanced;
+  window.filterReportsListByStation = filterReportsListByStation;
   window.clearAllReports = clearAllReports;
   window.showReportStats = showReportStats;
 })();
-
-
-

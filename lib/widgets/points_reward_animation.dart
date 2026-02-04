@@ -76,7 +76,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
   @override
   void initState() {
     super.initState();
-    
+
     // Vibración sutil
     HapticFeedback.lightImpact();
 
@@ -174,7 +174,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
                       gradient: LinearGradient(
                         colors: [
                           color,
-                          color.withOpacity(0.8),
+                          color.withValues(alpha: 0.8),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -182,7 +182,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withValues(alpha: 0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                           spreadRadius: 2,
@@ -252,7 +252,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por reporte verificado
-  static void showVerifiedReportPoints(BuildContext context, {int points = 10}) {
+  static void showVerifiedReportPoints(BuildContext context,
+      {int points = 10}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -263,7 +264,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por reporte confirmado (autor)
-  static void showReportConfirmedPoints(BuildContext context, {int points = 5}) {
+  static void showReportConfirmedPoints(BuildContext context,
+      {int points = 5}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -285,7 +287,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por racha
-  static void showStreakPoints(BuildContext context, {int points = 2, int streak = 1}) {
+  static void showStreakPoints(BuildContext context,
+      {int points = 2, int streak = 1}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -323,4 +326,3 @@ class PointsRewardHelper {
     );
   }
 }
-

@@ -2,12 +2,11 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/report_model.dart';
 import '../models/user_model.dart';
-import '../services/firebase_service.dart';
 import 'notification_service.dart';
 
 class AlertService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseService _firebaseService = FirebaseService();
+  // Note: FirebaseService removed as it was unused
   final NotificationService _notificationService = NotificationService();
 
   /// Envía alertas a usuarios afectados por un reporte
@@ -18,9 +17,9 @@ class AlertService {
       final prioridad = report.prioridad;
 
       // Solo alertar reportes críticos o prioritarios
-      final isCritical = prioridad || 
-          estadoPrincipal == 'lleno' || 
-          estadoPrincipal == 'cerrado' || 
+      final isCritical = prioridad ||
+          estadoPrincipal == 'lleno' ||
+          estadoPrincipal == 'cerrado' ||
           estadoPrincipal == 'detenido' ||
           estadoPrincipal == 'sardina';
 
@@ -143,7 +142,8 @@ class AlertService {
   }
 
   /// Envía alerta prioritaria a un usuario
-  Future<void> _sendPriorityAlertToUser(UserModel user, ReportModel report) async {
+  Future<void> _sendPriorityAlertToUser(
+      UserModel user, ReportModel report) async {
     try {
       final tipo = report.tipo == TipoReporte.estacion ? 'Estación' : 'Tren';
       final estadoText = _getEstadoText(report.estadoPrincipal ?? '');
@@ -174,8 +174,7 @@ class AlertService {
     final cosLat1 = math.cos(_toRadians(lat1));
     final cosLat2 = math.cos(_toRadians(lat2));
 
-    final a = sinDLat * sinDLat +
-        cosLat1 * cosLat2 * sinDLon * sinDLon;
+    final a = sinDLat * sinDLat + cosLat1 * cosLat2 * sinDLon * sinDLon;
     final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadius * c;
@@ -202,4 +201,3 @@ class AlertService {
     return estados[estadoPrincipal] ?? estadoPrincipal;
   }
 }
-

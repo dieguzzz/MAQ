@@ -13,7 +13,8 @@ class SimplifiedReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   Timer? _cleanupTimer;
-  static const Duration _cleanupInterval = Duration(minutes: 5); // Ejecutar cada 5 minutos
+  static const Duration _cleanupInterval =
+      Duration(minutes: 5); // Ejecutar cada 5 minutos
 
   /// Crear reporte de estación (simplificado)
   Future<String> createStationReport({
@@ -48,7 +49,8 @@ class SimplifiedReportService {
       accuracy: userPosition?.accuracy,
     );
 
-    final docRef = await _firestore.collection('reports').add(report.toFirestore());
+    final docRef =
+        await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
 
     // Calcular y guardar confianza inicial
@@ -87,11 +89,12 @@ class SimplifiedReportService {
 
     final reportIds = <String>[];
     final now = DateTime.now();
-    
+
     // 1. Crear reporte general (siempre se crea)
     final basePoints = 15;
-    final bonusPoints = 0; // En el nuevo sistema, los puntos bonus vienen de cada problema específico
-    
+    final bonusPoints =
+        0; // En el nuevo sistema, los puntos bonus vienen de cada problema específico
+
     final generalReport = SimplifiedReportModel(
       id: '',
       scope: 'station',
@@ -109,10 +112,11 @@ class SimplifiedReportService {
           : null,
       accuracy: userPosition?.accuracy,
     );
-    
-    final generalDocRef = await _firestore.collection('reports').add(generalReport.toFirestore());
+
+    final generalDocRef =
+        await _firestore.collection('reports').add(generalReport.toFirestore());
     await generalDocRef.update({'id': generalDocRef.id});
-    
+
     // Calcular y guardar confianza inicial para reporte general
     final confidenceService = SimplifiedReportConfidenceService();
     final generalConfidence = await confidenceService.calculateConfidence(
@@ -122,9 +126,9 @@ class SimplifiedReportService {
       'confidence': generalConfidence.confidence,
       'confidenceReasons': generalConfidence.reasons,
     });
-    
+
     reportIds.add(generalDocRef.id);
-    
+
     // 2. Crear un reporte separado por cada problema específico
     if (specificIssues != null && specificIssues.isNotEmpty) {
       for (final issue in specificIssues) {
@@ -139,22 +143,23 @@ class SimplifiedReportService {
         reportIds.add(issueReportId);
       }
     }
-    
+
     // 3. Otorgar puntos al usuario (total de todos los reportes)
     final gamificationService = GamificationService();
-    final totalIssuePoints = (specificIssues?.length ?? 0) * 10; // 10 puntos por problema específico
+    final totalIssuePoints =
+        (specificIssues?.length ?? 0) * 10; // 10 puntos por problema específico
     final totalPoints = basePoints + totalIssuePoints;
-    
+
     await gamificationService.awardPointsForSimplifiedReport(
       userId: userId,
       points: totalPoints,
       stationId: stationId,
       reportId: generalDocRef.id,
     );
-    
+
     return reportIds;
   }
-  
+
   /// Método privado para crear un reporte de problema específico
   Future<String> _createSpecificIssueReport({
     required String stationId,
@@ -165,7 +170,7 @@ class SimplifiedReportService {
     required DateTime now,
   }) async {
     final basePoints = 10; // 10 puntos por reportar un problema específico
-    
+
     final issueReport = SimplifiedReportModel(
       id: '',
       scope: 'station',
@@ -185,10 +190,11 @@ class SimplifiedReportService {
           : null,
       accuracy: userPosition?.accuracy,
     );
-    
-    final docRef = await _firestore.collection('reports').add(issueReport.toFirestore());
+
+    final docRef =
+        await _firestore.collection('reports').add(issueReport.toFirestore());
     await docRef.update({'id': docRef.id});
-    
+
     // Calcular y guardar confianza inicial
     final confidenceService = SimplifiedReportConfidenceService();
     final confidenceResult = await confidenceService.calculateConfidence(
@@ -198,14 +204,15 @@ class SimplifiedReportService {
       'confidence': confidenceResult.confidence,
       'confidenceReasons': confidenceResult.reasons,
     });
-    
+
     return docRef.id;
   }
 
   /// Crear reporte de tren (simplificado)
   Future<String> createTrainReport({
     required String stationId,
-    required String etaBucket, // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' (tiempo del panel)
+    required String
+        etaBucket, // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' (tiempo del panel)
     required int crowdLevel, // 1-5
     List<String>? issues, // ['recharge', 'atm', 'ac', 'escalator', 'elevator']
     String? trainLine, // 'L1' | 'L2' (opcional)
@@ -217,7 +224,7 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     final now = DateTime.now();
-    
+
     // Calcular etaExpectedAt basado en el bucket (punto medio del rango)
     DateTime? etaExpectedAt;
     if (etaBucket != 'unknown') {
@@ -247,7 +254,8 @@ class SimplifiedReportService {
       direction: direction,
       etaBucket: etaBucket,
       etaExpectedAt: etaExpectedAt,
-      isPanelTime: isPanelTime ?? false, // Marcar si viene del panel digital oficial
+      isPanelTime:
+          isPanelTime ?? false, // Marcar si viene del panel digital oficial
       createdAt: now,
       basePoints: basePoints,
       bonusPoints: bonusPoints,
@@ -258,7 +266,8 @@ class SimplifiedReportService {
       accuracy: userPosition?.accuracy,
     );
 
-    final docRef = await _firestore.collection('reports').add(report.toFirestore());
+    final docRef =
+        await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
 
     // Calcular y guardar confianza inicial
@@ -295,13 +304,14 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     try {
-      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      final reportDoc =
+          await _firestore.collection('reports').doc(reportId).get();
       if (!reportDoc.exists) {
         throw Exception('Reporte no encontrado');
       }
 
       final report = SimplifiedReportModel.fromFirestore(reportDoc);
-      
+
       // Verificar que el reporte pertenece al usuario
       if (report.userId != userId) {
         throw Exception('No tienes permiso para actualizar este reporte');
@@ -313,7 +323,7 @@ class SimplifiedReportService {
       if (report.etaExpectedAt != null && report.isPanelTime == true) {
         final error = arrivalTime.difference(report.etaExpectedAt!).inMinutes;
         errorMinutes = error;
-        
+
         // Sistema de puntos por precisión:
         // ±1 min = +15 puntos (panel preciso)
         // ±2-3 min = +5 puntos (error pequeño)
@@ -342,13 +352,14 @@ class SimplifiedReportService {
       // Actualizar puntos: +20 base por validar + bonus por precisión
       final validationPoints = 20;
       final newBonusPoints = (report.bonusPoints) + precisionBonus;
-      final newTotalPoints = report.basePoints + validationPoints + newBonusPoints;
-      
+      final newTotalPoints =
+          report.basePoints + validationPoints + newBonusPoints;
+
       updates['bonusPoints'] = newBonusPoints;
       updates['totalPoints'] = newTotalPoints;
 
       await _firestore.collection('reports').doc(reportId).update(updates);
-      
+
       // Otorgar puntos adicionales al usuario (20 + bonus precisión)
       final gamificationService = GamificationService();
       await gamificationService.awardPointsForArrivalValidation(
@@ -356,7 +367,7 @@ class SimplifiedReportService {
         additionalPoints: validationPoints + precisionBonus,
         stationId: report.stationId,
       );
-      
+
       // Actualizar calibración de la estación si es reporte del panel
       if (report.isPanelTime == true && errorMinutes != null) {
         await _updateStationCalibration(
@@ -379,21 +390,25 @@ class SimplifiedReportService {
   ) async {
     try {
       final stationRef = _firestore.collection('stations').doc(stationId);
-      final calibrationRef = stationRef.collection('panelCalibration').doc('latest');
-      
+      final calibrationRef =
+          stationRef.collection('panelCalibration').doc('latest');
+
       final calibrationDoc = await calibrationRef.get();
       final now = DateTime.now();
-      
+
       if (calibrationDoc.exists) {
         final data = calibrationDoc.data()!;
         final totalReports = (data['totalReports'] ?? 0) + 1;
         final currentAvgError = (data['avgError'] ?? 0.0).toDouble();
-        final newAvgError = ((currentAvgError * (totalReports - 1)) + errorMinutes) / totalReports;
-        
+        final newAvgError =
+            ((currentAvgError * (totalReports - 1)) + errorMinutes) /
+                totalReports;
+
         // Calcular precisión (porcentaje de reportes con error ≤ 1 minuto)
-        final accurateReports = (data['accurateReports'] ?? 0) + (errorMinutes.abs() <= 1 ? 1 : 0);
+        final accurateReports =
+            (data['accurateReports'] ?? 0) + (errorMinutes.abs() <= 1 ? 1 : 0);
         final accuracy = (accurateReports / totalReports) * 100;
-        
+
         await calibrationRef.update({
           'totalReports': totalReports,
           'avgError': newAvgError,
@@ -459,7 +474,8 @@ class SimplifiedReportService {
       accuracy: userPosition?.accuracy,
     );
 
-    final docRef = await _firestore.collection('reports').add(report.toFirestore());
+    final docRef =
+        await _firestore.collection('reports').add(report.toFirestore());
     await docRef.update({'id': docRef.id});
 
     // Calcular y guardar confianza inicial
@@ -505,8 +521,8 @@ class SimplifiedReportService {
       for (var doc in snapshot.docs) {
         try {
           final report = SimplifiedReportModel.fromFirestore(doc);
-          if (report.etaBucket != null && 
-              report.etaBucket != 'unknown' && 
+          if (report.etaBucket != null &&
+              report.etaBucket != 'unknown' &&
               report.arrivalTime == null &&
               report.createdAt.isAfter(oneHourAgo)) {
             return report;
@@ -540,7 +556,8 @@ class SimplifiedReportService {
   /// Enviar validación ETA
   Future<Map<String, dynamic>> submitETAValidation({
     required String reportId,
-    required String validationResult, // 'arrived' | 'not_arrived' | 'cant_confirm'
+    required String
+        validationResult, // 'arrived' | 'not_arrived' | 'cant_confirm'
     DateTime? actualArrivalTime,
   }) async {
     final userId = _auth.currentUser?.uid;
@@ -548,7 +565,8 @@ class SimplifiedReportService {
 
     try {
       // Llamar a Cloud Function
-      final callable = FirebaseFunctions.instance.httpsCallable('processValidationResponse');
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('processValidationResponse');
       final callResult = await callable.call({
         'reportId': reportId,
         'result': validationResult,
@@ -569,7 +587,8 @@ class SimplifiedReportService {
     DateTime? since,
   }) async {
     try {
-      final cutoffDate = since ?? DateTime.now().subtract(const Duration(hours: 1));
+      final cutoffDate =
+          since ?? DateTime.now().subtract(const Duration(hours: 1));
 
       // Consulta sin orderBy para evitar índice compuesto
       final snapshot = await _firestore
@@ -584,7 +603,7 @@ class SimplifiedReportService {
           .map((doc) => SimplifiedReportModel.fromFirestore(doc))
           .where((report) => report.createdAt.isAfter(cutoffDate))
           .toList();
-      
+
       // Ordenar por fecha (más reciente primero) y limitar
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(limit).toList();
@@ -612,7 +631,7 @@ class SimplifiedReportService {
           })
           .whereType<SimplifiedReportModel>()
           .toList();
-      
+
       // Ordenar en memoria por fecha (más reciente primero)
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
@@ -626,7 +645,8 @@ class SimplifiedReportService {
     DateTime? since,
   }) async {
     try {
-      final cutoffDate = since ?? DateTime.now().subtract(const Duration(hours: 1));
+      final cutoffDate =
+          since ?? DateTime.now().subtract(const Duration(hours: 1));
 
       // Consulta sin orderBy para evitar índice compuesto
       final snapshot = await _firestore
@@ -641,7 +661,7 @@ class SimplifiedReportService {
           .map((doc) => SimplifiedReportModel.fromFirestore(doc))
           .where((report) => report.createdAt.isAfter(cutoffDate))
           .toList();
-      
+
       // Ordenar por fecha (más reciente primero) y limitar
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(limit).toList();
@@ -656,7 +676,7 @@ class SimplifiedReportService {
   /// Solo filtra por status en Firestore para evitar problemas de índice compuesto
   Stream<List<SimplifiedReportModel>> getActiveReportsStream() {
     final cutoffTime = DateTime.now().subtract(const Duration(minutes: 15));
-    
+
     return _firestore
         .collection('reports')
         .where('status', isEqualTo: 'active')
@@ -667,21 +687,22 @@ class SimplifiedReportService {
           .map((doc) {
             try {
               final report = SimplifiedReportModel.fromFirestore(doc);
-              
+
               // Filtrar reportes muy antiguos en memoria (más de 15 minutos)
               if (report.createdAt.isBefore(cutoffTime)) {
                 return null;
               }
-              
+
               // Validar expiración de ETAs futuros
               // Si tiene etaExpectedAt pero ya pasó y no tiene arrivalTime, excluirlo
-              if (report.etaExpectedAt != null && 
+              if (report.etaExpectedAt != null &&
                   report.arrivalTime == null &&
-                  now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 5)))) {
+                  now.isAfter(
+                      report.etaExpectedAt!.add(const Duration(minutes: 5)))) {
                 // ETA expirado (más de 5 min después del tiempo esperado)
                 return null;
               }
-              
+
               return report;
             } catch (e) {
               print('Error parsing report ${doc.id}: $e');
@@ -690,7 +711,7 @@ class SimplifiedReportService {
           })
           .whereType<SimplifiedReportModel>()
           .toList();
-      
+
       // Ordenar en memoria por fecha (más reciente primero) y limitar a 100
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(100).toList();
@@ -704,25 +725,25 @@ class SimplifiedReportService {
   Stream<List<SimplifiedReportModel>> getReportsForConfirmationStream() {
     return _firestore
         .collection('reports')
-        .snapshots()  // Sin filtro en Firestore para obtener todos
+        .snapshots() // Sin filtro en Firestore para obtener todos
         .map((snapshot) {
-      final now = DateTime.now();
+      // Note: 'now' removed as it was unused
       final logService = DebugLogService();
       logService.addLog(
         'ReportsStream',
         '${snapshot.docs.length} documentos recibidos de Firestore',
         level: LogLevel.info,
       );
-      
+
       final reports = snapshot.docs
           .map((doc) {
             try {
-              final data = doc.data() as Map<String, dynamic>;
-              
+              final data = doc.data();
+
               // Filtrar reportes eliminados o resueltos
               final status = data['status'] as String?;
               final estado = data['estado'] as String?;
-              
+
               // Si tiene status y no es 'active', saltarlo
               if (status != null && status != 'active') {
                 logService.addLog(
@@ -732,7 +753,7 @@ class SimplifiedReportService {
                 );
                 return null;
               }
-              
+
               // Si tiene estado (sistema viejo) y no es 'activo', saltarlo
               if (estado != null && estado != 'activo') {
                 logService.addLog(
@@ -742,10 +763,10 @@ class SimplifiedReportService {
                 );
                 return null;
               }
-              
+
               // Si no tiene ni status ni estado, asumir que está activo (compatibilidad)
               // o si tiene status='active' o estado='activo', incluirlo
-              
+
               final report = SimplifiedReportModel.fromFirestore(doc);
               // No filtrar por ETAs expirados - mostrar todos los reportes activos
               // para que puedan ser confirmados por otros usuarios
@@ -766,27 +787,27 @@ class SimplifiedReportService {
           })
           .whereType<SimplifiedReportModel>()
           .toList();
-      
+
       logService.addLog(
         'ReportsStream',
         'Total reportes válidos después del filtrado: ${reports.length}',
         level: LogLevel.info,
       );
-      
+
       // Ordenar en memoria por fecha (más reciente primero) - sin límite de cantidad
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
     });
   }
-  
+
   /// Limpia reportes obsoletos marcándolos como 'resolved'
   /// Reportes con arrivalTime > 15 min o ETAs expirados > 20 min
   Future<int> cleanupOldReports() async {
     try {
       final now = DateTime.now();
       final cutoffTime = now.subtract(const Duration(minutes: 15));
-      final etaExpiredTime = now.subtract(const Duration(minutes: 20));
-      
+      // Note: etaExpiredTime removed as unused - inline calculations use Duration directly
+
       // Buscar reportes obsoletos
       final oldReportsQuery = await _firestore
           .collection('reports')
@@ -794,16 +815,16 @@ class SimplifiedReportService {
           .where('createdAt', isLessThan: Timestamp.fromDate(cutoffTime))
           .limit(50) // Procesar en lotes
           .get();
-      
+
       int cleanedCount = 0;
       final batch = _firestore.batch();
-      
+
       for (final doc in oldReportsQuery.docs) {
         try {
           final report = SimplifiedReportModel.fromFirestore(doc);
-          
+
           bool shouldClean = false;
-          
+
           // Caso 1: Reporte con arrivalTime muy antiguo (>15 min)
           if (report.arrivalTime != null) {
             final ageMin = now.difference(report.arrivalTime!).inMinutes;
@@ -813,7 +834,8 @@ class SimplifiedReportService {
           }
           // Caso 2: ETA futuro expirado (etaExpectedAt pasó hace >20 min y no tiene arrivalTime)
           else if (report.etaExpectedAt != null && report.arrivalTime == null) {
-            if (now.isAfter(report.etaExpectedAt!.add(const Duration(minutes: 20)))) {
+            if (now.isAfter(
+                report.etaExpectedAt!.add(const Duration(minutes: 20)))) {
               shouldClean = true;
             }
           }
@@ -824,7 +846,7 @@ class SimplifiedReportService {
               shouldClean = true;
             }
           }
-          
+
           if (shouldClean) {
             batch.update(doc.reference, {'status': 'resolved'});
             cleanedCount++;
@@ -833,46 +855,49 @@ class SimplifiedReportService {
           print('Error processing report ${doc.id} for cleanup: $e');
         }
       }
-      
+
       if (cleanedCount > 0) {
         await batch.commit();
         print('🧹 Limpiados $cleanedCount reportes obsoletos');
       }
-      
+
       return cleanedCount;
     } catch (e) {
       print('Error en cleanupOldReports: $e');
       return 0;
     }
   }
-  
+
   /// Inicia el timer de limpieza automática
   void startAutoCleanup() {
     // Cancelar timer existente si hay uno
     _cleanupTimer?.cancel();
-    
+
     // Ejecutar limpieza inmediatamente la primera vez
     cleanupOldReports().catchError((e) {
       print('Error en limpieza automática inicial: $e');
+      return 0;
     });
-    
+
     // Configurar timer periódico
     _cleanupTimer = Timer.periodic(_cleanupInterval, (timer) {
       cleanupOldReports().catchError((e) {
         print('Error en limpieza automática periódica: $e');
+        return 0;
       });
     });
-    
-    print('🧹 Limpieza automática de reportes iniciada (cada ${_cleanupInterval.inMinutes} min)');
+
+    print(
+        '🧹 Limpieza automática de reportes iniciada (cada ${_cleanupInterval.inMinutes} min)');
   }
-  
+
   /// Detiene el timer de limpieza automática
   void stopAutoCleanup() {
     _cleanupTimer?.cancel();
     _cleanupTimer = null;
     print('🧹 Limpieza automática de reportes detenida');
   }
-  
+
   /// Dispose: cancelar timer al destruir el servicio
   void dispose() {
     stopAutoCleanup();

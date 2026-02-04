@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/station_model.dart';
 
 /// Servicio para actualizar todas las estaciones en Firestore con coordenadas exactas
 class StationUpdateService {
@@ -265,7 +264,7 @@ class StationUpdateService {
       // 2. Eliminar documentos duplicados o incorrectos
       print('🗑️  Eliminando documentos duplicados...');
       final idsToDelete = ['l2_san_miguelito_l1'];
-      
+
       for (final idToDelete in idsToDelete) {
         if (existingIds.contains(idToDelete)) {
           try {
@@ -296,7 +295,8 @@ class StationUpdateService {
           'id': stationData['id'],
           'nombre': stationData['nombre'],
           'linea': stationData['linea'],
-          'ubicacion': GeoPoint(stationData['lat'] as double, stationData['lng'] as double),
+          'ubicacion': GeoPoint(
+              stationData['lat'] as double, stationData['lng'] as double),
           'estado_actual': 'normal',
           'aglomeracion': 1,
           'ultima_actualizacion': FieldValue.serverTimestamp(),
@@ -311,10 +311,10 @@ class StationUpdateService {
         }
 
         if (existingIds.contains(stationId)) {
-          currentBatch!.update(docRef, stationDoc);
+          currentBatch.update(docRef, stationDoc);
           results['updated'] = (results['updated'] as int) + 1;
         } else {
-          currentBatch!.set(docRef, stationDoc);
+          currentBatch.set(docRef, stationDoc);
           results['created'] = (results['created'] as int) + 1;
         }
         operationsInBatch++;
@@ -344,10 +344,10 @@ class StationUpdateService {
       print('✅ Total de estaciones en Firestore: ${finalIds.length}');
 
       // Verificar que no haya San Miguelitos duplicados
-      final sanMiguelitoStations = finalIds.where((id) => 
-        id.contains('san_miguelito')
-      ).toList();
-      print('📊 Estaciones San Miguelito encontradas: ${sanMiguelitoStations.length}');
+      final sanMiguelitoStations =
+          finalIds.where((id) => id.contains('san_miguelito')).toList();
+      print(
+          '📊 Estaciones San Miguelito encontradas: ${sanMiguelitoStations.length}');
       for (final id in sanMiguelitoStations) {
         print('   - $id');
       }
@@ -355,7 +355,8 @@ class StationUpdateService {
       if (sanMiguelitoStations.length == 2) {
         print('✅ Correcto: Solo hay 2 San Miguelito (uno por línea)');
       } else {
-        print('⚠️  Advertencia: Se encontraron ${sanMiguelitoStations.length} San Miguelito');
+        print(
+            '⚠️  Advertencia: Se encontraron ${sanMiguelitoStations.length} San Miguelito');
       }
 
       print('🎉 ¡Actualización completada exitosamente!');
@@ -369,4 +370,3 @@ class StationUpdateService {
     }
   }
 }
-

@@ -219,7 +219,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                       ),
                       child: Text(
                         'Paso ${_currentPage + 1}/3',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: MetroColors.blue,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
@@ -339,7 +339,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           color: MetroColors.grayMedium,
           fontWeight: FontWeight.w800,
           fontSize: 16,
@@ -684,89 +684,208 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
     final locationController = TextEditingController();
     String status = 'not_working';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Text(icon),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Reportar $name')),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Ubicación específica:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: locationController,
-                  decoration: InputDecoration(
-                    hintText: 'Ej: Entrada norte, Andén 2...',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('¿Cómo está?',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: status,
-                  onChanged: (val) => setDialogState(() => status = val!),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'not_working', child: Text('No funciona')),
-                    DropdownMenuItem(
-                        value: 'working_poorly', child: Text('Funciona mal')),
-                    DropdownMenuItem(
-                        value: 'out_of_service',
-                        child: Text('Fuera de servicio')),
-                  ],
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
+        builder: (context, setSheetState) {
+          final bottomInsets = MediaQuery.of(context).viewInsets.bottom;
+          return Container(
+            padding: EdgeInsets.only(bottom: bottomInsets),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCELAR'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (locationController.text.isNotEmpty) {
-                  setState(() {
-                    _specificIssues.add(SpecificIssue(
-                      type: typeId,
-                      location: locationController.text,
-                      status: status,
-                    ));
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: MetroColors.blue,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(icon, style: const TextStyle(fontSize: 28)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Reportar $name',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: MetroColors.grayDark,
+                                      letterSpacing: -0.5,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Indica la ubicación y el estado actual',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: MetroColors.grayMedium,
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Ubicación
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ubicación específica',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: MetroColors.grayDark,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: locationController,
+                          onChanged: (_) => setSheetState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Ej: Entrada norte, Andén 2...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: MetroColors.blue, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Estado
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '¿Cómo está?',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: MetroColors.grayDark,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildOptionCard(
+                          value: 'not_working',
+                          icon: Icons.cancel_rounded,
+                          iconColor: Colors.red,
+                          title: 'No Funciona',
+                          isSelected: status == 'not_working',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setSheetState(() => status = 'not_working');
+                          },
+                        ),
+                        _buildOptionCard(
+                          value: 'working_poorly',
+                          icon: Icons.warning_rounded,
+                          iconColor: Colors.orange,
+                          title: 'Funciona Mal',
+                          isSelected: status == 'working_poorly',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setSheetState(() => status = 'working_poorly');
+                          },
+                        ),
+                        _buildOptionCard(
+                          value: 'out_of_service',
+                          icon: Icons.block_rounded,
+                          iconColor: Colors.grey,
+                          title: 'Fuera de Servicio',
+                          isSelected: status == 'out_of_service',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setSheetState(() => status = 'out_of_service');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Botones
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: Row(
+                      children: [
+                        _buildSecondaryButton(
+                          onPressed: () => Navigator.pop(context),
+                          label: 'CANCELAR',
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionButton(
+                            label: 'AGREGAR',
+                            onPressed: locationController.text.isNotEmpty
+                                ? () {
+                                    setState(() {
+                                      _specificIssues.add(SpecificIssue(
+                                        type: typeId,
+                                        location: locationController.text,
+                                        status: status,
+                                      ));
+                                    });
+                                    Navigator.pop(context);
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              child: const Text('AGREGAR'),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -781,7 +900,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[200]!),
+        border: Border.all(color: MetroColors.blue.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,8 +911,8 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
+                  color: MetroColors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
@@ -842,7 +961,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               _getStatusName(issue.status),

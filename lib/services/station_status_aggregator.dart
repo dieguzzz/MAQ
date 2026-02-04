@@ -3,6 +3,7 @@ import '../models/simplified_report_model.dart';
 import '../models/station_model.dart';
 import '../utils/station_status_mapper.dart';
 import 'simplified_report_service.dart';
+import 'simplified_report_confidence_service.dart';
 
 /// Servicio para agregar múltiples reportes y calcular el estado de una estación
 class StationStatusAggregator {
@@ -146,35 +147,11 @@ class StationStatusAggregator {
     return average.round().clamp(1, 5);
   }
 
-  /// Calcula confidence basado en:
-  /// - Cantidad de reportes (más reportes = más confianza)
-  /// - Confirmaciones totales (más confirmaciones = más confianza)
-  /// - Antigüedad de reportes (reportes más recientes pesan más)
+  /// Delega al servicio central de confianza para consistencia con
+  /// TrainStatusAggregator y la UI.
   double _calculateConfidence(List<SimplifiedReportModel> reports) {
-    if (reports.isEmpty) return 0.0;
-
-    // Base: cantidad de reportes (máximo 0.4)
-    final reportCountScore = (reports.length / 10.0).clamp(0.0, 0.4);
-
-    // Confirmaciones totales (máximo 0.3)
-    final totalConfirmations = reports.fold<int>(
-      0,
-      (sum, r) => sum + r.confirmations,
-    );
-    final confirmationScore = (totalConfirmations / 20.0).clamp(0.0, 0.3);
-
-    // Antigüedad: reportes más recientes pesan más (máximo 0.3)
-    final now = DateTime.now();
-    double recencyScore = 0.0;
-    for (final report in reports) {
-      final ageMinutes = now.difference(report.createdAt).inMinutes;
-      // Reportes más recientes (menos minutos) tienen más peso
-      final weight = (30 - ageMinutes.clamp(0, 30)) / 30.0;
-      recencyScore += weight;
-    }
-    recencyScore = (recencyScore / reports.length).clamp(0.0, 0.3);
-
-    return (reportCountScore + confirmationScore + recencyScore).clamp(0.0, 1.0);
+    return SimplifiedReportConfidenceService.calculateAggregatedConfidence(
+        reports);
   }
 
   /// Actualiza la estación en Firestore con los valores calculados

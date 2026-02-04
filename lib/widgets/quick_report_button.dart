@@ -92,12 +92,10 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     }
 
     // Si no hay estación seleccionada, usar la primera de L1 como fallback
-    if (selectedStation == null) {
-      selectedStation = stations.firstWhere(
-        (s) => s.linea == 'L1' || s.linea == 'linea1',
-        orElse: () => stations.first,
-      );
-    }
+    selectedStation ??= stations.firstWhere(
+      (s) => s.linea == 'L1' || s.linea == 'linea1',
+      orElse: () => stations.first,
+    );
 
     // Abrir bottom sheet con la estación seleccionada
     if (mounted) {

@@ -20,8 +20,10 @@ class _NotificationSettingsScreenState
   static const String _keyNotificationsEnabled = 'notifications_enabled';
   static const String _keyReportNotifications = 'notifications_reports';
   static const String _keyDelayNotifications = 'notifications_delays';
-  static const String _keyConfirmationNotifications = 'notifications_confirmations';
-  static const String _keyAchievementNotifications = 'notifications_achievements';
+  static const String _keyConfirmationNotifications =
+      'notifications_confirmations';
+  static const String _keyAchievementNotifications =
+      'notifications_achievements';
 
   bool _notificationsEnabled = true;
   bool _reportNotifications = true;
@@ -43,8 +45,7 @@ class _NotificationSettingsScreenState
 
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _notificationsEnabled =
-          prefs.getBool(_keyNotificationsEnabled) ?? true;
+      _notificationsEnabled = prefs.getBool(_keyNotificationsEnabled) ?? true;
       _reportNotifications = prefs.getBool(_keyReportNotifications) ?? true;
       _delayNotifications = prefs.getBool(_keyDelayNotifications) ?? true;
       _confirmationNotifications =
@@ -200,7 +201,9 @@ class _NotificationSettingsScreenState
               value: _notificationsEnabled,
               onChanged: _toggleNotifications,
               secondary: Icon(
-                _notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+                _notificationsEnabled
+                    ? Icons.notifications_active
+                    : Icons.notifications_off,
                 color: _notificationsEnabled ? MetroColors.blue : Colors.grey,
               ),
             ),
@@ -269,18 +272,18 @@ class _NotificationSettingsScreenState
           ],
 
           // Información adicional
-          Card(
+          const Card(
             color: MetroColors.grayLight,
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Icon(Icons.info_outline, color: MetroColors.blue),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Información',
                         style: TextStyle(
                           fontSize: 16,
@@ -289,8 +292,8 @@ class _NotificationSettingsScreenState
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 12),
+                  Text(
                     'Las notificaciones te ayudan a estar al día con:\n'
                     '• Nuevos reportes en tu área\n'
                     '• Retrasos en el servicio\n'
@@ -342,7 +345,8 @@ class _NotificationSettingsScreenState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No se puede abrir la configuración en esta plataforma'),
+              content:
+                  Text('No se puede abrir la configuración en esta plataforma'),
             ),
           );
         }
@@ -358,4 +362,3 @@ class _NotificationSettingsScreenState
     }
   }
 }
-

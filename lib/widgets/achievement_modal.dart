@@ -94,7 +94,7 @@ class AchievementModal extends StatelessWidget {
                         width: 96,
                         height: 96,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -105,7 +105,7 @@ class AchievementModal extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Name and Category
                       Text(
                         badge.name,
@@ -121,12 +121,12 @@ class AchievementModal extends StatelessWidget {
                         badge.categoryLabel,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Rarity Badge
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -176,9 +176,7 @@ class AchievementModal extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            badge.unlocked
-                                ? Icons.check_circle
-                                : Icons.lock,
+                            badge.unlocked ? Icons.check_circle : Icons.lock,
                             color: badge.unlocked
                                 ? Colors.green.shade600
                                 : Colors.grey.shade400,
@@ -219,11 +217,11 @@ class AchievementModal extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Cultural Information
-                    Row(
+                    const Row(
                       children: [
-                        const Text('🇵🇦', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Text('🇵🇦', style: TextStyle(fontSize: 20)),
+                        SizedBox(width: 8),
+                        Text(
                           'Información Cultural',
                           style: TextStyle(
                             fontSize: 16,
@@ -281,9 +279,8 @@ class AchievementModal extends StatelessWidget {
                           backgroundColor: badge.unlocked
                               ? categoryColor[500]!
                               : Colors.grey[300]!,
-                          foregroundColor: badge.unlocked
-                              ? Colors.white
-                              : Colors.grey[700]!,
+                          foregroundColor:
+                              badge.unlocked ? Colors.white : Colors.grey[700]!,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -308,4 +305,3 @@ class AchievementModal extends StatelessWidget {
     );
   }
 }
-

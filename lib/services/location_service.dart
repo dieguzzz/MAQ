@@ -18,13 +18,13 @@ class LocationService {
   Future<LocationPermissionStatus> checkLocationStatus() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     LocationPermission permission = await Geolocator.checkPermission();
-    
+
     return LocationPermissionStatus(
       isGpsEnabled: serviceEnabled,
       permission: permission,
-      hasPermission: serviceEnabled && 
-          (permission == LocationPermission.whileInUse || 
-           permission == LocationPermission.always),
+      hasPermission: serviceEnabled &&
+          (permission == LocationPermission.whileInUse ||
+              permission == LocationPermission.always),
     );
   }
 
@@ -57,7 +57,9 @@ class LocationService {
 
     try {
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
     } catch (e) {
       return null;
@@ -100,4 +102,3 @@ class LocationService {
     return distance <= radiusKm;
   }
 }
-

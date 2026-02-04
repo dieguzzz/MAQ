@@ -144,7 +144,7 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ ${_simulationCount} reportes simulados'),
+            content: Text('✅ $_simulationCount reportes simulados'),
             backgroundColor: Colors.green,
           ),
         );
@@ -176,7 +176,7 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             '🚇 Simular Reportes',
             style: TextStyle(
               color: Colors.white,
@@ -185,30 +185,32 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Selector de estación
           DropdownButtonFormField<String>(
             decoration: InputDecoration(
               labelText: 'Estación',
               labelStyle: const TextStyle(color: Colors.white70),
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
               filled: true,
               fillColor: Colors.grey[800],
             ),
             style: const TextStyle(color: Colors.white),
-            value: _selectedStationId,
-            items: _stations.map((station) => DropdownMenuItem(
-              value: station.id,
-              child: Text(
-                station.nombre,
-                style: const TextStyle(color: Colors.white),
-              ),
-            )).toList(),
+            initialValue: _selectedStationId,
+            items: _stations
+                .map((station) => DropdownMenuItem(
+                      value: station.id,
+                      child: Text(
+                        station.nombre,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ))
+                .toList(),
             onChanged: (value) => setState(() => _selectedStationId = value),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Simular llegada a tiempo
           ElevatedButton.icon(
             icon: const Icon(Icons.check_circle),
@@ -220,9 +222,9 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
               minimumSize: const Size(double.infinity, 50),
             ),
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Simular retraso
           ElevatedButton.icon(
             icon: const Icon(Icons.schedule),
@@ -234,9 +236,9 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
               minimumSize: const Size(double.infinity, 50),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Simulación masiva
           Card(
             color: Colors.grey[800],
@@ -255,20 +257,21 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
                     min: 1,
                     max: 100,
                     divisions: 99,
-                    label: '${_simulationCount} reportes',
-                    onChanged: (value) => setState(() => _simulationCount = value.toInt()),
+                    label: '$_simulationCount reportes',
+                    onChanged: (value) =>
+                        setState(() => _simulationCount = value.toInt()),
                   ),
                   ElevatedButton(
                     onPressed: _isSimulating ? null : _runMassSimulation,
-                    child: Text(
-                      _isSimulating 
-                          ? 'Generando...' 
-                          : 'Generar ${_simulationCount} reportes aleatorios',
-                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[700],
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 40),
+                    ),
+                    child: Text(
+                      _isSimulating
+                          ? 'Generando...'
+                          : 'Generar ${_simulationCount} reportes aleatorios',
                     ),
                   ),
                 ],
@@ -280,4 +283,3 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
     );
   }
 }
-

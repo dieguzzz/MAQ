@@ -324,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'MetroPTY',
               style: TextStyle(
                 color: MetroColors.blue,
@@ -342,8 +342,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   stream: AppModeService().watchMode(user.uid),
                   builder: (context, snapshot) {
                     final mode = snapshot.data ?? AppMode.development;
-                    if (mode == AppMode.development)
+                    if (mode == AppMode.development) {
                       return const SizedBox.shrink();
+                    }
 
                     return GestureDetector(
                       onTap: () => _showModeDialog(context, mode, user.uid),
@@ -404,7 +405,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             builder: (context, metroProvider, child) {
               final currentLinea = metroProvider.selectedLinea;
               return PopupMenuButton<String>(
-                icon: Icon(Icons.tune_rounded, color: MetroColors.grayDark),
+                icon:
+                    const Icon(Icons.tune_rounded, color: MetroColors.grayDark),
                 onSelected: (String value) async {
                   HapticFeedback.selectionClick();
                   // Registrar cambio de línea para anuncios inteligentes
@@ -507,8 +509,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             },
           ),
           IconButton(
-            icon:
-                Icon(Icons.verified_user_outlined, color: MetroColors.grayDark),
+            icon: const Icon(Icons.verified_user_outlined,
+                color: MetroColors.grayDark),
             tooltip: 'Confirmar Reportes',
             onPressed: () {
               HapticFeedback.lightImpact();
@@ -521,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             },
           ),
           IconButton(
-            icon: Icon(Icons.notifications_none_rounded,
+            icon: const Icon(Icons.notifications_none_rounded,
                 color: MetroColors.grayDark),
             onPressed: () {
               HapticFeedback.lightImpact();
@@ -566,13 +568,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ],
           ),
           // Widget de estación más cercana - parte superior central
-          Positioned(
+          const Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: SafeArea(
               child: Center(
-                child: const NearestStationWidget(),
+                child: NearestStationWidget(),
               ),
             ),
           ),
@@ -638,13 +640,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   }
                                 }
 
-                                if (selectedStation == null) {
-                                  selectedStation = stations.firstWhere(
-                                    (s) =>
-                                        s.linea == 'linea1' || s.linea == 'L1',
-                                    orElse: () => stations.first,
-                                  );
-                                }
+                                selectedStation ??= stations.firstWhere(
+                                  (s) => s.linea == 'linea1' || s.linea == 'L1',
+                                  orElse: () => stations.first,
+                                );
 
                                 if (context.mounted) {
                                   showModalBottomSheet<void>(
@@ -793,7 +792,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             color: Colors.white, size: 14),
                                         const SizedBox(width: 4),
                                         Text(
-                                          '${speedKmh.toStringAsFixed(0)}',
+                                          speedKmh.toStringAsFixed(0),
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 12,

@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/station_model.dart';
 import 'station_edit_mode_service.dart';
 
 /// Servicio para gestionar la edición de posiciones de estaciones en modo test
 class StationPositionEditorService extends ChangeNotifier {
-  static final StationPositionEditorService _instance = StationPositionEditorService._internal();
+  static final StationPositionEditorService _instance =
+      StationPositionEditorService._internal();
   factory StationPositionEditorService() => _instance;
   StationPositionEditorService._internal();
 
@@ -23,7 +23,7 @@ class StationPositionEditorService extends ChangeNotifier {
   /// Actualiza la posición de una estación
   void updatePosition(String stationId, GeoPoint newPosition) {
     if (!_editModeService.isEditModeActive) return;
-    
+
     _editedPositions[stationId] = newPosition;
     _logPositionUpdate(stationId, newPosition);
     notifyListeners();
@@ -58,9 +58,10 @@ class StationPositionEditorService extends ChangeNotifier {
 
   void _logPositionUpdate(String stationId, GeoPoint position) {
     final timestamp = DateTime.now().toString().substring(11, 19);
-    final logEntry = '[$timestamp] $stationId: [${position.latitude}, ${position.longitude}]';
+    final logEntry =
+        '[$timestamp] $stationId: [${position.latitude}, ${position.longitude}]';
     _logs.add(logEntry);
-    
+
     if (_logs.length > _maxLogs) {
       _logs.removeAt(0);
     }
@@ -71,17 +72,18 @@ class StationPositionEditorService extends ChangeNotifier {
     if (_editedPositions.isEmpty) {
       return 'No hay coordenadas editadas';
     }
-    
+
     final buffer = StringBuffer();
     buffer.writeln('// Coordenadas Editadas:');
     buffer.writeln('Map<String, GeoPoint> editedPositions = {');
-    
+
     _editedPositions.forEach((stationId, position) {
-      buffer.writeln("  '$stationId': GeoPoint(${position.latitude}, ${position.longitude}),");
+      buffer.writeln(
+          "  '$stationId': GeoPoint(${position.latitude}, ${position.longitude}),");
     });
-    
+
     buffer.writeln('};');
-    
+
     return buffer.toString();
   }
 
@@ -91,4 +93,3 @@ class StationPositionEditorService extends ChangeNotifier {
     notifyListeners();
   }
 }
-

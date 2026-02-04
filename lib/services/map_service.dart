@@ -12,8 +12,8 @@ class MapService {
 
   // Límites geográficos de la Ciudad de Panamá
   static final LatLngBounds panamaCityBounds = LatLngBounds(
-    southwest: const LatLng(8.85, -79.65),  // Esquina suroeste
-    northeast: const LatLng(9.15, -79.25),   // Esquina noreste
+    southwest: const LatLng(8.85, -79.65), // Esquina suroeste
+    northeast: const LatLng(9.15, -79.25), // Esquina noreste
   );
 
   // Punto central del sistema de metro (centro aproximado de todas las estaciones)
@@ -71,15 +71,15 @@ class MapService {
   /// Calcula el punto central basado en una lista de estaciones
   static LatLng calculateCenterFromStations(List<StationModel> stations) {
     if (stations.isEmpty) return metroSystemCenter;
-    
+
     double sumLat = 0;
     double sumLng = 0;
-    
+
     for (final station in stations) {
       sumLat += station.ubicacion.latitude;
       sumLng += station.ubicacion.longitude;
     }
-    
+
     return LatLng(
       sumLat / stations.length,
       sumLng / stations.length,
@@ -95,7 +95,7 @@ class MapService {
   // Cache para los iconos de tren
   static BitmapDescriptor? _trainIconNorte;
   static BitmapDescriptor? _trainIconSur;
-  
+
   // Cache para el icono de estación
   static BitmapDescriptor? _stationIcon;
 
@@ -104,41 +104,41 @@ class MapService {
     // Usar emoji de tren 🚇
     const String emoji = '🚇';
     const double size = 60.0;
-    
+
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    
+
     // Color de fondo según la dirección
-    final Color backgroundColor = direccion == DireccionTren.norte 
-        ? Colors.blue.shade700 
+    final Color backgroundColor = direccion == DireccionTren.norte
+        ? Colors.blue.shade700
         : Colors.orange.shade700;
-    
+
     // Dibujar círculo de fondo
     final Paint backgroundPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawCircle(
-      Offset(size / 2, size / 2),
+      const Offset(size / 2, size / 2),
       size / 2 - 2,
       backgroundPaint,
     );
-    
+
     // Dibujar borde
     final Paint borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    
+
     canvas.drawCircle(
-      Offset(size / 2, size / 2),
+      const Offset(size / 2, size / 2),
       size / 2 - 2,
       borderPaint,
     );
-    
+
     // Dibujar emoji de tren
     final textPainter = TextPainter(
-      text: TextSpan(
+      text: const TextSpan(
         text: emoji,
         style: TextStyle(
           fontSize: size * 0.5,
@@ -155,12 +155,13 @@ class MapService {
         (size - textPainter.height) / 2,
       ),
     );
-    
+
     final ui.Picture picture = pictureRecorder.endRecording();
     final ui.Image image = await picture.toImage(size.toInt(), size.toInt());
-    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
     final Uint8List uint8List = byteData!.buffer.asUint8List();
-    
+
     return BitmapDescriptor.fromBytes(uint8List);
   }
 
@@ -178,7 +179,7 @@ class MapService {
       _trainIconSur ??= await _createTrainIcon(DireccionTren.sur);
       icon = _trainIconSur!;
     }
-    
+
     return Marker(
       markerId: MarkerId(train.id),
       position: LatLng(
@@ -187,7 +188,8 @@ class MapService {
       ),
       infoWindow: InfoWindow(
         title: 'Tren ${train.linea}',
-        snippet: 'Dirección: ${train.direccion == DireccionTren.norte ? "Norte" : "Sur"}',
+        snippet:
+            'Dirección: ${train.direccion == DireccionTren.norte ? "Norte" : "Sur"}',
       ),
       icon: icon,
       onTap: onTap,
@@ -216,39 +218,39 @@ class MapService {
     // Usar emoji de estación de metro 🚉
     const String emoji = '🚉';
     const double size = 50.0;
-    
+
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    
+
     // Color de fondo gris oscuro para estaciones
     final Color backgroundColor = Colors.grey.shade800;
-    
+
     // Dibujar círculo de fondo
     final Paint backgroundPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawCircle(
-      Offset(size / 2, size / 2),
+      const Offset(size / 2, size / 2),
       size / 2 - 2,
       backgroundPaint,
     );
-    
+
     // Dibujar borde blanco
     final Paint borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    
+
     canvas.drawCircle(
-      Offset(size / 2, size / 2),
+      const Offset(size / 2, size / 2),
       size / 2 - 2,
       borderPaint,
     );
-    
+
     // Dibujar emoji de estación
     final textPainter = TextPainter(
-      text: TextSpan(
+      text: const TextSpan(
         text: emoji,
         style: TextStyle(
           fontSize: size * 0.5,
@@ -265,12 +267,13 @@ class MapService {
         (size - textPainter.height) / 2,
       ),
     );
-    
+
     final ui.Picture picture = pictureRecorder.endRecording();
     final ui.Image image = await picture.toImage(size.toInt(), size.toInt());
-    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
     final Uint8List uint8List = byteData!.buffer.asUint8List();
-    
+
     return BitmapDescriptor.fromBytes(uint8List);
   }
 
@@ -284,12 +287,12 @@ class MapService {
   }) async {
     // Usar cache si está disponible
     _stationIcon ??= await _createStationIcon();
-    
+
     String snippet = 'Línea ${station.linea}';
     if (estimatedMinutes != null) {
       snippet += '\nPróximo tren: ~$estimatedMinutes min';
     }
-    
+
     return Marker(
       markerId: MarkerId('station_marker_${station.id}'),
       position: LatLng(
@@ -303,7 +306,9 @@ class MapService {
       ),
       onTap: onTap,
       draggable: draggable,
-      onDragEnd: onDragEnd != null ? (LatLng newPosition) => onDragEnd(newPosition) : null,
+      onDragEnd: onDragEnd != null
+          ? (LatLng newPosition) => onDragEnd(newPosition)
+          : null,
     );
   }
 
@@ -324,7 +329,7 @@ class MapService {
           onTap: onStationTap != null ? () => onStationTap(station) : null,
           estimatedMinutes: estimatedMinutes,
           draggable: draggable,
-          onDragEnd: onStationDragEnd != null 
+          onDragEnd: onStationDragEnd != null
               ? (LatLng newPosition) => onStationDragEnd(station, newPosition)
               : null,
         ),
@@ -430,4 +435,3 @@ class MapService {
   ]
   ''';
 }
-

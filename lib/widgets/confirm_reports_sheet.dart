@@ -70,10 +70,10 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Center(
+        child: const Center(
           child: Text(
             'Debes iniciar sesión para confirmar reportes',
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: Colors.black),
           ),
         ),
       );
@@ -248,8 +248,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     filteredReports.where((r) => r.isSpecificIssue).toList();
 
                 // Ordenar ambas listas por más recientes primero
-                final sortByConfidenceAndDate =
-                    (SimplifiedReportModel a, SimplifiedReportModel b) {
+                int sortByConfidenceAndDate(
+                    SimplifiedReportModel a, SimplifiedReportModel b) {
                   // 1. Por confianza (descendente)
                   final aConf = a.confidence ?? 0.0;
                   final bConf = b.confidence ?? 0.0;
@@ -262,7 +262,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
 
                   // 3. Por confirmaciones (más confirmaciones primero)
                   return b.confirmations.compareTo(a.confirmations);
-                };
+                }
 
                 generalReports.sort(sortByConfidenceAndDate);
                 specificIssueReports.sort(sortByConfidenceAndDate);
@@ -325,7 +325,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
+                    const Text(
                       'Desliza para ver más reportes 👈',
                       style: TextStyle(
                         color: MetroColors.grayMedium,
@@ -377,7 +377,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   ? 'No hay reportes pendientes para confirmar en este momento.'
                   : 'No hay nuevos reportes de ${_selectedReportType == 'station' ? 'estaciones' : 'trenes'}.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: MetroColors.grayMedium,
                 height: 1.5,
               ),
@@ -505,7 +505,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           (report.scope == 'station'
                                   ? MetroColors.blue
                                   : MetroColors.green)
-                              .withOpacity(0.03),
+                              .withValues(alpha: 0.03),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -514,7 +514,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           color: (report.scope == 'station'
                                   ? MetroColors.blue
                                   : MetroColors.green)
-                              .withOpacity(0.1),
+                              .withValues(alpha: 0.1),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -545,12 +545,12 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                             ? [
                                                 MetroColors.blue,
                                                 MetroColors.blue
-                                                    .withOpacity(0.7)
+                                                    .withValues(alpha: 0.7)
                                               ]
                                             : [
                                                 MetroColors.green,
                                                 MetroColors.green
-                                                    .withOpacity(0.7)
+                                                    .withValues(alpha: 0.7)
                                               ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
@@ -561,7 +561,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                           color: (report.scope == 'station'
                                                   ? MetroColors.blue
                                                   : MetroColors.green)
-                                              .withOpacity(0.3),
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -601,7 +601,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                             color: (report.scope == 'station'
                                                     ? MetroColors.blue
                                                     : MetroColors.green)
-                                                .withOpacity(0.1),
+                                                .withValues(alpha: 0.1),
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),
@@ -647,7 +647,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: MetroColors.green
-                                                      .withOpacity(0.4),
+                                                      .withValues(alpha: 0.4),
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 4),
                                                 ),
@@ -663,13 +663,12 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                                 },
                                                 borderRadius:
                                                     BorderRadius.circular(12),
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
+                                                child: const Padding(
+                                                  padding: EdgeInsets.symmetric(
                                                     horizontal: 16,
                                                     vertical: 10,
                                                   ),
-                                                  child: const Row(
+                                                  child: Row(
                                                     mainAxisSize:
                                                         MainAxisSize.min,
                                                     children: [
@@ -936,7 +935,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     const SizedBox(width: 8),
                                     Text(
                                       '${report.confirmations} confirmaciones',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black,
                                         fontWeight: FontWeight.w600,
@@ -958,7 +957,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     const SizedBox(width: 8),
                                     Text(
                                       _formatDate(report.createdAt),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black,
                                         fontWeight: FontWeight.w500,
@@ -1165,7 +1164,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
                   color: Colors.black,
                   fontWeight: FontWeight.w500,
@@ -1325,7 +1324,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           report.scope == 'station'
                               ? 'Reporte de Estación'
                               : 'Reporte de Tren',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
                           ),

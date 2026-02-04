@@ -37,7 +37,8 @@ class _RouteResultsState extends State<RouteResults> {
   }
 
   void _calculateRouteStations() {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
     setState(() {
       _routeStations = RouteCalculationService.calculateRoute(
         widget.origen,
@@ -111,17 +112,21 @@ class _RouteResultsState extends State<RouteResults> {
                     widget.origen,
                     isFirst: true,
                   ),
-                  
+
                   // Transbordo (si aplica)
                   if (tieneTransbordo && _routeStations != null) ...[
                     const SizedBox(height: 12),
                     _buildTransferStep(),
                     const SizedBox(height: 12),
                   ],
-                  
+
                   // Estaciones intermedias
                   if (_routeStations != null && _routeStations!.length > 2) ...[
-                    ..._routeStations!.sublist(1, _routeStations!.length - 1).asMap().entries.map((entry) {
+                    ..._routeStations!
+                        .sublist(1, _routeStations!.length - 1)
+                        .asMap()
+                        .entries
+                        .map((entry) {
                       return _buildStationStep(
                         'Estación ${entry.key + 1}',
                         entry.value,
@@ -130,7 +135,7 @@ class _RouteResultsState extends State<RouteResults> {
                     }),
                     const SizedBox(height: 12),
                   ],
-                  
+
                   // Destino
                   _buildStationStep(
                     'Destino',
@@ -141,7 +146,7 @@ class _RouteResultsState extends State<RouteResults> {
               ),
             ),
           ),
-          
+
           // Columna derecha: Estado, Líneas y Mapa
           Expanded(
             child: Column(
@@ -163,7 +168,8 @@ class _RouteResultsState extends State<RouteResults> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(estadoIcon, color: estadoColor, size: 32),
+                                    Icon(estadoIcon,
+                                        color: estadoColor, size: 32),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
@@ -215,10 +221,11 @@ class _RouteResultsState extends State<RouteResults> {
                                           vertical: 6,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: linea == 'linea1' 
-                                            ? Colors.blue[100] 
-                                            : Colors.orange[100],
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: linea == 'linea1'
+                                              ? Colors.blue[100]
+                                              : Colors.orange[100],
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -226,17 +233,19 @@ class _RouteResultsState extends State<RouteResults> {
                                             Icon(
                                               Icons.train,
                                               size: 14,
-                                              color: linea == 'linea1' 
-                                                ? Colors.blue[700] 
-                                                : Colors.orange[700],
+                                              color: linea == 'linea1'
+                                                  ? Colors.blue[700]
+                                                  : Colors.orange[700],
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
-                                              linea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                                              linea == 'linea1'
+                                                  ? 'Línea 1'
+                                                  : 'Línea 2',
                                               style: TextStyle(
-                                                color: linea == 'linea1' 
-                                                  ? Colors.blue[700] 
-                                                  : Colors.orange[700],
+                                                color: linea == 'linea1'
+                                                    ? Colors.blue[700]
+                                                    : Colors.orange[700],
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 11,
                                               ),
@@ -263,7 +272,7 @@ class _RouteResultsState extends State<RouteResults> {
                     ],
                   ),
                 ),
-                
+
                 // Mapa (expandido, más grande)
                 Expanded(
                   child: Consumer<MetroDataProvider>(
@@ -271,7 +280,7 @@ class _RouteResultsState extends State<RouteResults> {
                       if (_showCustomMap) {
                         return CustomMetroMap(
                           stations: metroProvider.stations,
-                          trains: [], // No mostrar trenes en el mapa de rutas
+                          trains: const [], // No mostrar trenes en el mapa de rutas
                           highlightedRoute: _routeStations,
                           onStationTap: (station) {
                             // Mostrar detalles de estación
@@ -306,7 +315,7 @@ class _RouteResultsState extends State<RouteResults> {
 
   StationModel? _findTransferStation() {
     if (_routeStations == null) return null;
-    
+
     // Buscar San Miguelito en la ruta
     for (var station in _routeStations!) {
       if (station.nombre.toLowerCase().contains('san miguelito')) {
@@ -323,10 +332,9 @@ class _RouteResultsState extends State<RouteResults> {
     bool isLast = false,
     bool showLine = false,
   }) {
-    final lineColor = station.linea == 'linea1' 
-      ? Colors.blue[700]! 
-      : Colors.orange[700]!;
-    
+    final lineColor =
+        station.linea == 'linea1' ? Colors.blue[700]! : Colors.orange[700]!;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -342,7 +350,11 @@ class _RouteResultsState extends State<RouteResults> {
               ),
               child: Center(
                 child: Text(
-                  isFirst ? 'O' : isLast ? 'D' : '•',
+                  isFirst
+                      ? 'O'
+                      : isLast
+                          ? 'D'
+                          : '•',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -394,7 +406,7 @@ class _RouteResultsState extends State<RouteResults> {
   Widget _buildTransferStep() {
     final transferStation = _findTransferStation();
     final stationName = transferStation?.nombre ?? 'San Miguelito';
-    
+
     return Card(
       color: Colors.amber[50],
       child: Padding(

@@ -495,16 +495,21 @@ class _CombinedEtaService {
     if (directionStr == null) return null;
     final d = directionStr.toLowerCase();
     if (line == 'L1') {
-      if (d.contains('albrook') || d.contains('sur') || d == 's')
+      if (d.contains('albrook') || d.contains('sur') || d == 's') {
         return DirectionKey.toAlbrook;
+      }
       if (d.contains('san isidro') ||
           d.contains('villazaita') ||
-          d.contains('norte')) return DirectionKey.toSanIsidro;
+          d.contains('norte')) {
+        return DirectionKey.toSanIsidro;
+      }
     } else {
-      if (d.contains('tocumen') || d.contains('este') || d == 'e')
+      if (d.contains('tocumen') || d.contains('este') || d == 'e') {
         return DirectionKey.toNuevoTocumen;
-      if (d.contains('san miguelito') || d.contains('oeste') || d == 'o')
+      }
+      if (d.contains('san miguelito') || d.contains('oeste') || d == 'o') {
         return DirectionKey.toSanMiguelito;
+      }
     }
     return null;
   }
@@ -795,7 +800,7 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
               decoration: BoxDecoration(
                 color: hasRecentArrivals
                     ? MetroColors.blue
-                        .withOpacity(0.05 + (_pulseAnimation.value * 0.1))
+                        .withValues(alpha: 0.05 + (_pulseAnimation.value * 0.1))
                     : MetroColors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
@@ -812,7 +817,7 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                     ? [
                         BoxShadow(
                           color: MetroColors.blue
-                              .withOpacity(0.3 * _pulseAnimation.value),
+                              .withValues(alpha: 0.3 * _pulseAnimation.value),
                           blurRadius: 8 + (_pulseAnimation.value * 8),
                           spreadRadius: _pulseAnimation.value * 2,
                         ),
@@ -844,8 +849,9 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                             boxShadow: hasRecentArrivals
                                 ? [
                                     BoxShadow(
-                                      color: MetroColors.blue.withOpacity(
-                                          0.6 * _starGlowAnimation.value),
+                                      color: MetroColors.blue.withValues(
+                                          alpha:
+                                              0.6 * _starGlowAnimation.value),
                                       blurRadius:
                                           12 + (_starGlowAnimation.value * 12),
                                       spreadRadius:
@@ -1651,7 +1657,7 @@ class _EtaLiveGroupBoxState extends State<_EtaLiveGroupBox> {
           label: 'Próximo',
           minutes: nextMidpointMin,
           confidence:
-              _confidenceEmoji(group.confidence) + ' ${group.reportCount}',
+              '${_confidenceEmoji(group.confidence)} ${group.reportCount}',
           baseTime: baseTime,
           expiresAt: expiresAt,
           expectedAt: nextExpectedAt,

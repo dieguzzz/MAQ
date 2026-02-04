@@ -30,7 +30,7 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
   @override
   void initState() {
     super.initState();
-    
+
     // Controlador de animación para el parpadeo
     _blinkController = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -54,7 +54,7 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
 
   void _listenToArrivals() {
     final firestore = FirebaseFirestore.instance;
-    
+
     _subscription = firestore
         .collection('reports')
         .where('stationId', isEqualTo: widget.station.id)
@@ -69,7 +69,7 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
         final data = doc.data();
         if (data['arrivalTime'] != null) {
           final arrivalTime = (data['arrivalTime'] as Timestamp).toDate();
-          if (mostRecentArrival == null || 
+          if (mostRecentArrival == null ||
               arrivalTime.isAfter(mostRecentArrival)) {
             mostRecentArrival = arrivalTime;
           }
@@ -81,9 +81,9 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
         final difference = now.difference(mostRecentArrival);
 
         // Si el reporte es de los últimos 10 segundos y es diferente al anterior
-        if (difference.inSeconds <= 10 && 
-            (_lastArrivalTime == null || 
-             mostRecentArrival.isAfter(_lastArrivalTime!))) {
+        if (difference.inSeconds <= 10 &&
+            (_lastArrivalTime == null ||
+                mostRecentArrival.isAfter(_lastArrivalTime!))) {
           _lastArrivalTime = mostRecentArrival;
           _startBlinking();
         }
@@ -118,7 +118,7 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
   @override
   Widget build(BuildContext context) {
     final isBlinking = _blinkController.isAnimating;
-    
+
     return AnimatedBuilder(
       animation: _blinkAnimation,
       builder: (context, child) {
@@ -126,24 +126,27 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
         final opacity = isBlinking ? _blinkAnimation.value : 1.0;
         final borderOpacity = isBlinking ? _blinkAnimation.value : 0.5;
         final shadowOpacity = isBlinking ? _blinkAnimation.value : 0.3;
-        
+
         return Container(
           width: widget.size,
           height: widget.size,
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.2 * opacity),
+            color: Colors.green.withValues(alpha: 0.2 * opacity),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.green.withOpacity(borderOpacity),
+              color: Colors.green.withValues(alpha: borderOpacity),
               width: isBlinking ? 3 : 2,
             ),
-            boxShadow: isBlinking ? [
-              BoxShadow(
-                color: Colors.green.withOpacity(0.5 * shadowOpacity),
-                blurRadius: 15 * shadowOpacity,
-                spreadRadius: 3 * shadowOpacity,
-              ),
-            ] : [],
+            boxShadow: isBlinking
+                ? [
+                    BoxShadow(
+                      color:
+                          Colors.green.withValues(alpha: 0.5 * shadowOpacity),
+                      blurRadius: 15 * shadowOpacity,
+                      spreadRadius: 3 * shadowOpacity,
+                    ),
+                  ]
+                : [],
           ),
           child: Center(
             child: Image.asset(
@@ -158,4 +161,3 @@ class _TrainArrivalIndicatorState extends State<TrainArrivalIndicator>
     );
   }
 }
-

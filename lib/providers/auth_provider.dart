@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
@@ -20,7 +21,7 @@ class AuthProvider with ChangeNotifier {
     _ensureStreamInitialized();
     return _currentUser;
   }
-  
+
   bool get isLoading => _isLoading;
   bool get isAuthenticated {
     _ensureStreamInitialized();
@@ -35,7 +36,10 @@ class AuthProvider with ChangeNotifier {
   void ensureStreamInitialized() {
     if (_streamInitialized) return;
     _streamInitialized = true;
-    _init();
+    // Defer initialization to avoid calling notifyListeners during build
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _init();
+    });
   }
 
   // Método privado para uso interno
@@ -48,12 +52,12 @@ class AuthProvider with ChangeNotifier {
       if (currentUser != null) {
         _startListeningToUser(currentUser.uid);
       }
-      
+
       // Luego escuchar cambios de autenticación
       _firebaseService.getAuthStateChanges().listen((User? user) async {
         // Cancelar suscripción anterior si existe
         await _userStreamSubscription?.cancel();
-        
+
         if (user != null) {
           _startListeningToUser(user.uid);
         } else {
@@ -142,7 +146,6 @@ class AuthProvider with ChangeNotifier {
     _startListeningToUser(uid);
   }
 
-
   UserModel _buildUserModelFromFirebaseUser(User firebaseUser) {
     final displayName = firebaseUser.displayName?.trim();
     final guestSuffixLength = math.min(firebaseUser.uid.length, 5);
@@ -176,8 +179,8 @@ class AuthProvider with ChangeNotifier {
         throw Exception('La contraseña es requerida');
       }
 
-      final userCredential = await _firebaseService.signInWithEmailAndPassword(
-          email, password);
+      final userCredential =
+          await _firebaseService.signInWithEmailAndPassword(email, password);
       loadUser(userCredential.user!.uid);
       // El stream se encargará de actualizar _isLoading y _currentUser automáticamente
       return null; // Éxito
@@ -207,9 +210,9 @@ class AuthProvider with ChangeNotifier {
         throw Exception('El nombre es requerido');
       }
 
-      final userCredential =
-          await _firebaseService.createUserWithEmailAndPassword(email, password);
-      
+      final userCredential = await _firebaseService
+          .createUserWithEmailAndPassword(email, password);
+
       final newUser = UserModel(
         uid: userCredential.user!.uid,
         email: email,
@@ -288,13 +291,13 @@ class AuthProvider with ChangeNotifier {
   /// Retorna true si la eliminación fue exitosa
   Future<bool> deleteAccount() async {
     if (_currentUser == null) return false;
-    
+
     _isLoading = true;
     notifyListeners();
 
     try {
       final userId = _currentUser!.uid;
-      
+
       // 1. Eliminar imagen de perfil de Storage si existe
       if (_currentUser!.fotoUrl != null) {
         try {
@@ -351,11 +354,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final updateData = <String, dynamic>{};
-      
+
       if (nombre != null && nombre.trim().isNotEmpty) {
         updateData['nombre'] = nombre.trim();
       }
-      
+
       if (fotoUrl != null) {
         updateData['foto_url'] = fotoUrl;
       }
@@ -365,10 +368,10 @@ class AuthProvider with ChangeNotifier {
       }
 
       await _firebaseService.updateUser(_currentUser!.uid, updateData);
-      
+
       // No necesitamos actualizar _currentUser manualmente
       // El stream se encargará de actualizarlo automáticamente
-      
+
       return true;
     } catch (e) {
       print('Error updating profile: $e');
@@ -383,4 +386,3 @@ class AuthProvider with ChangeNotifier {
     super.dispose();
   }
 }
-

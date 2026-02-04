@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firebase_service.dart';
-import '../models/report_model.dart';
 import '../models/simplified_report_model.dart';
 
 class AccuracyService {
@@ -93,4 +92,3 @@ class AccuracyService {
     await updateUserAccuracy(userId);
   }
 }
-

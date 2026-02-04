@@ -166,7 +166,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
                       ),
                       child: Text(
                         'Paso ${_currentPage + 1}/3',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: MetroColors.blue,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
@@ -362,7 +362,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
                       ),
                       Text(
                         direction,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: MetroColors.grayDark,
@@ -643,7 +643,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           color: MetroColors.grayMedium,
           fontWeight: FontWeight.w800,
           fontSize: 16,
@@ -755,7 +755,7 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
         setState(() => _isSubmitting = false);
 
         // Mostrar animación de puntos
-        final basePoints = 10;
+        const basePoints = 10;
         final followingBonus = _followingTrainMinutes != null ? 5 : 0;
         final totalPoints = basePoints + followingBonus;
 

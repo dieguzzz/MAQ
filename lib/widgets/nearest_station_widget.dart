@@ -9,7 +9,6 @@ import '../theme/metro_theme.dart';
 import '../widgets/station_report_sheet.dart';
 import '../services/eta_group_service.dart';
 import '../models/eta_group_model.dart';
-import '../models/simplified_report_model.dart';
 
 class NearestStationWidget extends StatefulWidget {
   const NearestStationWidget({super.key});
@@ -385,7 +384,7 @@ class _MiniEtaCountdown extends StatefulWidget {
 
 class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
   Timer? _timer;
-  static const int NO_FOLLOW_GRACE_SECONDS = 30;
+  static const int noFollowGraceSeconds = 30;
 
   @override
   void initState() {
@@ -405,8 +404,17 @@ class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
 
+    final expiredText = Text(
+      '⏱️ Sin datos recientes',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: MetroColors.grayMedium,
+            fontStyle: FontStyle.italic,
+          ),
+    );
+
     if (now.isAfter(widget.expiresAt)) {
-      return const SizedBox.shrink();
+      return expiredText;
     }
 
     // Calcular tiempos restantes
@@ -420,11 +428,11 @@ class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
 
     // No follow expired: cuando primaryRem <= -30s y no hay secondary válido
     final noFollowExpired =
-        (primaryRem <= -NO_FOLLOW_GRACE_SECONDS && secondaryRem <= 0);
+        (primaryRem <= -noFollowGraceSeconds && secondaryRem <= 0);
 
-    // Si no hay following y ya expiró la gracia, ocultar
+    // Si no hay following y ya expiró la gracia, mostrar mensaje
     if (noFollowExpired) {
-      return const SizedBox.shrink();
+      return expiredText;
     }
 
     final effectiveExpectedAt =
@@ -480,224 +488,4 @@ class _MiniEtaCountdownState extends State<_MiniEtaCountdown> {
       ),
     );
   }
-}
-
-/// Helper para procesar reportes de llegada del metro con agrupación por minuto
-class _TrainArrivalAggregator {
-  static const int activeWindowMin = 5; // Ventana activa
-  static const int staleWindowMin = 10; // Ventana de fallback
-
-  /// Trunca un DateTime al minuto más cercano
-  static DateTime bucketToMinute(DateTime time) {
-    return DateTime(
-      time.year,
-      time.month,
-      time.day,
-      time.hour,
-      time.minute,
-    );
-  }
-
-  /// Calcula la moda (valor más común) de una lista
-  static int? mode(List<int> values) {
-    if (values.isEmpty) return null;
-
-    final counts = <int, int>{};
-    for (final value in values) {
-      counts[value] = (counts[value] ?? 0) + 1;
-    }
-
-    int? mostCommon;
-    int maxCount = 0;
-    for (final entry in counts.entries) {
-      if (entry.value > maxCount) {
-        maxCount = entry.value;
-        mostCommon = entry.key;
-      }
-    }
-
-    return mostCommon;
-  }
-
-  /// Calcula la moda de strings (para etaBucket)
-  static String? modeString(List<String> values) {
-    if (values.isEmpty) return null;
-
-    final counts = <String, int>{};
-    for (final value in values) {
-      if (value.isNotEmpty && value != 'unknown') {
-        counts[value] = (counts[value] ?? 0) + 1;
-      }
-    }
-
-    if (counts.isEmpty) return null;
-
-    String? mostCommon;
-    int maxCount = 0;
-    for (final entry in counts.entries) {
-      if (entry.value > maxCount) {
-        maxCount = entry.value;
-        mostCommon = entry.key;
-      }
-    }
-
-    return mostCommon;
-  }
-
-  /// Convierte etaBucket a minutos
-  static int? bucketToMinutes(String? etaBucket) {
-    if (etaBucket == null || etaBucket.isEmpty || etaBucket == 'unknown') {
-      return null;
-    }
-
-    switch (etaBucket) {
-      case '1-2':
-        return 2; // 1.5 redondeado a 2
-      case '3-5':
-        return 4; // punto medio
-      case '6-8':
-        return 7; // punto medio
-      case '9+':
-        return 10; // mínimo razonable
-      default:
-        return null;
-    }
-  }
-
-  /// Calcula el nivel de confianza basado en conteo y frescura
-  static String calculateConfidence(int count, int ageMin) {
-    if (count >= 3 && ageMin <= 2) {
-      return 'Alta';
-    } else if (count >= 2 || (ageMin >= 3 && ageMin <= 5)) {
-      return 'Media';
-    } else {
-      return 'Baja';
-    }
-  }
-
-  /// Procesa reportes y retorna información agregada
-  static _AggregatedArrivalData? processReports(
-    List<SimplifiedReportModel> reports,
-    String stationId,
-  ) {
-    final now = DateTime.now();
-
-    // 1) Filtrar reportes de tren de esta estación
-    final trainReports = reports
-        .where((r) => r.stationId == stationId && r.scope == 'train')
-        .toList();
-
-    if (trainReports.isEmpty) return null;
-
-    // 2) Separar en dos grupos:
-    //    - Reportes con arrivalTime (llegadas confirmadas)
-    //    - Reportes con etaBucket sin arrivalTime (ETAs futuros)
-    final arrivalReports =
-        trainReports.where((r) => r.arrivalTime != null).toList();
-
-    final futureEtaReports = trainReports
-        .where((r) =>
-            r.arrivalTime == null &&
-            r.etaBucket != null &&
-            r.etaBucket!.isNotEmpty &&
-            r.etaBucket != 'unknown' &&
-            // Validar que el ETA no haya expirado
-            (r.etaExpectedAt == null ||
-                now.isBefore(r.etaExpectedAt!.add(const Duration(minutes: 5)))))
-        .toList();
-
-    // 3) Procesar reportes de llegadas confirmadas (arrivalTime)
-    _AggregatedArrivalData? arrivalData;
-    if (arrivalReports.isNotEmpty) {
-      // Agrupar por minuto (bucket)
-      final buckets = <DateTime, List<SimplifiedReportModel>>{};
-      for (final report in arrivalReports) {
-        final bucket = bucketToMinute(report.arrivalTime!);
-        buckets.putIfAbsent(bucket, () => []).add(report);
-      }
-
-      if (buckets.isNotEmpty) {
-        final latestBucket = buckets.keys.reduce(
-          (a, b) => a.isAfter(b) ? a : b,
-        );
-        final bucketReports = buckets[latestBucket]!;
-        final ageMin = now.difference(latestBucket).inMinutes;
-
-        // Si el bucket está dentro de la ventana activa (5 min)
-        if (ageMin <= activeWindowMin) {
-          final count = bucketReports.length;
-          final confidence = calculateConfidence(count, ageMin);
-
-          arrivalData = _AggregatedArrivalData(
-            count: count,
-            ageMin: ageMin,
-            confidence: confidence,
-            isActive: true,
-            latestArrivalTime: latestBucket,
-          );
-        } else {
-          // Fallback: reporte más reciente si está dentro de 10 min
-          final mostRecent = arrivalReports.reduce(
-            (a, b) => a.arrivalTime!.isAfter(b.arrivalTime!) ? a : b,
-          );
-
-          final fallbackAge = now.difference(mostRecent.arrivalTime!).inMinutes;
-
-          if (fallbackAge <= staleWindowMin) {
-            arrivalData = _AggregatedArrivalData(
-              count: 1,
-              ageMin: fallbackAge,
-              confidence: 'Baja',
-              isActive: false,
-              latestArrivalTime: mostRecent.arrivalTime!,
-            );
-          }
-        }
-      }
-    }
-
-    // 4) Procesar reportes de ETAs futuros (etaBucket sin arrivalTime)
-    if (futureEtaReports.isNotEmpty &&
-        (arrivalData == null || !arrivalData.isActive)) {
-      // Si no hay llegadas recientes pero hay ETAs futuros, considerar activos
-      final confidence = calculateConfidence(futureEtaReports.length, 0);
-
-      return _AggregatedArrivalData(
-        count: futureEtaReports.length,
-        ageMin: 0,
-        confidence: confidence,
-        isActive: true, // Activos porque son predicciones futuras
-        latestArrivalTime: now,
-      );
-    }
-
-    // 5) Retornar datos de llegadas si existen
-    if (arrivalData != null) {
-      return arrivalData;
-    }
-
-    // 6) Sin datos recientes
-    return null;
-  }
-}
-
-/// Datos agregados de llegadas del metro
-class _AggregatedArrivalData {
-  final int count;
-  final int ageMin;
-  final String confidence;
-  final bool isActive; // true si está en ventana activa, false si es fallback
-  final DateTime latestArrivalTime;
-  final int? reportedMinutes; // Tiempo en minutos basado en moda de etaBucket
-  final String? reportedEtaBucket; // El bucket más común
-
-  _AggregatedArrivalData({
-    required this.count,
-    required this.ageMin,
-    required this.confidence,
-    required this.isActive,
-    required this.latestArrivalTime,
-    this.reportedMinutes,
-    this.reportedEtaBucket,
-  });
 }

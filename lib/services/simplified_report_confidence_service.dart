@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/simplified_report_model.dart';
-import '../models/user_model.dart';
-import '../models/station_model.dart';
 import 'firebase_service.dart';
 
 /// Resultado del cálculo de confianza con razones explicables
@@ -26,7 +24,8 @@ class SimplifiedReportConfidenceService {
 
   /// Calcula la confianza de un reporte con fórmula mejorada
   /// Retorna ConfidenceResult con confidence (0.0-1.0) y reasons explicables
-  Future<ConfidenceResult> calculateConfidence(SimplifiedReportModel report) async {
+  Future<ConfidenceResult> calculateConfidence(
+      SimplifiedReportModel report) async {
     double confidence = 0.0;
     List<String> reasons = [];
 
@@ -102,7 +101,8 @@ class SimplifiedReportConfidenceService {
   /// Actualiza la confianza de un reporte en Firestore
   Future<void> updateReportConfidence(String reportId) async {
     try {
-      final reportDoc = await _firestore.collection('reports').doc(reportId).get();
+      final reportDoc =
+          await _firestore.collection('reports').doc(reportId).get();
       if (!reportDoc.exists) {
         print('Reporte no encontrado: $reportId');
         return;
@@ -116,7 +116,8 @@ class SimplifiedReportConfidenceService {
         'confidenceReasons': result.reasons,
       });
 
-      print('✅ Confianza actualizada para reporte $reportId: ${result.confidence.toStringAsFixed(2)} (${result.reasons.join(", ")})');
+      print(
+          '✅ Confianza actualizada para reporte $reportId: ${result.confidence.toStringAsFixed(2)} (${result.reasons.join(", ")})');
     } catch (e) {
       print('Error actualizando confianza del reporte $reportId: $e');
     }
@@ -173,7 +174,8 @@ class SimplifiedReportConfidenceService {
 
     try {
       // Obtener estación
-      final stationDoc = await _firestore.collection('stations').doc(report.stationId).get();
+      final stationDoc =
+          await _firestore.collection('stations').doc(report.stationId).get();
       if (!stationDoc.exists) {
         return false;
       }
@@ -199,6 +201,52 @@ class SimplifiedReportConfidenceService {
       // En caso de error, confiar en el flag
       return true;
     }
+  }
+
+  /// Calcula confianza agregada para una lista de reportes.
+  ///
+  /// Usado por StationStatusAggregator y TrainStatusAggregator como
+  /// fuente única de verdad para confianza de datos agregados.
+  ///
+  /// Componentes (máx 1.0):
+  /// - Cantidad de reportes (0-0.4): más reportes = más confianza
+  /// - Confirmaciones totales (0-0.3): curva no-lineal por total
+  /// - Frescura promedio (0-0.3): reportes recientes pesan más
+  static double calculateAggregatedConfidence(
+      List<SimplifiedReportModel> reports) {
+    if (reports.isEmpty) return 0.0;
+
+    // 1. Cantidad de reportes (máximo 0.4)
+    final reportCountScore = (reports.length / 10.0).clamp(0.0, 0.4);
+
+    // 2. Confirmaciones totales (máximo 0.3) - curva no-lineal
+    final totalConfirmations = reports.fold<int>(
+      0,
+      (total, r) => total + r.confirmations,
+    );
+    double confirmationScore;
+    if (totalConfirmations == 0) {
+      confirmationScore = 0.0;
+    } else if (totalConfirmations <= 2) {
+      confirmationScore = 0.10;
+    } else if (totalConfirmations <= 5) {
+      confirmationScore = 0.20;
+    } else {
+      confirmationScore = 0.30;
+    }
+
+    // 3. Frescura promedio (máximo 0.3)
+    final now = DateTime.now();
+    double recencyScore = 0.0;
+    for (final report in reports) {
+      final ageMinutes = now.difference(report.createdAt).inMinutes;
+      final weight = (30 - ageMinutes.clamp(0, 30)) / 30.0;
+      recencyScore += weight;
+    }
+    recencyScore = (recencyScore / reports.length).clamp(0.0, 0.3);
+
+    return (reportCountScore + confirmationScore + recencyScore)
+        .clamp(0.0, 1.0);
   }
 
   /// Obtiene el nivel de confianza como texto legible
@@ -241,4 +289,3 @@ class SimplifiedReportConfidenceService {
     return explanations.join(' + ');
   }
 }
-

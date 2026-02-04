@@ -166,11 +166,17 @@
       modalBody.innerHTML = html;
     } catch (error) {
       console.error('Error loading report details:', error);
-      modalBody.innerHTML = `<div class="loading" style="color: #dc3545;">Error al cargar detalles: ${error.message}</div>`;
     }
   }
 
+  function closeReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (modal) modal.classList.remove('active');
+  }
+
   window.showReportDetails = showReportDetails;
+  window.closeReportModal = closeReportModal;
 })();
+
 
 

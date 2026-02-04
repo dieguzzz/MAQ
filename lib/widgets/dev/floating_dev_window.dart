@@ -17,8 +17,8 @@ class FloatingDevWindow extends StatefulWidget {
 
 class _FloatingDevWindowState extends State<FloatingDevWindow> {
   Offset _position = const Offset(50, 50);
-  double _width = 300;
-  double _height = 400;
+  final double _width = 300;
+  final double _height = 400;
   bool _isMinimized = false;
   bool _isDragging = false;
 
@@ -63,7 +63,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
       // Mantener dentro de los límites de la pantalla
       final screenWidth = MediaQuery.of(context).size.width;
       final screenHeight = MediaQuery.of(context).size.height;
-      
+
       _position = Offset(
         _position.dx.clamp(0.0, screenWidth - (_isMinimized ? 60 : _width)),
         _position.dy.clamp(0.0, screenHeight - (_isMinimized ? 60 : _height)),
@@ -118,7 +118,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 10,
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                     ),
                   ],
                 ),
@@ -143,13 +143,13 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
               width: _width,
               height: _height,
               decoration: BoxDecoration(
-                color: Colors.grey[900]!.withOpacity(0.95),
+                color: Colors.grey[900]!.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.blue, width: 2),
                 boxShadow: [
                   BoxShadow(
                     blurRadius: 20,
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                   ),
                 ],
               ),
@@ -157,14 +157,14 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                 children: [
                   // Header con controles
                   _buildHeader(),
-                  
+
                   // Contenido con tabs
-                  Expanded(
+                  const Expanded(
                     child: DefaultTabController(
                       length: 5,
                       child: Column(
                         children: [
-                          const TabBar(
+                          TabBar(
                             isScrollable: true,
                             tabs: [
                               Tab(
@@ -192,11 +192,11 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
                           Expanded(
                             child: TabBarView(
                               children: [
-                                const DevSimulationTab(),
-                                const DevMetricsTab(),
-                                const DevSettingsTab(),
-                                const DevStationsTab(),
-                                const DevLogsTab(),
+                                DevSimulationTab(),
+                                DevMetricsTab(),
+                                DevSettingsTab(),
+                                DevStationsTab(),
+                                DevLogsTab(),
                               ],
                             ),
                           ),
@@ -266,4 +266,3 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
     );
   }
 }
-
