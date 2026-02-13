@@ -183,10 +183,10 @@
       "bases:Create new base": false
     }
   },
-  "active": "c3325851d8d5aa3b",
+  "active": "10c760e27d79e5df",
   "lastOpenFiles": [
-    "firebase/cloud-functions.md",
     "firebase/_MOC.md",
+    "firebase/cloud-functions.md",
     "decisions/_MOC.md"
   ]
 }
