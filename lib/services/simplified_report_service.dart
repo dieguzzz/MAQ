@@ -7,6 +7,7 @@ import '../models/simplified_report_model.dart';
 import 'gamification_service.dart';
 import 'simplified_report_confidence_service.dart';
 import 'debug_log_service.dart';
+import 'firebase_service.dart';
 
 /// Servicio simplificado para reportes según nuevo diseño
 class SimplifiedReportService {
@@ -75,8 +76,61 @@ class SimplifiedReportService {
     return docRef.id;
   }
 
+  /// Busca un reporte de estación similar activo (mismo estado y nivel)
+  /// Retorna el reporte si existe y no es del mismo usuario
+  Future<SimplifiedReportModel?> _findSimilarStationReport({
+    required String stationId,
+    required String operational,
+    required int crowdLevel,
+    required String userId,
+  }) async {
+    try {
+      final tenMinutesAgo = DateTime.now().subtract(const Duration(minutes: 10));
+
+      // Buscar reportes activos de la misma estación
+      final snapshot = await _firestore
+          .collection('reports')
+          .where('stationId', isEqualTo: stationId)
+          .where('scope', isEqualTo: 'station')
+          .where('status', isEqualTo: 'active')
+          .where('isSpecificIssue', isEqualTo: false)
+          .get();
+
+      // Filtrar en memoria: mismo estado operacional, similar nivel, no del mismo usuario, reciente
+      for (final doc in snapshot.docs) {
+        try {
+          final report = SimplifiedReportModel.fromFirestore(doc);
+
+          // No es del mismo usuario
+          if (report.userId == userId) continue;
+
+          // Es reciente (< 10 min)
+          if (report.createdAt.isBefore(tenMinutesAgo)) continue;
+
+          // Mismo estado operacional
+          if (report.stationOperational != operational) continue;
+
+          // Similar nivel de aglomeración (diferencia de max 1)
+          final crowdDiff = ((report.stationCrowd ?? 3) - crowdLevel).abs();
+          if (crowdDiff > 1) continue;
+
+          // Encontramos un reporte similar
+          return report;
+        } catch (e) {
+          print('Error parsing report ${doc.id}: $e');
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error finding similar report: $e');
+      return null;
+    }
+  }
+
   /// Crear reporte de estación con problemas específicos (nuevo sistema detallado)
-  /// Retorna lista de IDs de reportes creados: [generalReportId, issue1Id, issue2Id, ...]
+  /// Si existe un reporte similar activo, confirma ese reporte en lugar de crear uno nuevo
+  /// Retorna lista de IDs de reportes: [generalReportId, issue1Id, issue2Id, ...]
   Future<List<String>> createStationReportWithIssues({
     required String stationId,
     required String operational,
@@ -89,8 +143,69 @@ class SimplifiedReportService {
 
     final reportIds = <String>[];
     final now = DateTime.now();
+    final firebaseService = FirebaseService();
+    final gamificationService = GamificationService();
 
-    // 1. Crear reporte general (siempre se crea)
+    // Buscar si existe un reporte similar activo para confirmar
+    final similarReport = await _findSimilarStationReport(
+      stationId: stationId,
+      operational: operational,
+      crowdLevel: crowdLevel,
+      userId: userId,
+    );
+
+    if (similarReport != null) {
+      // Confirmar el reporte existente en lugar de crear uno nuevo
+      try {
+        await firebaseService.confirmReport(similarReport.id, userId);
+
+        // Otorgar puntos por confirmación (menos que crear nuevo)
+        await gamificationService.awardPointsForVerifying(userId, similarReport.id);
+
+        reportIds.add(similarReport.id);
+
+        // Log para depuración
+        final logService = DebugLogService();
+        logService.addLog(
+          'SimplifiedReportService',
+          'Merged with existing report ${similarReport.id} instead of creating new',
+          level: LogLevel.info,
+        );
+      } catch (e) {
+        print('Error confirming similar report: $e');
+        // Si falla la confirmación, continuar creando nuevo reporte
+      }
+
+      // Si logró confirmar, solo procesar problemas específicos si hay
+      if (reportIds.isNotEmpty) {
+        if (specificIssues != null && specificIssues.isNotEmpty) {
+          for (final issue in specificIssues) {
+            final issueReportId = await _createSpecificIssueReport(
+              stationId: stationId,
+              parentReportId: similarReport.id,
+              issue: issue,
+              userPosition: userPosition,
+              userId: userId,
+              now: now,
+            );
+            reportIds.add(issueReportId);
+          }
+
+          // Puntos por problemas específicos
+          final totalIssuePoints = specificIssues.length * 10;
+          await gamificationService.awardPointsForSimplifiedReport(
+            userId: userId,
+            points: totalIssuePoints,
+            stationId: stationId,
+            reportId: similarReport.id,
+          );
+        }
+
+        return reportIds;
+      }
+    }
+
+    // No se encontró reporte similar o falló la confirmación - crear nuevo
     final basePoints = 15;
     final bonusPoints =
         0; // En el nuevo sistema, los puntos bonus vienen de cada problema específico
@@ -145,7 +260,6 @@ class SimplifiedReportService {
     }
 
     // 3. Otorgar puntos al usuario (total de todos los reportes)
-    final gamificationService = GamificationService();
     final totalIssuePoints =
         (specificIssues?.length ?? 0) * 10; // 10 puntos por problema específico
     final totalPoints = basePoints + totalIssuePoints;

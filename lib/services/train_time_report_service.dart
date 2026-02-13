@@ -127,13 +127,25 @@ class TrainTimeReportService {
           etaBucket = '9+';
         }
 
-        await _simplifiedReportService.createTrainReport(
+        // Convertir formato: 'linea1' → 'L1', 'linea2' → 'L2'
+      final normalizedLine = line == 'linea1' ? 'L1' : line == 'linea2' ? 'L2' : line;
+
+      // Convertir nombre de destino a directionCode: 'A' o 'B'
+      String? directionCode;
+      final dirLower = direction.toLowerCase();
+      if (line == 'linea1') {
+        directionCode = dirLower.contains('villa zaita') ? 'A' : 'B';
+      } else {
+        directionCode = dirLower.contains('nuevo tocumen') ? 'A' : 'B';
+      }
+
+      await _simplifiedReportService.createTrainReport(
           stationId: stationId,
           etaBucket: etaBucket,
           crowdLevel:
               3, // Default level as it's not provided in this simplified flow
-          trainLine: line.toUpperCase(), // 'L1' or 'L2'
-          direction: direction,
+          trainLine: normalizedLine,
+          direction: directionCode,
           userPosition: userPosition,
           isPanelTime: true,
         );

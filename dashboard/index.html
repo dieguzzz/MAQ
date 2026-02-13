@@ -623,6 +623,14 @@
                         <h4>Debug Logs</h4>
                         <p>Logs de depuración</p>
                     </div>
+
+                    <div class="testing-card highlight" onclick="showTestingSubTab('loadTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h4>Pruebas de Carga</h4>
+                        <p>Miles de reportes en paralelo</p>
+                    </div>
                 </div>
             </div>
 
@@ -1039,6 +1047,130 @@
             <!-- Status de acciones -->
             <div id="multiStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
         </div>
+
+        <!-- Load Testing Tab -->
+        <div id="loadTesting" class="tab-content testing-subtab section" style="display: none;">
+            <div class="page-header">
+                <div class="page-title">
+                    <i class="fas fa-bolt"></i>
+                    <div>
+                        <h2>Pruebas de Carga Masiva</h2>
+                        <p>Genera miles de reportes en paralelo para probar el rendimiento del sistema</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="load-test-content">
+                <!-- Presets rapidos -->
+                <div class="config-section">
+                    <h4><i class="fas fa-magic"></i> Presets Rapidos</h4>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" onclick="applyLoadTestPreset('small')">
+                            <span class="preset-name">Pequeno</span>
+                            <span class="preset-desc">100 reportes</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyLoadTestPreset('medium')">
+                            <span class="preset-name">Mediano</span>
+                            <span class="preset-desc">500 reportes</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyLoadTestPreset('large')">
+                            <span class="preset-name">Grande</span>
+                            <span class="preset-desc">2,000 reportes</span>
+                        </button>
+                        <button class="preset-btn stress" onclick="applyLoadTestPreset('stress')">
+                            <span class="preset-name">Stress Test</span>
+                            <span class="preset-desc">5,000 reportes</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Configuracion personalizada -->
+                <div class="config-section">
+                    <h4><i class="fas fa-sliders-h"></i> Configuracion Personalizada</h4>
+                    <div class="load-test-config-grid">
+                        <label>
+                            <span>Total de Reportes:</span>
+                            <input type="number" id="loadTestTotal" min="10" max="50000" value="100" step="10">
+                        </label>
+                        <label>
+                            <span>Tamano de Batch:</span>
+                            <input type="number" id="loadTestBatchSize" min="10" max="500" value="400" step="10">
+                            <small>Max 500 (limite Firestore)</small>
+                        </label>
+                        <label>
+                            <span>Batches en Paralelo:</span>
+                            <input type="number" id="loadTestParallel" min="1" max="10" value="3">
+                            <small>Mas = mas rapido, mas carga</small>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tipos de reportes -->
+                <div class="config-section">
+                    <h4><i class="fas fa-list-alt"></i> Tipos de Reportes</h4>
+                    <div class="report-types-config">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="loadTestIncludeStation" checked>
+                            <span>Reportes de Estacion</span>
+                            <small>(estado operacional, aglomeracion)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="loadTestIncludeTrain" checked>
+                            <span>Reportes de Tiempo de Tren</span>
+                            <small>(ETAs, tiempos de llegada)</small>
+                        </label>
+                    </div>
+                    <p id="loadTestStationCount" class="station-count">Cargando estaciones...</p>
+                </div>
+
+                <!-- Barra de progreso -->
+                <div class="config-section">
+                    <h4><i class="fas fa-tasks"></i> Progreso</h4>
+                    <div class="progress-container">
+                        <div class="progress-bar-wrapper">
+                            <div id="loadTestProgress" class="progress-bar" role="progressbar"
+                                 style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <div id="loadTestProgressText" class="progress-text">0 / 0 reportes</div>
+                    </div>
+                    <div id="loadTestMetrics" class="metrics-display"></div>
+                </div>
+
+                <!-- Botones de accion -->
+                <div class="load-test-actions">
+                    <button class="test-btn test-btn-success" onclick="startLoadTest()" id="loadTestStartBtn">
+                        <i class="fas fa-rocket"></i> Iniciar Prueba
+                    </button>
+                    <button class="test-btn test-btn-warning" onclick="togglePauseLoadTest()" id="loadTestPauseBtn" disabled>
+                        <i class="fas fa-pause"></i> Pausar
+                    </button>
+                    <button class="test-btn test-btn-danger" onclick="stopLoadTest()" id="loadTestStopBtn" disabled>
+                        <i class="fas fa-stop"></i> Detener
+                    </button>
+                </div>
+
+                <!-- Resultados -->
+                <div id="loadTestResults" class="load-test-results" style="display: none;"></div>
+
+                <!-- Limpieza -->
+                <div class="config-section cleanup-section">
+                    <h4><i class="fas fa-broom"></i> Limpieza de Datos</h4>
+                    <p class="cleanup-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Los reportes de prueba se marcan con <code>testBatch: true</code> para facilitar su limpieza
+                    </p>
+                    <div class="cleanup-actions">
+                        <button class="test-btn test-btn-secondary" onclick="clearAllTestReports()">
+                            <i class="fas fa-database"></i> Limpiar TODOS los Reportes de Prueba
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div id="loadTestStatus" class="load-test-status"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal de Detalles de Reporte -->
@@ -1083,6 +1215,7 @@
     <script src="js/multi_reports_testing.js"></script>
     <script src="js/train_time_reports_testing.js"></script>
     <script src="js/station_reports_testing.js"></script>
+    <script src="js/load_testing.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/app.js"></script>
 </body>

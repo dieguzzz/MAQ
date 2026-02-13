@@ -13,6 +13,7 @@
     // Inicializar generadores
     window.loadAvailableStations?.();
     window.loadTrainTimeStations?.();
+    window.loadStationsForLoadTest?.();
 
     // Inicializar gráficos del overview
     window.initOverviewCharts?.();

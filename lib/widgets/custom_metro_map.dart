@@ -2078,11 +2078,11 @@ class _TrainArrivalSheetContentState extends State<_TrainArrivalSheetContent> {
 
   String _getDirectionLabel(String directionCode) {
     if (widget.station.linea == 'linea1') {
-      return directionCode == 'A' ? 'Hacia Albrook' : 'Hacia Villa Zaita';
+      return directionCode == 'A' ? 'Hacia Villa Zaita' : 'Hacia Albrook';
     } else if (widget.station.linea == 'linea2') {
       return directionCode == 'A'
-          ? 'Hacia San Miguelito'
-          : 'Hacia Nuevo Tocumen';
+          ? 'Hacia Nuevo Tocumen'
+          : 'Hacia San Miguelito';
     }
     return 'Dirección $directionCode';
   }
@@ -2264,8 +2264,8 @@ class _TrainArrivalSheetContentState extends State<_TrainArrivalSheetContent> {
           children: [
             Icon(
               directionCode == 'A'
-                  ? Icons.arrow_back_rounded
-                  : Icons.arrow_forward_rounded,
+                  ? Icons.arrow_forward_rounded
+                  : Icons.arrow_back_rounded,
               color: isSelected ? Colors.green : Colors.grey[600],
               size: 24,
             ),

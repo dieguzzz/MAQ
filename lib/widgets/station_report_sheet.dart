@@ -345,7 +345,7 @@ class _TrainsAndArrivalRow extends StatelessWidget {
 
 enum DirectionKey {
   toAlbrook(label: 'Hacia Albrook', icon: Icons.arrow_downward_rounded),
-  toSanIsidro(label: 'Hacia San Isidro', icon: Icons.arrow_upward_rounded),
+  toVillaZaita(label: 'Hacia Villa Zaita', icon: Icons.arrow_upward_rounded),
   toNuevoTocumen(
       label: 'Hacia Nuevo Tocumen', icon: Icons.arrow_forward_rounded),
   toSanMiguelito(label: 'Hacia San Miguelito', icon: Icons.arrow_back_rounded);
@@ -374,9 +374,10 @@ class _CombinedEtaService {
     List<SimplifiedReportModel> activeReports,
   ) {
     // 1. Determine valid directions for this station's line
-    final List<DirectionKey> validKeys = station.linea == 'L1'
-        ? [DirectionKey.toAlbrook, DirectionKey.toSanIsidro]
-        : [DirectionKey.toNuevoTocumen, DirectionKey.toSanMiguelito];
+    final List<DirectionKey> validKeys =
+        (station.linea == 'linea1' || station.linea == 'L1')
+            ? [DirectionKey.toVillaZaita, DirectionKey.toAlbrook]
+            : [DirectionKey.toNuevoTocumen, DirectionKey.toSanMiguelito];
 
     final groups = <DirectionEtaGroup>[];
     final now = DateTime.now();
@@ -494,20 +495,26 @@ class _CombinedEtaService {
   DirectionKey? _mapStringToKey(String line, String? directionStr) {
     if (directionStr == null) return null;
     final d = directionStr.toLowerCase();
-    if (line == 'L1') {
-      if (d.contains('albrook') || d.contains('sur') || d == 's') {
-        return DirectionKey.toAlbrook;
-      }
-      if (d.contains('san isidro') ||
+    final isL1 = line == 'linea1' || line == 'L1';
+    if (isL1) {
+      // Direction code A = Villa Zaita (norte), B = Albrook (sur)
+      if (d == 'a' ||
+          d.contains('villa zaita') ||
           d.contains('villazaita') ||
           d.contains('norte')) {
-        return DirectionKey.toSanIsidro;
+        return DirectionKey.toVillaZaita;
+      }
+      if (d == 'b' || d.contains('albrook') || d.contains('sur')) {
+        return DirectionKey.toAlbrook;
       }
     } else {
-      if (d.contains('tocumen') || d.contains('este') || d == 'e') {
+      // Direction code A = Nuevo Tocumen (este), B = San Miguelito (oeste)
+      if (d == 'a' || d.contains('tocumen') || d.contains('este')) {
         return DirectionKey.toNuevoTocumen;
       }
-      if (d.contains('san miguelito') || d.contains('oeste') || d == 'o') {
+      if (d == 'b' ||
+          d.contains('san miguelito') ||
+          d.contains('oeste')) {
         return DirectionKey.toSanMiguelito;
       }
     }
@@ -515,13 +522,15 @@ class _CombinedEtaService {
   }
 
   DirectionKey? _mapTrainToKey(String line, DireccionTren dir) {
-    if (line == 'L1') {
+    final isL1 = line == 'linea1' || line == 'L1';
+    if (isL1) {
       return dir == DireccionTren.sur
           ? DirectionKey.toAlbrook
-          : DirectionKey.toSanIsidro;
+          : DirectionKey.toVillaZaita;
     } else {
-      if (dir == DireccionTren.norte) return DirectionKey.toSanMiguelito;
-      return DirectionKey.toNuevoTocumen;
+      return dir == DireccionTren.sur
+          ? DirectionKey.toSanMiguelito
+          : DirectionKey.toNuevoTocumen;
     }
   }
 
@@ -552,25 +561,68 @@ class _EtaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reportService = SimplifiedReportService();
-    final etaService = _CombinedEtaService();
+    final etaGroupService = EtaGroupService();
 
-    return StreamBuilder<List<SimplifiedReportModel>>(
-      stream: reportService.getActiveReportsStream(),
+    return StreamBuilder<Map<String, EtaGroupModel?>>(
+      stream:
+          etaGroupService.watchActiveGroupsByDirectionForStation(station.id),
       builder: (context, snapshot) {
-        final activeReports = snapshot.data ?? [];
-        final etaGroups =
-            etaService.calculateDirectionGroups(station, trains, activeReports);
+        final groups = snapshot.data;
+        final groupA = groups?['A'];
+        final groupB = groups?['B'];
 
-        return Column(
-          children: etaGroups.map((group) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _DirectionCard(group: group),
-            );
-          }).toList(),
+        // Si no hay datos de ninguna dirección, mostrar estado vacío
+        if (groupA == null && groupB == null) {
+          return _buildNoEtaData(context);
+        }
+
+        return _EtaDualDirectionBox(
+          groupA: groupA,
+          groupB: groupB,
+          stationId: station.id,
+          stationLine: station.linea,
         );
       },
+    );
+  }
+
+  Widget _buildNoEtaData(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MetroColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!, width: 1),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Próximos trenes',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: MetroColors.grayDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Sin datos recientes',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: MetroColors.grayMedium,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Reporta los tiempos del panel',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: MetroColors.blue,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

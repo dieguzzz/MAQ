@@ -7,7 +7,7 @@ class TrainDirectionHelper {
     if (linea == 'linea1') {
       return direccion == DireccionTren.norte ? 'Villa Zaita' : 'Albrook';
     } else { // linea2
-      return direccion == DireccionTren.norte ? 'Nuevo Tocumen' : 'Paraíso';
+      return direccion == DireccionTren.norte ? 'Nuevo Tocumen' : 'San Miguelito';
     }
   }
 
@@ -16,7 +16,7 @@ class TrainDirectionHelper {
     if (linea == 'linea1') {
       return ['Villa Zaita', 'Albrook'];
     } else { // linea2
-      return ['Nuevo Tocumen', 'Paraíso'];
+      return ['Nuevo Tocumen', 'San Miguelito'];
     }
   }
 
@@ -27,7 +27,7 @@ class TrainDirectionHelper {
       if (destinationName == 'Albrook') return DireccionTren.sur;
     } else { // linea2
       if (destinationName == 'Nuevo Tocumen') return DireccionTren.norte;
-      if (destinationName == 'Paraíso') return DireccionTren.sur;
+      if (destinationName == 'San Miguelito') return DireccionTren.sur;
     }
     return null;
   }
