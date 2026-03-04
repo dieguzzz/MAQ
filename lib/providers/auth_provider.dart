@@ -36,7 +36,14 @@ class AuthProvider with ChangeNotifier {
   void ensureStreamInitialized() {
     if (_streamInitialized) return;
     _streamInitialized = true;
-    // Defer initialization to avoid calling notifyListeners during build
+
+    // Si ya hay un usuario en Firebase Auth, marcamos loading=true de forma
+    // síncrona para evitar el flash de "no autenticado" en el primer frame.
+    if (_firebaseService.getCurrentUser() != null) {
+      _isLoading = true;
+    }
+
+    // Defer la inicialización completa para no llamar notifyListeners durante build
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _init();
     });

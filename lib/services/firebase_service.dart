@@ -142,27 +142,31 @@ class FirebaseService {
 
   Future<List<ReportModel>> getReportsByLocation(
       GeoPoint location, double radiusKm) async {
-    // Nota: Firestore no soporta queries geográficas nativas
-    // Esto debería implementarse con Cloud Functions o usar geohashing
+    // TODO: Implementar geohashing para queries geoespaciales eficientes.
+    // Por ahora usamos filtro temporal + límite para acotar la descarga.
+    // Referencia: https://firebase.google.com/docs/firestore/solutions/geoqueries
+    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+
     final snapshot = await _firestore
         .collection('reports')
         .where('estado', isEqualTo: 'activo')
+        .where('creado_en', isGreaterThan: Timestamp.fromDate(cutoff))
+        .orderBy('creado_en', descending: true)
+        .limit(300)
         .get();
-    
-    // Filtrar por distancia (implementación básica)
-    final reports = snapshot.docs
+
+    return snapshot.docs
         .map((doc) => ReportModel.fromFirestore(doc))
         .where((report) {
-      final distance = _calculateDistance(
-        location.latitude,
-        location.longitude,
-        report.ubicacion.latitude,
-        report.ubicacion.longitude,
-      );
-      return distance <= radiusKm;
-    }).toList();
-    
-    return reports;
+          final distance = _calculateDistance(
+            location.latitude,
+            location.longitude,
+            report.ubicacion.latitude,
+            report.ubicacion.longitude,
+          );
+          return distance <= radiusKm;
+        })
+        .toList();
   }
 
   /// Confirma un reporte (nuevo sistema de confirmaciones)
