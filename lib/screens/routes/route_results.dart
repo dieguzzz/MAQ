@@ -86,219 +86,216 @@ class _RouteResultsState extends State<RouteResults> {
           ),
         ],
       ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Columna izquierda: Tu Ruta (limitada en ancho)
-          Container(
-            width: 320,
-            padding: const EdgeInsets.all(16.0),
-            color: MetroColors.white,
-            child: SingleChildScrollView(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 600;
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 320,
+                  padding: const EdgeInsets.all(16.0),
+                  color: MetroColors.white,
+                  child: _buildRouteSteps(tieneTransbordo),
+                ),
+                Expanded(
+                  child:
+                      _buildMapAndStatus(estadoColor, estadoIcon, lineasUsadas),
+                ),
+              ],
+            );
+          } else {
+            return SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tu ruta',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Origen
-                  _buildStationStep(
-                    'Origen',
-                    widget.origen,
-                    isFirst: true,
-                  ),
-
-                  // Transbordo (si aplica)
-                  if (tieneTransbordo && _routeStations != null) ...[
-                    const SizedBox(height: 12),
-                    _buildTransferStep(),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Estaciones intermedias
-                  if (_routeStations != null && _routeStations!.length > 2) ...[
-                    ..._routeStations!
-                        .sublist(1, _routeStations!.length - 1)
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                      return _buildStationStep(
-                        'Estación ${entry.key + 1}',
-                        entry.value,
-                        showLine: true,
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Destino
-                  _buildStationStep(
-                    'Destino',
-                    widget.destino,
-                    isLast: true,
+                  _buildMapAndStatus(estadoColor, estadoIcon, lineasUsadas),
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    color: MetroColors.white,
+                    child: _buildRouteSteps(tieneTransbordo),
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }
+        },
+      ),
+    );
+  }
 
-          // Columna derecha: Estado, Líneas y Mapa
-          Expanded(
-            child: Column(
-              children: [
-                // Header con Estado y Líneas
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: MetroColors.white,
-                  child: Row(
-                    children: [
-                      // Box 1: Estado
-                      Expanded(
-                        child: Card(
-                          color: estadoColor.withValues(alpha: 0.1),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+  Widget _buildRouteSteps(bool tieneTransbordo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tu ruta',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildStationStep('Origen', widget.origen, isFirst: true),
+        if (tieneTransbordo && _routeStations != null) ...[
+          const SizedBox(height: 12),
+          _buildTransferStep(),
+          const SizedBox(height: 12),
+        ],
+        if (_routeStations != null && _routeStations!.length > 2) ...[
+          ..._routeStations!
+              .sublist(1, _routeStations!.length - 1)
+              .asMap()
+              .entries
+              .map((entry) {
+            return _buildStationStep(
+              'Estación ${entry.key + 1}',
+              entry.value,
+              showLine: true,
+            );
+          }),
+          const SizedBox(height: 12),
+        ],
+        _buildStationStep('Destino', widget.destino, isLast: true),
+      ],
+    );
+  }
+
+  Widget _buildMapAndStatus(
+      Color estadoColor, IconData estadoIcon, List<String> lineasUsadas) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          color: MetroColors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: Card(
+                  color: estadoColor.withValues(alpha: 0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(estadoIcon, color: estadoColor, size: 32),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                widget.route.getEstadoTexto(),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: estadoColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tiempo: ${widget.route.tiempoEstimado} min',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Líneas',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (lineasUsadas.isNotEmpty) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: lineasUsadas.map((linea) {
+                              final color = linea == 'linea1'
+                                  ? MetroColors.linea1
+                                  : MetroColors.linea2;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(estadoIcon,
-                                        color: estadoColor, size: 32),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        widget.route.getEstadoTexto(),
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: estadoColor,
-                                        ),
+                                    Icon(
+                                      Icons.train,
+                                      size: 14,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      linea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                                      style: TextStyle(
+                                        color: color,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Tiempo: ${widget.route.tiempoEstimado} min',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ],
+                              );
+                            }).toList(),
+                          ),
+                        ] else ...[
+                          Text(
+                            'No disponible',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  MetroColors.grayDark.withValues(alpha: 0.6),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Box 2: Líneas
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Líneas',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                if (lineasUsadas.isNotEmpty) ...[
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: lineasUsadas.map((linea) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: linea == 'linea1'
-                                              ? Colors.blue[100]
-                                              : Colors.orange[100],
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.train,
-                                              size: 14,
-                                              color: linea == 'linea1'
-                                                  ? Colors.blue[700]
-                                                  : Colors.orange[700],
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              linea == 'linea1'
-                                                  ? 'Línea 1'
-                                                  : 'Línea 2',
-                                              style: TextStyle(
-                                                color: linea == 'linea1'
-                                                    ? Colors.blue[700]
-                                                    : Colors.orange[700],
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ] else ...[
-                                  Text(
-                                    'No disponible',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-
-                // Mapa (expandido, más grande)
-                Expanded(
-                  child: Consumer<MetroDataProvider>(
-                    builder: (context, metroProvider, child) {
-                      if (_showCustomMap) {
-                        return CustomMetroMap(
-                          stations: metroProvider.stations,
-                          trains: const [], // No mostrar trenes en el mapa de rutas
-                          highlightedRoute: _routeStations,
-                          onStationTap: (station) {
-                            // Mostrar detalles de estación
-                          },
-                        );
-                      } else {
-                        return MapWidget(
-                          highlightedRoute: _routeStations,
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: Consumer<MetroDataProvider>(
+            builder: (context, metroProvider, child) {
+              if (_showCustomMap) {
+                return CustomMetroMap(
+                  stations: metroProvider.stations,
+                  trains: const [],
+                  highlightedRoute: _routeStations,
+                  onStationTap: (station) {},
+                );
+              } else {
+                return MapWidget(
+                  highlightedRoute: _routeStations,
+                );
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -333,7 +330,7 @@ class _RouteResultsState extends State<RouteResults> {
     bool showLine = false,
   }) {
     final lineColor =
-        station.linea == 'linea1' ? Colors.blue[700]! : Colors.orange[700]!;
+        station.linea == 'linea1' ? MetroColors.linea1 : MetroColors.linea2;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -356,7 +353,7 @@ class _RouteResultsState extends State<RouteResults> {
                           ? 'D'
                           : '•',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: MetroColors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: isFirst || isLast ? 16 : 20,
                   ),
@@ -372,7 +369,7 @@ class _RouteResultsState extends State<RouteResults> {
                     label,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -408,12 +405,12 @@ class _RouteResultsState extends State<RouteResults> {
     final stationName = transferStation?.nombre ?? 'San Miguelito';
 
     return Card(
-      color: Colors.amber[50],
+      color: MetroColors.energyOrange.withValues(alpha: 0.08),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            Icon(Icons.swap_horiz, color: Colors.amber[700], size: 32),
+            Icon(Icons.swap_horiz, color: MetroColors.energyOrange, size: 32),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -423,7 +420,7 @@ class _RouteResultsState extends State<RouteResults> {
                     'Transbordo',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -439,7 +436,7 @@ class _RouteResultsState extends State<RouteResults> {
                     'Cambia de línea aquí',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.amber[700],
+                      color: MetroColors.energyOrange,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

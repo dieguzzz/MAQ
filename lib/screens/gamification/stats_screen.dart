@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/gamification_model.dart';
+import '../../theme/metro_theme.dart';
 import 'points_history_screen.dart';
 
 class StatsScreen extends StatelessWidget {
@@ -93,27 +94,27 @@ class StatsScreen extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: MetroColors.grayDark,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           stats.getNivelDescripcion(),
-                          style: const TextStyle(color: Colors.black),
+                          style: TextStyle(color: MetroColors.grayDark),
                         ),
                       ],
                     ),
                   ),
                   const Icon(
                     Icons.history,
-                    color: Colors.grey,
+                    color: MetroColors.grayMedium,
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: stats.puntos / 1000, // Ajustar según máximo
-                backgroundColor: Colors.grey[200],
+                backgroundColor: MetroColors.grayMedium,
               ),
               const SizedBox(height: 8),
               Row(
@@ -124,14 +125,14 @@ class StatsScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: MetroColors.grayDark,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Toca para ver historial',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey,
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -257,7 +258,8 @@ class StatsScreen extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(
+              fontSize: 12, color: MetroColors.grayDark.withValues(alpha: 0.6)),
         ),
       ],
     );
@@ -341,4 +343,3 @@ class StatsScreen extends StatelessWidget {
     );
   }
 }
-

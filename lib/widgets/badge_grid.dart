@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import '../models/badge_model.dart';
-import '../data/badges_data.dart';
 
 class BadgeGrid extends StatelessWidget {
   final BadgeFilter filter;
   final Function(BadgeModel) onBadgeTap;
+  final List<BadgeModel> badges;
 
   const BadgeGrid({
     super.key,
     required this.filter,
     required this.onBadgeTap,
+    required this.badges,
   });
 
   List<BadgeModel> _getFilteredBadges() {
-    List<BadgeModel> badges = BadgesData.allBadges;
-
     switch (filter) {
       case BadgeFilter.all:
         return badges;
@@ -130,4 +129,3 @@ class _BadgeCard extends StatelessWidget {
     );
   }
 }
-

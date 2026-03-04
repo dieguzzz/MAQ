@@ -114,18 +114,32 @@ class BadgeModel {
         return 'Legendario';
     }
   }
+
+  /// Creates a copy of this badge with optional overrides.
+  /// Used to merge static badge definitions with Firestore unlock state.
+  BadgeModel copyWith({
+    String? id,
+    String? name,
+    String? icon,
+    BadgeCategory? category,
+    String? description,
+    String? culturalInfo,
+    String? unlockCondition,
+    BadgeRarity? rarity,
+    bool? unlocked,
+    bool? featured,
+  }) {
+    return BadgeModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      culturalInfo: culturalInfo ?? this.culturalInfo,
+      unlockCondition: unlockCondition ?? this.unlockCondition,
+      rarity: rarity ?? this.rarity,
+      unlocked: unlocked ?? this.unlocked,
+      featured: featured ?? this.featured,
+    );
+  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

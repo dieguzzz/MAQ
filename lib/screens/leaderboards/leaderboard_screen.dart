@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../models/user_model.dart';
+import '../../theme/metro_theme.dart';
 import '../../widgets/leaderboard_user_card.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -49,10 +50,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     if (_selectedLeaderboard != 'linea1' && _selectedLeaderboard != 'linea2') {
       return users;
     }
-    
+
     return users.where((user) {
       final puntosPorLinea = user.gamification?.puntosPorLinea ?? {};
-      return puntosPorLinea.containsKey(linea) && (puntosPorLinea[linea] ?? 0) > 0;
+      return puntosPorLinea.containsKey(linea) &&
+          (puntosPorLinea[linea] ?? 0) > 0;
     }).toList()
       ..sort((a, b) {
         final puntosA = a.gamification?.puntosPorLinea[linea] ?? 0;
@@ -92,131 +94,140 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           centerTitle: true,
         ),
         body: Column(
-        children: [
-          // Selector de leaderboards
-          _buildLeaderboardSelector(),
-          
-          // Contenido del leaderboard
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getLeaderboardStream(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+          children: [
+            // Selector de leaderboards
+            _buildLeaderboardSelector(),
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text('Error: ${snapshot.error}'),
-                      ],
-                    ),
-                  );
-                }
+            // Contenido del leaderboard
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _getLeaderboardStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.emoji_events, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No hay usuarios en el ranking aún',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              size: 64, color: MetroColors.stateCritical),
+                          const SizedBox(height: 16),
+                          Text('Error: ${snapshot.error}'),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.emoji_events,
+                              size: 64, color: MetroColors.grayMedium),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No hay usuarios en el ranking aún',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color:
+                                  MetroColors.grayDark.withValues(alpha: 0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                        ],
+                      ),
+                    );
+                  }
 
-                var users = snapshot.data!.docs
-                    .map((doc) => UserModel.fromFirestore(doc))
-                    .toList();
+                  var users = snapshot.data!.docs
+                      .map((doc) => UserModel.fromFirestore(doc))
+                      .toList();
 
-                // Filtrar por línea si es necesario
-                if (_selectedLeaderboard == 'linea1' || _selectedLeaderboard == 'linea2') {
-                  final linea = _selectedLeaderboard == 'linea1' ? 'Línea 1' : 'Línea 2';
-                  users = _filterUsersByLinea(users, linea);
-                }
+                  // Filtrar por línea si es necesario
+                  if (_selectedLeaderboard == 'linea1' ||
+                      _selectedLeaderboard == 'linea2') {
+                    final linea = _selectedLeaderboard == 'linea1'
+                        ? 'Línea 1'
+                        : 'Línea 2';
+                    users = _filterUsersByLinea(users, linea);
+                  }
 
-                // Limitar a top 50 para leaderboards especializados
-                if (_selectedLeaderboard != 'global') {
-                  users = users.take(50).toList();
-                }
+                  // Limitar a top 50 para leaderboards especializados
+                  if (_selectedLeaderboard != 'global') {
+                    users = users.take(50).toList();
+                  }
 
-                // Encontrar posición del usuario actual
-                int? currentUserPosition;
-                if (currentUser != null) {
-                  for (int i = 0; i < users.length; i++) {
-                    if (users[i].uid == currentUser.uid) {
-                      currentUserPosition = i + 1;
-                      break;
+                  // Encontrar posición del usuario actual
+                  int? currentUserPosition;
+                  if (currentUser != null) {
+                    for (int i = 0; i < users.length; i++) {
+                      if (users[i].uid == currentUser.uid) {
+                        currentUserPosition = i + 1;
+                        break;
+                      }
                     }
                   }
-                }
 
-                return Column(
-                  children: [
-                    // Header con top 3 (solo para global)
-                    if (_selectedLeaderboard == 'global' && users.length >= 3)
-                      _buildTopThreeHeader(users),
-                    
-                    // Lista de usuarios
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: users.length,
-                        itemBuilder: (context, index) {
-                          final user = users[index];
-                          final position = index + 1;
-                          final isCurrentUser = currentUser != null && user.uid == currentUser.uid;
+                  return Column(
+                    children: [
+                      // Header con top 3 (solo para global)
+                      if (_selectedLeaderboard == 'global' && users.length >= 3)
+                        _buildTopThreeHeader(users),
 
-                          return LeaderboardUserCard(
-                            user: user,
-                            position: position,
-                            isCurrentUser: isCurrentUser,
-                            displayValue: _getUserDisplayValue(user),
-                          );
-                        },
-                      ),
-                    ),
+                      // Lista de usuarios
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: users.length,
+                          itemBuilder: (context, index) {
+                            final user = users[index];
+                            final position = index + 1;
+                            final isCurrentUser = currentUser != null &&
+                                user.uid == currentUser.uid;
 
-                    // Indicador de posición del usuario actual
-                    if (currentUserPosition != null && currentUserPosition > 3)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        color: Colors.blue[50],
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.info_outline, color: Colors.blue),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Tu posición: #$currentUserPosition',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
+                            return LeaderboardUserCard(
+                              user: user,
+                              position: position,
+                              isCurrentUser: isCurrentUser,
+                              displayValue: _getUserDisplayValue(user),
+                            );
+                          },
                         ),
                       ),
-                  ],
-                );
-              },
+
+                      // Indicador de posición del usuario actual
+                      if (currentUserPosition != null &&
+                          currentUserPosition > 3)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          color: MetroColors.blue.withValues(alpha: 0.08),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.info_outline,
+                                  color: MetroColors.blue),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Tu posición: #$currentUserPosition',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: MetroColors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -242,9 +253,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   });
                 }
               },
-              selectedColor: Colors.blue[300],
+              selectedColor: MetroColors.blue.withValues(alpha: 0.3),
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black87,
+                color: isSelected ? MetroColors.white : MetroColors.grayDark,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -259,7 +270,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue[50]!, Colors.blue[100]!],
+          colors: [
+            MetroColors.blue.withValues(alpha: 0.08),
+            MetroColors.blue.withValues(alpha: 0.15),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -269,21 +283,23 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         children: [
           // Segundo lugar
           if (users.length >= 2)
-            _buildTopThreeCard(users[1], 2, Colors.grey[400]!),
-          
+            _buildTopThreeCard(users[1], 2, MetroColors.grayMedium),
+
           // Primer lugar (más grande)
           if (users.isNotEmpty)
-            _buildTopThreeCard(users[0], 1, Colors.amber[700]!, isFirst: true),
-          
+            _buildTopThreeCard(users[0], 1, MetroColors.energyOrange,
+                isFirst: true),
+
           // Tercer lugar
           if (users.length >= 3)
-            _buildTopThreeCard(users[2], 3, Colors.orange[700]!),
+            _buildTopThreeCard(users[2], 3, MetroColors.blue),
         ],
       ),
     );
   }
 
-  Widget _buildTopThreeCard(UserModel user, int position, Color color, {bool isFirst = false}) {
+  Widget _buildTopThreeCard(UserModel user, int position, Color color,
+      {bool isFirst = false}) {
     final size = isFirst ? 80.0 : 60.0;
     final level = user.level;
     final displayValue = _getUserDisplayValue(user);
@@ -296,7 +312,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
+            border: Border.all(color: MetroColors.white, width: 3),
           ),
           child: Center(
             child: user.fotoUrl != null
@@ -311,7 +327,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 : Text(
                     user.nombre[0].toUpperCase(),
                     style: TextStyle(
-                      color: Colors.white,
+                      color: MetroColors.white,
                       fontSize: isFirst ? 32 : 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -332,14 +348,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           'Nivel $level',
           style: TextStyle(
             fontSize: isFirst ? 12 : 10,
-            color: Colors.grey[700],
+            color: MetroColors.grayDark.withValues(alpha: 0.7),
           ),
         ),
         Text(
           displayValue,
           style: TextStyle(
             fontSize: isFirst ? 12 : 10,
-            color: Colors.grey[600],
+            color: MetroColors.grayDark.withValues(alpha: 0.6),
             fontWeight: FontWeight.bold,
           ),
         ),

@@ -393,28 +393,27 @@ class _RoutePlannerState extends State<RoutePlanner> {
 
           // Botón Línea 1
           Card(
-            elevation: 4,
             child: InkWell(
               onTap: () => onLineSelected('linea1'),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
               child: Container(
                 padding: const EdgeInsets.all(24.0),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
+                  color: MetroColors.linea1.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
                   children: [
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.blue[700],
+                      decoration: const BoxDecoration(
+                        color: MetroColors.linea1,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.train,
-                        color: Colors.white,
+                        color: MetroColors.white,
                         size: 32,
                       ),
                     ),
@@ -428,7 +427,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                              color: MetroColors.linea1,
                             ),
                           ),
                           SizedBox(height: 4),
@@ -436,15 +435,15 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             'Albrook → Villa Zaita',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.blue,
+                              color: MetroColors.linea1,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.arrow_forward_ios,
-                      color: Colors.blue[700],
+                      color: MetroColors.linea1,
                     ),
                   ],
                 ),
@@ -455,28 +454,27 @@ class _RoutePlannerState extends State<RoutePlanner> {
 
           // Botón Línea 2
           Card(
-            elevation: 4,
             child: InkWell(
               onTap: () => onLineSelected('linea2'),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
               child: Container(
                 padding: const EdgeInsets.all(24.0),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
+                  color: MetroColors.linea2.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
                   children: [
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.orange[700],
+                      decoration: const BoxDecoration(
+                        color: MetroColors.linea2,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.train,
-                        color: Colors.white,
+                        color: MetroColors.white,
                         size: 32,
                       ),
                     ),
@@ -490,7 +488,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.orange,
+                              color: MetroColors.linea2,
                             ),
                           ),
                           SizedBox(height: 4),
@@ -498,15 +496,15 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             'San Miguelito → Nuevo Tocumen',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.orange,
+                              color: MetroColors.linea2,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.arrow_forward_ios,
-                      color: Colors.orange[700],
+                      color: MetroColors.linea2,
                     ),
                   ],
                 ),
@@ -530,7 +528,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
   }) {
     final stations =
         selectedLinea == 'linea1' ? linea1Stations : linea2Stations;
-    final lineColor = selectedLinea == 'linea1' ? Colors.blue : Colors.orange;
+    final lineColor =
+        selectedLinea == 'linea1' ? MetroColors.linea1 : MetroColors.linea2;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -553,7 +552,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
               // Origen (izquierda)
               Expanded(
                 child: Card(
-                  color: showOrigen ? lineColor[50] : Colors.grey[100],
+                  color: showOrigen
+                      ? lineColor.withValues(alpha: 0.08)
+                      : MetroColors.grayLight,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -563,7 +564,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                           children: [
                             Icon(
                               Icons.radio_button_checked,
-                              color: showOrigen ? lineColor[700] : Colors.grey,
+                              color: showOrigen
+                                  ? lineColor
+                                  : MetroColors.grayMedium,
                               size: 16,
                             ),
                             const SizedBox(width: 8),
@@ -572,8 +575,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                    showOrigen ? lineColor[700] : Colors.grey,
+                                color: showOrigen
+                                    ? lineColor
+                                    : MetroColors.grayMedium,
                               ),
                             ),
                           ],
@@ -587,7 +591,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: showOrigen ? lineColor[700] : Colors.grey,
+                              color: showOrigen
+                                  ? lineColor
+                                  : MetroColors.grayMedium,
                             ),
                           ),
                           if (_origen != null) ...[
@@ -597,7 +603,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: showOrigen ? Colors.black : Colors.grey,
+                                color: showOrigen
+                                    ? MetroColors.grayDark
+                                    : MetroColors.grayMedium,
                               ),
                             ),
                           ] else ...[
@@ -606,7 +614,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               'No seleccionada',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[600],
+                                color:
+                                    MetroColors.grayDark.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
@@ -615,7 +624,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             'No seleccionada',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color:
+                                  MetroColors.grayDark.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -628,7 +638,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
               // Destino (derecha)
               Expanded(
                 child: Card(
-                  color: showDestino ? lineColor[50] : Colors.grey[100],
+                  color: showDestino
+                      ? lineColor.withValues(alpha: 0.08)
+                      : MetroColors.grayLight,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -638,7 +650,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                           children: [
                             Icon(
                               Icons.place,
-                              color: showDestino ? lineColor[700] : Colors.grey,
+                              color: showDestino
+                                  ? lineColor
+                                  : MetroColors.grayMedium,
                               size: 16,
                             ),
                             const SizedBox(width: 8),
@@ -647,8 +661,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                    showDestino ? lineColor[700] : Colors.grey,
+                                color: showDestino
+                                    ? lineColor
+                                    : MetroColors.grayMedium,
                               ),
                             ),
                           ],
@@ -662,7 +677,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: showDestino ? lineColor[700] : Colors.grey,
+                              color: showDestino
+                                  ? lineColor
+                                  : MetroColors.grayMedium,
                             ),
                           ),
                           if (_destino != null) ...[
@@ -672,7 +689,9 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: showDestino ? Colors.black : Colors.grey,
+                                color: showDestino
+                                    ? MetroColors.grayDark
+                                    : MetroColors.grayMedium,
                               ),
                             ),
                           ] else ...[
@@ -681,7 +700,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                               'No seleccionada',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[600],
+                                color:
+                                    MetroColors.grayDark.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
@@ -690,7 +710,8 @@ class _RoutePlannerState extends State<RoutePlanner> {
                             'No seleccionada',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color:
+                                  MetroColors.grayDark.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -706,7 +727,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
           // Selector de estación
           if (selectedLinea != null) ...[
             Card(
-              color: lineColor[50],
+              color: lineColor.withValues(alpha: 0.08),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -714,14 +735,14 @@ class _RoutePlannerState extends State<RoutePlanner> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.train, color: lineColor[700], size: 20),
+                        Icon(Icons.train, color: lineColor, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           selectedLinea == 'linea1' ? 'Línea 1' : 'Línea 2',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: lineColor[700],
+                            color: lineColor,
                           ),
                         ),
                       ],
@@ -737,7 +758,7 @@ class _RoutePlannerState extends State<RoutePlanner> {
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 16),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: MetroColors.white,
                       ),
                       isExpanded: true,
                       items: stations.map((station) {

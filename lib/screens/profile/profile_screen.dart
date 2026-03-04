@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../theme/metro_theme.dart';
 import '../../widgets/level_progress_bar.dart';
 import '../../widgets/profile_stats_card.dart';
 import '../../widgets/profile_badges_preview.dart';
@@ -43,7 +44,7 @@ class ProfileScreen extends StatelessWidget {
                   title: Text(
                     user.nombre,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: MetroColors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -53,24 +54,24 @@ class ProfileScreen extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.blue[700]!,
-                          Colors.blue[400]!,
+                          MetroColors.blue,
+                          MetroColors.blue.withValues(alpha: 0.7),
                         ],
                       ),
                     ),
                     child: Center(
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundColor: Colors.white,
+                        backgroundColor: MetroColors.white,
                         backgroundImage: user.fotoUrl != null
                             ? NetworkImage(user.fotoUrl!)
                             : null,
                         child: user.fotoUrl == null
                             ? Text(
                                 user.nombre[0].toUpperCase(),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 36,
-                                  color: Colors.blue[700],
+                                  color: MetroColors.blue,
                                   fontWeight: FontWeight.bold,
                                 ),
                               )
@@ -118,7 +119,8 @@ class ProfileScreen extends StatelessWidget {
                               'Nivel $level',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey[600],
+                                color:
+                                    MetroColors.grayDark.withValues(alpha: 0.6),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -144,7 +146,8 @@ class ProfileScreen extends StatelessWidget {
                       Card(
                         margin: const EdgeInsets.all(16),
                         child: ListTile(
-                          leading: const Icon(Icons.emoji_events, color: Colors.amber),
+                          leading: const Icon(Icons.emoji_events,
+                              color: MetroColors.energyOrange),
                           title: const Text('Ranking Global'),
                           subtitle: Text('Posición #$ranking'),
                           trailing: const Icon(Icons.chevron_right),
@@ -162,7 +165,8 @@ class ProfileScreen extends StatelessWidget {
                       Card(
                         margin: const EdgeInsets.all(16),
                         child: ListTile(
-                          leading: const Icon(Icons.emoji_events, color: Colors.grey),
+                          leading: const Icon(Icons.emoji_events,
+                              color: MetroColors.grayMedium),
                           title: const Text('Ranking Global'),
                           subtitle: const Text('Aún no tienes ranking'),
                           trailing: const Icon(Icons.chevron_right),
@@ -181,7 +185,8 @@ class ProfileScreen extends StatelessWidget {
                     Card(
                       margin: const EdgeInsets.all(16),
                       child: ListTile(
-                        leading: const Icon(Icons.collections, color: Colors.purple),
+                        leading: const Icon(Icons.collections,
+                            color: MetroColors.blue),
                         title: const Text('Colección de Logros'),
                         subtitle: const Text('Explora tus logros y medallas'),
                         trailing: const Icon(Icons.chevron_right),
@@ -209,7 +214,8 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const EditProfileScreen(),
+                                  builder: (context) =>
+                                      const EditProfileScreen(),
                                 ),
                               );
                             },
@@ -218,13 +224,15 @@ class ProfileScreen extends StatelessWidget {
                           ListTile(
                             leading: const Icon(Icons.history),
                             title: const Text('Historial de Reportes'),
-                            subtitle: Text('${user.reportesCount} reportes creados'),
+                            subtitle:
+                                Text('${user.reportesCount} reportes creados'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const ReportHistoryScreen(),
+                                  builder: (context) =>
+                                      const ReportHistoryScreen(),
                                 ),
                               );
                             },
@@ -254,16 +262,17 @@ class ProfileScreen extends StatelessWidget {
                         onPressed: () async {
                           await authProvider.signOut();
                           if (context.mounted) {
-                            Navigator.of(context).pushReplacementNamed('/login');
+                            Navigator.of(context)
+                                .pushReplacementNamed('/login');
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: MetroColors.stateCritical,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                         child: const Text(
                           'Cerrar Sesión',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: MetroColors.white),
                         ),
                       ),
                     ),

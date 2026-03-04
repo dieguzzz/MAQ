@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../../providers/auth_provider.dart';
+import '../../theme/metro_theme.dart';
 import '../legal/privacy_policy_screen.dart';
 import '../legal/terms_screen.dart';
 import '../premium/premium_screen.dart';
@@ -29,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: MetroColors.grayDark,
                 ),
               ),
             ),
@@ -81,7 +82,7 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.star, color: Colors.amber),
+              leading: const Icon(Icons.star, color: MetroColors.energyOrange),
               title: const Text('Premium'),
               subtitle: const Text('Desbloquea funciones exclusivas'),
               trailing: const Icon(Icons.chevron_right),
@@ -147,10 +148,11 @@ class SettingsScreen extends StatelessWidget {
             Consumer<AuthProvider>(
               builder: (context, authProvider, _) {
                 return ListTile(
-                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  leading: const Icon(Icons.delete_forever,
+                      color: MetroColors.stateCritical),
                   title: const Text(
                     'Borrar mis Datos',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: MetroColors.stateCritical),
                   ),
                   subtitle:
                       const Text('Eliminar cuenta y todos los datos asociados'),
@@ -182,13 +184,14 @@ class SettingsScreen extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: MetroColors.energyOrange.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(
+                    color: MetroColors.energyOrange.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange),
+                  Icon(Icons.info_outline, color: MetroColors.energyOrange),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -289,7 +292,7 @@ class SettingsScreen extends StatelessWidget {
                       const SnackBar(
                         content:
                             Text('Tu cuenta ha sido eliminada exitosamente'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: MetroColors.stateNormal,
                       ),
                     );
                   } else {
@@ -297,14 +300,15 @@ class SettingsScreen extends StatelessWidget {
                       const SnackBar(
                         content: Text(
                             'Error al eliminar la cuenta. Por favor, intenta de nuevo.'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: MetroColors.stateCritical,
                       ),
                     );
                   }
                 }
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+                foregroundColor: MetroColors.stateCritical),
             child: const Text('Continuar'),
           ),
         ],
@@ -391,7 +395,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     return AlertDialog(
       title: const Text(
         '¿Estás seguro?',
-        style: TextStyle(color: Colors.red),
+        style: TextStyle(color: MetroColors.stateCritical),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -436,7 +440,8 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           onPressed: _canDelete
               ? () => Navigator.pop(context, _confirmController.text.trim())
               : null,
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          style:
+              TextButton.styleFrom(foregroundColor: MetroColors.stateCritical),
           child: const Text('Eliminar cuenta'),
         ),
       ],
