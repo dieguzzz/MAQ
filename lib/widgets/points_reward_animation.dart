@@ -18,7 +18,10 @@ class PointsRewardAnimation extends StatefulWidget {
     this.onComplete,
   });
 
-  /// Muestra una animación de puntos ganados de forma global
+  static OverlayEntry? _activeOverlay;
+
+  /// Muestra una animación de puntos ganados de forma global.
+  /// Si ya hay una activa, la reemplaza para evitar overlays apilados.
   static OverlayEntry? show(
     BuildContext context, {
     required int points,
@@ -27,6 +30,11 @@ class PointsRewardAnimation extends StatefulWidget {
     Color? color,
     Duration duration = const Duration(seconds: 3),
   }) {
+    // Remover overlay anterior si sigue activo
+    if (_activeOverlay != null && _activeOverlay!.mounted) {
+      _activeOverlay!.remove();
+    }
+
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
 
@@ -42,19 +50,21 @@ class PointsRewardAnimation extends StatefulWidget {
             icon: icon,
             color: color,
             onComplete: () {
-              overlayEntry.remove();
+              if (overlayEntry.mounted) overlayEntry.remove();
+              if (_activeOverlay == overlayEntry) _activeOverlay = null;
             },
           ),
         ),
       ),
     );
 
+    _activeOverlay = overlayEntry;
     overlay.insert(overlayEntry);
 
-    // Remover automáticamente después de la duración
     Future.delayed(duration, () {
       if (overlayEntry.mounted) {
         overlayEntry.remove();
+        if (_activeOverlay == overlayEntry) _activeOverlay = null;
       }
     });
 

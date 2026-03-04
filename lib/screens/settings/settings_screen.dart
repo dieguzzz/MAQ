@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
+import 'package:app_settings/app_settings.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/metro_theme.dart';
 import '../legal/privacy_policy_screen.dart';
@@ -319,39 +318,7 @@ class SettingsScreen extends StatelessWidget {
   /// Abre la configuración de la app en el sistema
   static Future<void> _openAppSettings(BuildContext context) async {
     try {
-      Uri settingsUri;
-
-      if (Platform.isAndroid) {
-        // Android: Abrir configuración de la app específica
-        const packageName = 'com.example.metropty';
-        settingsUri = Uri.parse('package:$packageName');
-      } else if (Platform.isIOS) {
-        // iOS: Abrir configuración de la app
-        settingsUri = Uri.parse('app-settings:');
-      } else {
-        // Web u otra plataforma
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('No se puede abrir la configuración en esta plataforma'),
-            ),
-          );
-        }
-        return;
-      }
-
-      if (await canLaunchUrl(settingsUri)) {
-        await launchUrl(settingsUri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No se pudo abrir la configuración del sistema'),
-            ),
-          );
-        }
-      }
+      await AppSettings.openAppSettings();
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

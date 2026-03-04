@@ -220,24 +220,27 @@ class GamificationService {
     }
   }
 
-  // Otorgar badge
+  // Otorgar badge (usa transacción para evitar duplicados en concurrent calls)
   Future<void> _awardBadge(String userId, BadgeType badgeType) async {
     try {
       final badge = _createBadge(badgeType);
       final userRef = _firestore.collection('users').doc(userId);
-      
-      final userDoc = await userRef.get();
-      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
-      final currentBadges = (gamification?['badges'] as List<dynamic>?) ?? [];
 
-      // Verificar si ya tiene el badge
-      final hasBadge = currentBadges.any((b) => b['type'] == badgeType.toString());
-      if (hasBadge) return;
+      await _firestore.runTransaction((transaction) async {
+        final userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) return;
 
-      currentBadges.add(badge.toFirestore());
-      
-      await userRef.update({
-        'gamification.badges': currentBadges,
+        final gamification =
+            userDoc.data()?['gamification'] as Map<String, dynamic>?;
+        final currentBadges =
+            List<dynamic>.from(gamification?['badges'] ?? []);
+
+        final hasBadge =
+            currentBadges.any((b) => b['type'] == badgeType.toString());
+        if (hasBadge) return;
+
+        currentBadges.add(badge.toFirestore());
+        transaction.update(userRef, {'gamification.badges': currentBadges});
       });
     } catch (e) {
       print('Error awarding badge: $e');
