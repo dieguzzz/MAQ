@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import '../../services/subscription_service.dart';
-import '../../services/firebase_service.dart';
+import '../../services/premium/subscription_service.dart';
+import '../../services/core/firebase_service.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -46,7 +46,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     try {
       await _subscriptionService.purchaseProduct(product);
       await _checkPremiumStatus();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -81,7 +81,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     try {
       await _subscriptionService.restorePurchases();
       await _checkPremiumStatus();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -300,4 +300,3 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
   }
 }
-

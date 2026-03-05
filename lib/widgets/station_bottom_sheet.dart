@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/station_model.dart';
 import '../models/simplified_report_model.dart';
 import 'station_report_flow_widget.dart';
-import '../services/simplified_report_service.dart';
+import '../services/reports/simplified_report_service.dart';
 import 'station_report_sheet.dart';
 import 'train_arrival_indicator.dart';
 
@@ -119,7 +119,7 @@ class StationBottomSheet extends StatelessWidget {
     final confianzaTexto = _getConfianzaTexto(confidence, isEstimated);
 
     return Card(
-      color: _getEstadoColor(station.estadoActual).withOpacity(0.1),
+      color: _getEstadoColor(station.estadoActual).withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -190,9 +190,11 @@ class StationBottomSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _buildTrainInfo('L1', '~3 min', '2 usuarios confirman', Colors.green),
+                  _buildTrainInfo(
+                      'L1', '~3 min', '2 usuarios confirman', Colors.green),
                   const SizedBox(height: 8),
-                  _buildTrainInfo('L2', '~6 min', 'baja confianza', Colors.orange),
+                  _buildTrainInfo(
+                      'L2', '~6 min', 'baja confianza', Colors.orange),
                 ],
               ),
             ),
@@ -211,10 +213,10 @@ class StationBottomSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
+        color: Colors.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.green.withOpacity(0.3),
+          color: Colors.green.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -253,7 +255,8 @@ class StationBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTrainInfo(String linea, String tiempo, String info, Color color) {
+  Widget _buildTrainInfo(
+      String linea, String tiempo, String info, Color color) {
     return Row(
       children: [
         Icon(Icons.train, size: 20, color: color),
@@ -300,7 +303,8 @@ class StationBottomSheet extends StatelessWidget {
                       return Container(
                         decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(32)),
                         ),
                         child: StationReportFlowWidget(
                           station: station,
@@ -341,7 +345,8 @@ class StationBottomSheet extends StatelessWidget {
                 builder: (sheetContext) => StationReportSheet(
                   station: station,
                   initialPage: 1, // Abrir directamente en la vista de reporte
-                  initialReportType: 'train', // Abrir directamente en formulario de tren
+                  initialReportType:
+                      'train', // Abrir directamente en formulario de tren
                 ),
               );
             },
@@ -366,7 +371,7 @@ class StationBottomSheet extends StatelessWidget {
 
   Widget _buildRecentReports(BuildContext context) {
     final reportService = SimplifiedReportService();
-    
+
     return StreamBuilder<List<SimplifiedReportModel>>(
       stream: _getRecentReportsStream(reportService),
       builder: (context, snapshot) {
@@ -414,12 +419,12 @@ class StationBottomSheet extends StatelessWidget {
         .asyncMap((snapshot) async {
       final now = DateTime.now();
       final oneHourAgo = now.subtract(const Duration(hours: 1));
-      
+
       final reports = snapshot.docs
           .map((doc) => SimplifiedReportModel.fromFirestore(doc))
           .where((report) => report.createdAt.isAfter(oneHourAgo))
           .toList();
-      
+
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(3).toList();
     });
@@ -429,9 +434,13 @@ class StationBottomSheet extends StatelessWidget {
     final minutos = DateTime.now().difference(report.createdAt).inMinutes;
     final estado = report.stationOperational ?? 'yes';
     final crowd = report.stationCrowd;
-    final emoji = estado == 'yes' ? '🟢' : estado == 'partial' ? '🟡' : '🔴';
+    final emoji = estado == 'yes'
+        ? '🟢'
+        : estado == 'partial'
+            ? '🟡'
+            : '🔴';
     final confirmaciones = report.confirmations;
-    
+
     String estadoTexto = _getEstadoTextoFromOperational(estado);
     if (crowd != null) {
       estadoTexto += ' (Crowd: $crowd/5)';
@@ -439,7 +448,7 @@ class StationBottomSheet extends StatelessWidget {
     if (confirmaciones > 0) {
       estadoTexto += ' ✓$confirmaciones';
     }
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(

@@ -341,4 +341,3 @@ class StatsScreen extends StatelessWidget {
     );
   }
 }
-

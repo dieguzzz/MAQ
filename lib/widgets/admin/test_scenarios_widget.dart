@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/test_scenario_model.dart';
-import '../../services/admin_learning_service.dart';
+import '../../services/learning/admin_learning_service.dart';
 import '../../theme/metro_theme.dart';
 
 /// Widget para ejecutar escenarios de prueba predefinidos
@@ -50,20 +50,21 @@ class _TestScenariosWidgetState extends State<TestScenariosWidget> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isRunning
-                    ? null
-                    : () => _runAllScenarios(context),
+                onPressed: _isRunning ? null : () => _runAllScenarios(context),
                 icon: _isRunning
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Icon(Icons.play_arrow),
-                label: Text(_isRunning ? 'Ejecutando...' : 'Ejecutar Todos los Escenarios'),
+                label: Text(_isRunning
+                    ? 'Ejecutando...'
+                    : 'Ejecutar Todos los Escenarios'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: MetroColors.blue,
                   foregroundColor: Colors.white,
@@ -75,7 +76,7 @@ class _TestScenariosWidgetState extends State<TestScenariosWidget> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: MetroColors.green.withOpacity(0.1),
+                  color: MetroColors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -136,15 +137,14 @@ class _TestScenariosWidgetState extends State<TestScenariosWidget> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: _isRunning
-                      ? null
-                      : () => _runScenario(context, scenario),
-                  child: const Text('Ejecutar'),
+                  onPressed:
+                      _isRunning ? null : () => _runScenario(context, scenario),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: MetroColors.energyOrange,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(100, 36),
                   ),
+                  child: const Text('Ejecutar'),
                 ),
               ],
             ),
@@ -270,4 +270,3 @@ class _TestScenariosWidgetState extends State<TestScenariosWidget> {
     }
   }
 }
-

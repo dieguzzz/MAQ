@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/firebase_service.dart';
-import '../services/storage_service.dart';
-import '../services/error_handler_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/core/storage_service.dart';
+import '../services/core/error_handler_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -16,7 +16,7 @@ class AuthProvider with ChangeNotifier {
     _ensureStreamInitialized();
     return _currentUser;
   }
-  
+
   bool get isLoading => _isLoading;
   bool get isAuthenticated {
     _ensureStreamInitialized();
@@ -44,7 +44,7 @@ class AuthProvider with ChangeNotifier {
       if (currentUser != null) {
         loadUser(currentUser.uid);
       }
-      
+
       // Luego escuchar cambios
       _firebaseService.getAuthStateChanges().listen((User? user) async {
         if (user != null) {
@@ -126,8 +126,8 @@ class AuthProvider with ChangeNotifier {
         throw Exception('La contraseña es requerida');
       }
 
-      final userCredential = await _firebaseService.signInWithEmailAndPassword(
-          email, password);
+      final userCredential =
+          await _firebaseService.signInWithEmailAndPassword(email, password);
       await loadUser(userCredential.user!.uid);
       _isLoading = false;
       notifyListeners();
@@ -158,9 +158,9 @@ class AuthProvider with ChangeNotifier {
         throw Exception('El nombre es requerido');
       }
 
-      final userCredential =
-          await _firebaseService.createUserWithEmailAndPassword(email, password);
-      
+      final userCredential = await _firebaseService
+          .createUserWithEmailAndPassword(email, password);
+
       final newUser = UserModel(
         uid: userCredential.user!.uid,
         email: email,
@@ -198,7 +198,9 @@ class AuthProvider with ChangeNotifier {
       await loadUser(user.uid);
       _isLoading = false;
       notifyListeners();
-      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+      return _currentUser != null
+          ? null
+          : 'Error al cargar el perfil del usuario';
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -222,7 +224,9 @@ class AuthProvider with ChangeNotifier {
       await loadUser(user.uid);
       _isLoading = false;
       notifyListeners();
-      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+      return _currentUser != null
+          ? null
+          : 'Error al cargar el perfil del usuario';
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -240,13 +244,13 @@ class AuthProvider with ChangeNotifier {
   /// Retorna true si la eliminación fue exitosa
   Future<bool> deleteAccount() async {
     if (_currentUser == null) return false;
-    
+
     _isLoading = true;
     notifyListeners();
 
     try {
       final userId = _currentUser!.uid;
-      
+
       // 1. Eliminar imagen de perfil de Storage si existe
       if (_currentUser!.fotoUrl != null) {
         try {
@@ -303,11 +307,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final updateData = <String, dynamic>{};
-      
+
       if (nombre != null && nombre.trim().isNotEmpty) {
         updateData['nombre'] = nombre.trim();
       }
-      
+
       if (fotoUrl != null) {
         updateData['foto_url'] = fotoUrl;
       }
@@ -317,13 +321,13 @@ class AuthProvider with ChangeNotifier {
       }
 
       await _firebaseService.updateUser(_currentUser!.uid, updateData);
-      
+
       // Actualizar el modelo local
       _currentUser = _currentUser!.copyWith(
         nombre: nombre ?? _currentUser!.nombre,
         fotoUrl: fotoUrl ?? _currentUser!.fotoUrl,
       );
-      
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -332,4 +336,3 @@ class AuthProvider with ChangeNotifier {
     }
   }
 }
-

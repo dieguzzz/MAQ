@@ -3,7 +3,7 @@ import '../models/train_model.dart';
 /// Utilidad para mapear datos de reportes simplificados a estados de tren
 class TrainStatusMapper {
   /// Mapea trainStatus y trainCrowd a EstadoTren
-  /// 
+  ///
   /// Lógica:
   /// - 'normal' → EstadoTren.normal
   /// - 'slow' → EstadoTren.retrasado
@@ -37,7 +37,7 @@ class TrainStatusMapper {
   /// Calcula confidence string ('high'/'medium'/'low') desde número (0.0-1.0)
   static String? calculateConfidenceString(double? confidence) {
     if (confidence == null) return null;
-    
+
     if (confidence >= 0.7) {
       return 'high';
     } else if (confidence >= 0.4) {
@@ -71,4 +71,3 @@ class TrainStatusMapper {
     }
   }
 }
-

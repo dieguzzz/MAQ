@@ -13,7 +13,8 @@ class LearningReportModel {
   final bool llegadaATiempo;
   final String? razonRetraso; // opcional
   final DateTime creadoEn;
-  final double calidadReporte; // 0.0-1.0 basado en precisión histórica del usuario
+  final double
+      calidadReporte; // 0.0-1.0 basado en precisión histórica del usuario
 
   LearningReportModel({
     required this.id,
@@ -80,7 +81,8 @@ class LearningReportModel {
       estacionId: estacionId ?? this.estacionId,
       linea: linea ?? this.linea,
       horaLlegadaReal: horaLlegadaReal ?? this.horaLlegadaReal,
-      tiempoEstimadoMostrado: tiempoEstimadoMostrado ?? this.tiempoEstimadoMostrado,
+      tiempoEstimadoMostrado:
+          tiempoEstimadoMostrado ?? this.tiempoEstimadoMostrado,
       retrasoMinutos: retrasoMinutos ?? this.retrasoMinutos,
       llegadaATiempo: llegadaATiempo ?? this.llegadaATiempo,
       razonRetraso: razonRetraso ?? this.razonRetraso,
@@ -89,4 +91,3 @@ class LearningReportModel {
     );
   }
 }
-

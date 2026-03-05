@@ -77,7 +77,8 @@ class _RankingsScreenState extends State<RankingsScreen>
           itemCount: users.length,
           itemBuilder: (context, index) {
             final userData = users[index].data() as Map<String, dynamic>;
-            final gamification = userData['gamification'] as Map<String, dynamic>?;
+            final gamification =
+                userData['gamification'] as Map<String, dynamic>?;
             final puntos = gamification?['puntos'] ?? 0;
             final ranking = index + 1;
 
@@ -93,7 +94,8 @@ class _RankingsScreenState extends State<RankingsScreen>
     );
   }
 
-  Widget _buildRankingItem(int ranking, String nombre, int puntos, String? fotoUrl) {
+  Widget _buildRankingItem(
+      int ranking, String nombre, int puntos, String? fotoUrl) {
     IconData medalIcon;
     Color medalColor;
 
@@ -132,4 +134,3 @@ class _RankingsScreenState extends State<RankingsScreen>
     );
   }
 }
-

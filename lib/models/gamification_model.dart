@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/level_service.dart';
+import '../services/gamification/level_service.dart';
 
 enum BadgeType {
   primerReporte,
@@ -11,33 +11,33 @@ enum BadgeType {
   streakMes,
   topContribuidor,
   // Badges de precisión
-  francotirador,  // 95%+ precisión
-  detective,      // 85%+ precisión
-  observador,     // 70%+ precisión
-  ojoDeAguila80,  // 80%+ precisión
+  francotirador, // 95%+ precisión
+  detective, // 85%+ precisión
+  observador, // 70%+ precisión
+  ojoDeAguila80, // 80%+ precisión
   // Badges de comunidad
-  ayudanteComunidad,  // 50 verificaciones
-  influencerMetro,    // 100+ personas ayudadas
+  ayudanteComunidad, // 50 verificaciones
+  influencerMetro, // 100+ personas ayudadas
   // Badges de especialización
-  expertoLinea1,      // 100+ reportes Línea 1
-  maestroLinea2,      // 100+ reportes Línea 2
+  expertoLinea1, // 100+ reportes Línea 1
+  maestroLinea2, // 100+ reportes Línea 2
   // Badges de eventos panameños
-  almaPollera,        // Reportar durante mes patrio
-  reyCarnaval,        // Reportar durante carnavales
+  almaPollera, // Reportar durante mes patrio
+  reyCarnaval, // Reportar durante carnavales
   // Badges de enseñanza
-  profesorDelMetro,   // 10+ reportes de enseñanza
+  profesorDelMetro, // 10+ reportes de enseñanza
   // Badges de Fundador (Semana 1)
-  fundador,              // Usuario de primera semana
-  fundadorPlatino,       // Completó todas las misiones
-  pioneroEstacion,       // Primero en reportar una estación
-  mejoradorDatos,        // Subió confianza de baja a media
-  confirmadorConfiable,  // 5 confirmaciones
-  exploradorUrbano,      // 3 estaciones diferentes
-  heroeHoraPico,         // Reportó en hora pico (7-9 AM)
-  verificadorElite,      // 10 confirmaciones
-  maestroL1,            // Todas estaciones L1
-  maestroL2,            // Todas estaciones L2
-  leyendaFundadora,     // 20 reportes en primera semana
+  fundador, // Usuario de primera semana
+  fundadorPlatino, // Completó todas las misiones
+  pioneroEstacion, // Primero en reportar una estación
+  mejoradorDatos, // Subió confianza de baja a media
+  confirmadorConfiable, // 5 confirmaciones
+  exploradorUrbano, // 3 estaciones diferentes
+  heroeHoraPico, // Reportó en hora pico (7-9 AM)
+  verificadorElite, // 10 confirmaciones
+  maestroL1, // Todas estaciones L1
+  maestroL2, // Todas estaciones L2
+  leyendaFundadora, // 20 reportes en primera semana
 }
 
 class Badge {
@@ -76,9 +76,8 @@ class Badge {
       'nombre': nombre,
       'descripcion': descripcion,
       'icono': icono,
-      'desbloqueado_en': desbloqueadoEn != null
-          ? Timestamp.fromDate(desbloqueadoEn!)
-          : null,
+      'desbloqueado_en':
+          desbloqueadoEn != null ? Timestamp.fromDate(desbloqueadoEn!) : null,
     };
   }
 }
@@ -122,7 +121,7 @@ class GamificationStats {
 
   factory GamificationStats.fromFirestore(Map<String, dynamic> data) {
     final puntos = data['puntos'] ?? 0;
-    
+
     // Migración: Si nivel es string (enum antiguo), calcular desde puntos
     // Si es int, usarlo directamente
     int nivelCalculado;
@@ -135,7 +134,7 @@ class GamificationStats {
       // Calcular desde puntos si no existe
       nivelCalculado = LevelService.calculateLevel(puntos);
     }
-    
+
     return GamificationStats(
       puntos: puntos,
       nivel: nivelCalculado,
@@ -163,7 +162,7 @@ class GamificationStats {
   Map<String, dynamic> toFirestore() {
     // Recalcular nivel desde puntos para asegurar consistencia
     final nivelCalculado = LevelService.calculateLevel(puntos);
-    
+
     return {
       'puntos': puntos,
       'nivel': nivelCalculado, // Guardar como int
@@ -176,9 +175,8 @@ class GamificationStats {
       'ranking_linea1': rankingLinea1,
       'ranking_linea2': rankingLinea2,
       'badges': badges.map((b) => b.toFirestore()).toList(),
-      'ultimo_reporte': ultimoReporte != null
-          ? Timestamp.fromDate(ultimoReporte!)
-          : null,
+      'ultimo_reporte':
+          ultimoReporte != null ? Timestamp.fromDate(ultimoReporte!) : null,
       'puntos_por_linea': puntosPorLinea,
       'teaching_reports_count': teachingReportsCount,
       'teaching_score': teachingScore,
@@ -192,10 +190,9 @@ class GamificationStats {
   String getNivelDescripcion() {
     return LevelService.getLevelDescription(nivel);
   }
-  
+
   /// Obtiene el progreso hacia el siguiente nivel (0.0-1.0)
   double getProgress() {
     return LevelService.getProgress(puntos, nivel);
   }
 }
-

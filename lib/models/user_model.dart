@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'gamification_model.dart';
-import '../services/level_service.dart';
+import '../services/gamification/level_service.dart';
 
 class UserModel {
   final String uid;
@@ -117,4 +117,3 @@ class UserModel {
     return LevelService.getProgress(gamification!.puntos, level);
   }
 }
-

@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import '../services/firebase_service.dart';
-import '../services/app_mode_service.dart';
-import '../services/metro_simulator_service.dart';
-import '../services/station_position_editor_service.dart';
-import '../services/station_status_aggregator.dart';
-import '../services/train_status_aggregator.dart';
+import '../services/core/firebase_service.dart';
+import '../services/core/app_mode_service.dart';
+import '../services/simulation/metro_simulator_service.dart';
+import '../services/stations/station_position_editor_service.dart';
+import '../services/stations/station_status_aggregator.dart';
+import '../services/stations/train_status_aggregator.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../utils/metro_data.dart';
@@ -13,36 +13,41 @@ class MetroDataProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   final AppModeService _appModeService = AppModeService();
   final MetroSimulatorService _simulator = MetroSimulatorService();
-  final StationPositionEditorService _positionEditor = StationPositionEditorService();
+  final StationPositionEditorService _positionEditor =
+      StationPositionEditorService();
   final StationStatusAggregator _statusAggregator = StationStatusAggregator();
   final TrainStatusAggregator _trainStatusAggregator = TrainStatusAggregator();
-  
+
   List<StationModel> _stations = [];
   List<TrainModel> _trains = [];
   bool _isLoading = false;
-  String _selectedLinea = 'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
+  String _selectedLinea =
+      'all'; // 'all' = todas las líneas, 'linea1' o 'linea2'
   bool _streamInitialized = false;
   bool _isTestMode = false;
   bool _reportsListenerInitialized = false;
 
   List<StationModel> get stations {
     _ensureStreamInitialized();
-    
+
     // Si el simulador está activo, aplicar estados simulados a las estaciones
     List<StationModel> stationsToReturn;
     if (_selectedLinea == 'all') {
       stationsToReturn = List<StationModel>.from(_stations);
     } else {
-      stationsToReturn = _stations.where((s) => s.linea == _selectedLinea).toList();
+      stationsToReturn =
+          _stations.where((s) => s.linea == _selectedLinea).toList();
     }
-    
+
     // Aplicar estados simulados si el simulador está activo
     if (_simulator.isActive) {
       stationsToReturn = stationsToReturn.map((station) {
         // Obtener estado simulado para esta estación
-        final simulatedStatus = _simulator.getSimulatedStationStatus(station.id);
-        final simulatedAglomeracion = _simulator.getSimulatedAglomeracion(station.id);
-        
+        final simulatedStatus =
+            _simulator.getSimulatedStationStatus(station.id);
+        final simulatedAglomeracion =
+            _simulator.getSimulatedAglomeracion(station.id);
+
         if (simulatedStatus != null || simulatedAglomeracion != null) {
           // Crear una copia de la estación con el estado simulado
           return StationModel(
@@ -58,7 +63,7 @@ class MetroDataProvider with ChangeNotifier {
         return station;
       }).toList();
     }
-    
+
     // Aplicar coordenadas editadas si existen
     stationsToReturn = stationsToReturn.map((station) {
       final editedPosition = _positionEditor.getPosition(station.id);
@@ -75,22 +80,24 @@ class MetroDataProvider with ChangeNotifier {
       }
       return station;
     }).toList();
-    
+
     return stationsToReturn;
   }
-  
+
   List<TrainModel> get trains {
     _ensureStreamInitialized();
     // Siempre retornar una nueva lista para que la comparación funcione correctamente
     if (_selectedLinea == 'all') {
       // "Todas las líneas" - retornar todos los trenes (Línea 1 + Línea 2)
       final allTrains = List<TrainModel>.from(_trains);
-      print('🔍 MetroDataProvider: trains getter - selectedLinea=all, retornando ${allTrains.length} trenes (todos)');
+      print(
+          '🔍 MetroDataProvider: trains getter - selectedLinea=all, retornando ${allTrains.length} trenes (todos)');
       return allTrains;
     } else {
       // Filtrar por línea específica
       final filtered = _trains.where((t) => t.linea == _selectedLinea).toList();
-      print('🔍 MetroDataProvider: trains getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} trenes');
+      print(
+          '🔍 MetroDataProvider: trains getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} trenes');
       return filtered;
     }
   }
@@ -119,11 +126,13 @@ class MetroDataProvider with ChangeNotifier {
       _firebaseService.getStationsStream().listen(
         (stations) {
           // Filtrar estaciones duplicadas o incorrectas de San Miguelito
-          final filteredStations = stations.where((s) => 
-            s.id != 'l2_san_miguelito' && 
-            s.id != 'l2_san_miguelito_l1'
-          ).toList();
-          _stations = filteredStations.isNotEmpty ? filteredStations : MetroData.getAllStations();
+          final filteredStations = stations
+              .where((s) =>
+                  s.id != 'l2_san_miguelito' && s.id != 'l2_san_miguelito_l1')
+              .toList();
+          _stations = filteredStations.isNotEmpty
+              ? filteredStations
+              : MetroData.getAllStations();
           notifyListeners();
         },
         onError: (error) {
@@ -137,8 +146,7 @@ class MetroDataProvider with ChangeNotifier {
       // Listen to trains stream
       _firebaseService.getTrainsStream().listen(
         (trains) {
-          _trains =
-              trains.isNotEmpty ? trains : MetroData.getSampleTrains();
+          _trains = trains.isNotEmpty ? trains : MetroData.getSampleTrains();
           notifyListeners();
         },
         onError: (error) {
@@ -165,10 +173,11 @@ class MetroDataProvider with ChangeNotifier {
   /// Establece el modo test
   void setTestMode(bool isTestMode) {
     if (_isTestMode == isTestMode) return; // Ya está en ese modo
-    
+
     _isTestMode = isTestMode;
-    print('🧪 MetroDataProvider: Modo Test ${isTestMode ? "activado" : "desactivado"}');
-    
+    print(
+        '🧪 MetroDataProvider: Modo Test ${isTestMode ? "activado" : "desactivado"}');
+
     if (isTestMode) {
       // En modo test, usar solo datos estáticos sin streams
       _stations = MetroData.getAllStations();
@@ -187,7 +196,7 @@ class MetroDataProvider with ChangeNotifier {
       _isTestMode = false;
       return;
     }
-    
+
     try {
       final isTest = await _appModeService.isTestMode(userId);
       if (_isTestMode != isTest) {
@@ -215,13 +224,13 @@ class MetroDataProvider with ChangeNotifier {
         if (_trains.isEmpty) {
           _trains = MetroData.getSampleTrains();
         }
-        
+
         // Filtrar estaciones duplicadas o incorrectas de San Miguelito
-        _stations = _stations.where((s) => 
-          s.id != 'l2_san_miguelito' && 
-          s.id != 'l2_san_miguelito_l1'
-        ).toList();
-        
+        _stations = _stations
+            .where((s) =>
+                s.id != 'l2_san_miguelito' && s.id != 'l2_san_miguelito_l1')
+            .toList();
+
         // Si no hay estaciones en Firestore, usar datos estáticos como fallback
         if (_stations.isEmpty) {
           print('No hay estaciones en Firestore, usando datos estáticos...');
@@ -244,7 +253,8 @@ class MetroDataProvider with ChangeNotifier {
     // Siempre actualizar y notificar, incluso si el valor es el mismo
     // Esto asegura que "Todas las líneas" funcione correctamente
     _selectedLinea = linea;
-    print('🔍 MetroDataProvider: setSelectedLinea($linea) - notificando listeners');
+    print(
+        '🔍 MetroDataProvider: setSelectedLinea($linea) - notificando listeners');
     notifyListeners();
   }
 
@@ -290,8 +300,7 @@ class MetroDataProvider with ChangeNotifier {
       (snapshot) {
         // Debounce: solo actualizar si pasaron al menos 5 segundos desde la última actualización
         final now = DateTime.now();
-        if (lastUpdate != null &&
-            now.difference(lastUpdate!).inSeconds < 5) {
+        if (lastUpdate != null && now.difference(lastUpdate!).inSeconds < 5) {
           return;
         }
         lastUpdate = now;
@@ -348,17 +357,19 @@ class MetroDataProvider with ChangeNotifier {
         // Recalcular estado para cada tren afectado
         // Por ahora, actualizamos todos los trenes de las estaciones afectadas
         // TODO: Mejorar cuando tengamos trainId en los reportes
-        for (final stationId in stationIds) {
+        for (final _ in stationIds) {
           // Obtener la línea del reporte para actualizar los trenes correctos
           final reportData = snapshot.docChanges.first.doc.data();
           final trainLine = reportData?['trainLine'];
-          
+
           if (trainLine != null) {
             // Buscar trenes de esa línea y actualizar su estado
             // Por simplicidad, actualizamos todos los trenes de la línea
             // En producción, esto debería ser más específico
             _trains.where((t) => t.linea == trainLine).forEach((train) {
-              _trainStatusAggregator.updateTrainFromReports(train.id).catchError((e) {
+              _trainStatusAggregator
+                  .updateTrainFromReports(train.id)
+                  .catchError((e) {
                 print('Error actualizando estado de tren ${train.id}: $e');
               });
             });
@@ -371,4 +382,3 @@ class MetroDataProvider with ChangeNotifier {
     );
   }
 }
-

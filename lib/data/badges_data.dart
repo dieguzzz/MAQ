@@ -9,7 +9,8 @@ class BadgesData {
       icon: '🦅',
       category: BadgeCategory.animal,
       description: 'Vista Aguda',
-      culturalInfo: 'Ave nacional de Panamá, símbolo de fuerza y visión. Es una de las águilas más poderosas del mundo y habita en la selva del Darién.',
+      culturalInfo:
+          'Ave nacional de Panamá, símbolo de fuerza y visión. Es una de las águilas más poderosas del mundo y habita en la selva del Darién.',
       unlockCondition: 'Reporta 50 situaciones con alta precisión',
       rarity: BadgeRarity.legendary,
       unlocked: true,
@@ -21,7 +22,8 @@ class BadgesData {
       icon: '🐒',
       category: BadgeCategory.animal,
       description: 'Velocidad y Agilidad',
-      culturalInfo: 'Pequeño primate en peligro de extinción, ágil y rápido. Representa la rapidez con la que te mueves por el metro.',
+      culturalInfo:
+          'Pequeño primate en peligro de extinción, ágil y rápido. Representa la rapidez con la que te mueves por el metro.',
       unlockCondition: 'Completa 10 viajes en menos de 15 minutos',
       rarity: BadgeRarity.rare,
       unlocked: true,
@@ -32,7 +34,8 @@ class BadgesData {
       icon: '🦥',
       category: BadgeCategory.animal,
       description: 'Paciencia Tropical',
-      culturalInfo: 'Representa la tranquilidad panameña. Perfecto para cuando el metro va lento pero mantienes la calma.',
+      culturalInfo:
+          'Representa la tranquilidad panameña. Perfecto para cuando el metro va lento pero mantienes la calma.',
       unlockCondition: 'Espera pacientemente 30 minutos por retrasos',
       rarity: BadgeRarity.common,
       unlocked: false,
@@ -43,7 +46,8 @@ class BadgesData {
       icon: '🦜',
       category: BadgeCategory.animal,
       description: 'Colores Vibrantes',
-      culturalInfo: 'Ave de colores brillantes que representa la vida tropical de Panamá.',
+      culturalInfo:
+          'Ave de colores brillantes que representa la vida tropical de Panamá.',
       unlockCondition: 'Usa todas las líneas del metro',
       rarity: BadgeRarity.epic,
       unlocked: true,
@@ -55,7 +59,8 @@ class BadgesData {
       icon: '🐸',
       category: BadgeCategory.animal,
       description: 'Tesoro Escondido',
-      culturalInfo: 'Símbolo nacional en peligro de extinción. Representa los tesoros únicos que descubres en la ciudad.',
+      culturalInfo:
+          'Símbolo nacional en peligro de extinción. Representa los tesoros únicos que descubres en la ciudad.',
       unlockCondition: 'Descubre 5 estaciones nuevas',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -66,7 +71,8 @@ class BadgesData {
       icon: '🦎',
       category: BadgeCategory.animal,
       description: 'Siempre Presente',
-      culturalInfo: 'Común en todo Panamá, ágil y adaptable. Tu primer logro como usuario de MetroPTY.',
+      culturalInfo:
+          'Común en todo Panamá, ágil y adaptable. Tu primer logro como usuario de MetroPTY.',
       unlockCondition: 'Completa tu primer viaje',
       rarity: BadgeRarity.common,
       unlocked: true,
@@ -79,7 +85,8 @@ class BadgesData {
       icon: '🌊',
       category: BadgeCategory.mythology,
       description: 'Alerta de Lluvia',
-      culturalInfo: 'Espíritu femenino de ríos y quebradas con cabellera larga que cubre el rostro. Aparece en días lluviosos.',
+      culturalInfo:
+          'Espíritu femenino de ríos y quebradas con cabellera larga que cubre el rostro. Aparece en días lluviosos.',
       unlockCondition: 'Usa el metro durante 5 días lluviosos',
       rarity: BadgeRarity.rare,
       unlocked: false,
@@ -90,7 +97,8 @@ class BadgesData {
       icon: '💧',
       category: BadgeCategory.mythology,
       description: 'Flujo Perfecto',
-      culturalInfo: 'Diosa de ríos y mares, protectora de las aguas. Representa el flujo perfecto del metro.',
+      culturalInfo:
+          'Diosa de ríos y mares, protectora de las aguas. Representa el flujo perfecto del metro.',
       unlockCondition: 'Completa 20 viajes sin retrasos',
       rarity: BadgeRarity.epic,
       unlocked: true,
@@ -102,7 +110,8 @@ class BadgesData {
       icon: '👹',
       category: BadgeCategory.mythology,
       description: 'Energía y Movimiento',
-      culturalInfo: 'Danzantes tradicionales con trajes rojos vibrantes. Representan la energía del carnaval panameño.',
+      culturalInfo:
+          'Danzantes tradicionales con trajes rojos vibrantes. Representan la energía del carnaval panameño.',
       unlockCondition: 'Viaja durante las festividades de carnaval',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -113,7 +122,8 @@ class BadgesData {
       icon: '🌳',
       category: BadgeCategory.mythology,
       description: 'Protector Ecológico',
-      culturalInfo: 'Espíritu del bosque, protectora de la naturaleza. Para usuarios conscientes del medio ambiente.',
+      culturalInfo:
+          'Espíritu del bosque, protectora de la naturaleza. Para usuarios conscientes del medio ambiente.',
       unlockCondition: 'Usa el metro en lugar del auto 30 veces',
       rarity: BadgeRarity.rare,
       unlocked: false,
@@ -124,7 +134,8 @@ class BadgesData {
       icon: '🌀',
       category: BadgeCategory.mythology,
       description: 'Desvío Inesperado',
-      culturalInfo: 'Espíritu travieso del viento que desorienta y causa confusión. Aparece con los desvíos.',
+      culturalInfo:
+          'Espíritu travieso del viento que desorienta y causa confusión. Aparece con los desvíos.',
       unlockCondition: 'Experimenta tu primer desvío de ruta',
       rarity: BadgeRarity.common,
       unlocked: false,
@@ -137,7 +148,8 @@ class BadgesData {
       icon: '👗',
       category: BadgeCategory.culture,
       description: 'Elegancia Tradicional',
-      culturalInfo: 'Traje típico nacional de Panamá, símbolo de elegancia y tradición. Uno de los vestidos más elaborados de América.',
+      culturalInfo:
+          'Traje típico nacional de Panamá, símbolo de elegancia y tradición. Uno de los vestidos más elaborados de América.',
       unlockCondition: 'Mantén un historial impecable por 30 días',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -148,7 +160,8 @@ class BadgesData {
       icon: '🥁',
       category: BadgeCategory.culture,
       description: 'Ritmo Perfecto',
-      culturalInfo: 'Baile y música tradicional de Panamá. Representa el ritmo constante de tus viajes.',
+      culturalInfo:
+          'Baile y música tradicional de Panamá. Representa el ritmo constante de tus viajes.',
       unlockCondition: 'Usa el metro 7 días consecutivos',
       rarity: BadgeRarity.rare,
       unlocked: true,
@@ -159,7 +172,8 @@ class BadgesData {
       icon: '🎭',
       category: BadgeCategory.culture,
       description: 'Celebración Cultural',
-      culturalInfo: 'Cultura afrocolonial de la costa atlántica. Representa la diversidad cultural panameña.',
+      culturalInfo:
+          'Cultura afrocolonial de la costa atlántica. Representa la diversidad cultural panameña.',
       unlockCondition: 'Reporta eventos positivos en 10 estaciones diferentes',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -170,7 +184,8 @@ class BadgesData {
       icon: '🌊',
       category: BadgeCategory.culture,
       description: 'Flujo Como el Mar',
-      culturalInfo: 'Baile de la costa que imita el movimiento del mar. Representa el flujo suave de tus viajes.',
+      culturalInfo:
+          'Baile de la costa que imita el movimiento del mar. Representa el flujo suave de tus viajes.',
       unlockCondition: 'Completa 15 transbordos perfectos',
       rarity: BadgeRarity.rare,
       unlocked: false,
@@ -183,7 +198,8 @@ class BadgesData {
       icon: '🛶',
       category: BadgeCategory.hero,
       description: 'Perseverancia',
-      culturalInfo: 'Cacique que resistió la conquista española. Símbolo de fuerza y perseverancia del pueblo panameño.',
+      culturalInfo:
+          'Cacique que resistió la conquista española. Símbolo de fuerza y perseverancia del pueblo panameño.',
       unlockCondition: 'Alcanza nivel máximo de usuario',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -195,7 +211,8 @@ class BadgesData {
       icon: '⚔️',
       category: BadgeCategory.hero,
       description: 'Héroe del Pueblo',
-      culturalInfo: 'Héroe popular de la Guerra de los Mil Días. Luchó por los derechos del pueblo panameño.',
+      culturalInfo:
+          'Héroe popular de la Guerra de los Mil Días. Luchó por los derechos del pueblo panameño.',
       unlockCondition: 'Ayuda a 100 usuarios con reportes útiles',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -206,7 +223,8 @@ class BadgesData {
       icon: '🎓',
       category: BadgeCategory.hero,
       description: 'Liderazgo',
-      culturalInfo: 'Primer presidente de la República de Panamá. Líder de la independencia.',
+      culturalInfo:
+          'Primer presidente de la República de Panamá. Líder de la independencia.',
       unlockCondition: 'Alcanza el nivel de "Líder Comunitario"',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -217,7 +235,8 @@ class BadgesData {
       icon: '🌎',
       category: BadgeCategory.hero,
       description: 'Logro Histórico',
-      culturalInfo: 'Líder de la recuperación del Canal de Panamá. Figura clave en la historia moderna del país.',
+      culturalInfo:
+          'Líder de la recuperación del Canal de Panamá. Figura clave en la historia moderna del país.',
       unlockCondition: 'Usa MetroPTY durante 1 año completo',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -230,7 +249,8 @@ class BadgesData {
       icon: '🌉',
       category: BadgeCategory.architecture,
       description: 'Conexión Continental',
-      culturalInfo: 'Icónico puente que une América del Norte y del Sur. Símbolo de conexión y unión.',
+      culturalInfo:
+          'Icónico puente que une América del Norte y del Sur. Símbolo de conexión y unión.',
       unlockCondition: 'Conecta con 50 usuarios diferentes',
       rarity: BadgeRarity.epic,
       unlocked: true,
@@ -241,7 +261,8 @@ class BadgesData {
       icon: '🚢',
       category: BadgeCategory.architecture,
       description: 'Eficiencia Máxima',
-      culturalInfo: 'Una de las maravillas de la ingeniería moderna. Las esclusas de Miraflores, Gatún y Pedro Miguel son íconos mundiales.',
+      culturalInfo:
+          'Una de las maravillas de la ingeniería moderna. Las esclusas de Miraflores, Gatún y Pedro Miguel son íconos mundiales.',
       unlockCondition: 'Optimiza tus rutas 25 veces',
       rarity: BadgeRarity.legendary,
       unlocked: true,
@@ -253,7 +274,8 @@ class BadgesData {
       icon: '🏰',
       category: BadgeCategory.architecture,
       description: 'Patrimonio Clásico',
-      culturalInfo: 'Centro histórico colonial de Ciudad de Panamá, Patrimonio de la Humanidad. Sus arcos, balcones y plazas cuentan siglos de historia.',
+      culturalInfo:
+          'Centro histórico colonial de Ciudad de Panamá, Patrimonio de la Humanidad. Sus arcos, balcones y plazas cuentan siglos de historia.',
       unlockCondition: 'Visita 10 estaciones del centro histórico',
       rarity: BadgeRarity.rare,
       unlocked: false,
@@ -264,7 +286,8 @@ class BadgesData {
       icon: '🌋',
       category: BadgeCategory.architecture,
       description: 'La Cumbre',
-      culturalInfo: 'Punto más alto de Panamá (3,475 m). Desde su cima se pueden ver ambos océanos.',
+      culturalInfo:
+          'Punto más alto de Panamá (3,475 m). Desde su cima se pueden ver ambos océanos.',
       unlockCondition: 'Alcanza el nivel más alto en todos los logros',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -275,7 +298,8 @@ class BadgesData {
       icon: '🏝️',
       category: BadgeCategory.architecture,
       description: 'Cultura Única',
-      culturalInfo: 'Archipiélago de Guna Yala, hogar de la cultura Guna y sus famosas molas (arte textil). Paraíso caribeño único.',
+      culturalInfo:
+          'Archipiélago de Guna Yala, hogar de la cultura Guna y sus famosas molas (arte textil). Paraíso caribeño único.',
       unlockCondition: 'Colecciona 15 logros de diferentes categorías',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -288,7 +312,8 @@ class BadgesData {
       icon: '🌴',
       category: BadgeCategory.nature,
       description: 'Crecimiento Constante',
-      culturalInfo: 'Símbolo tropical de Panamá. Representa crecimiento y desarrollo constante.',
+      culturalInfo:
+          'Símbolo tropical de Panamá. Representa crecimiento y desarrollo constante.',
       unlockCondition: 'Sube de nivel 5 veces',
       rarity: BadgeRarity.common,
       unlocked: true,
@@ -299,7 +324,8 @@ class BadgesData {
       icon: '🌺',
       category: BadgeCategory.nature,
       description: 'Flor Nacional',
-      culturalInfo: 'Flor nacional de Panamá (Peristeria elata). Su forma interior parece una paloma blanca.',
+      culturalInfo:
+          'Flor nacional de Panamá (Peristeria elata). Su forma interior parece una paloma blanca.',
       unlockCondition: 'Completa un logro especial mensual',
       rarity: BadgeRarity.legendary,
       unlocked: false,
@@ -310,7 +336,8 @@ class BadgesData {
       icon: '🌳',
       category: BadgeCategory.nature,
       description: 'Raíces Fundacionales',
-      culturalInfo: 'Árbol que da nombre al país. Sus flores amarillas iluminan el paisaje tropical.',
+      culturalInfo:
+          'Árbol que da nombre al país. Sus flores amarillas iluminan el paisaje tropical.',
       unlockCondition: 'Completa tu primera semana en MetroPTY',
       rarity: BadgeRarity.rare,
       unlocked: true,
@@ -321,7 +348,8 @@ class BadgesData {
       icon: '🏞️',
       category: BadgeCategory.nature,
       description: 'Explorador Intrépido',
-      culturalInfo: 'Selva impenetrable, una de las regiones más biodiversas del planeta. Representa los retos más difíciles.',
+      culturalInfo:
+          'Selva impenetrable, una de las regiones más biodiversas del planeta. Representa los retos más difíciles.',
       unlockCondition: 'Supera 10 situaciones complicadas',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -334,7 +362,8 @@ class BadgesData {
       icon: '🎉',
       category: BadgeCategory.festival,
       description: 'Fiesta Nacional',
-      culturalInfo: 'Los Carnavales de Panamá son famosos por sus reinas, culecos y carrozas. Cuatro días de celebración nacional.',
+      culturalInfo:
+          'Los Carnavales de Panamá son famosos por sus reinas, culecos y carrozas. Cuatro días de celebración nacional.',
       unlockCondition: 'Gana puntos dobles durante carnavales',
       rarity: BadgeRarity.epic,
       unlocked: false,
@@ -345,7 +374,8 @@ class BadgesData {
       icon: '🎪',
       category: BadgeCategory.festival,
       description: 'Tradición Interiorana',
-      culturalInfo: 'Feria Internacional de David en Chiriquí. Celebración de la cultura del interior del país.',
+      culturalInfo:
+          'Feria Internacional de David en Chiriquí. Celebración de la cultura del interior del país.',
       unlockCondition: 'Participa en eventos regionales',
       rarity: BadgeRarity.rare,
       unlocked: false,
@@ -356,24 +386,11 @@ class BadgesData {
       icon: '🎵',
       category: BadgeCategory.festival,
       description: 'Música Tradicional',
-      culturalInfo: 'Festival de música típica en Guararé. Celebración de la música folclórica panameña.',
+      culturalInfo:
+          'Festival de música típica en Guararé. Celebración de la música folclórica panameña.',
       unlockCondition: 'Completa logros musicales y de ritmo',
       rarity: BadgeRarity.rare,
       unlocked: false,
     ),
   ];
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

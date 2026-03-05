@@ -60,11 +60,13 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                  border:
+                      Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -128,11 +130,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: Text(
                             'Reporta, gana puntos y ayuda\nal metro en tiempo real.',
-                            style:
-                                Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ),
                       ],
@@ -147,11 +151,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            _FeatureBullet(icon: Icons.flash_on, text: 'Reportes en menos de 3 toques'),
+                            _FeatureBullet(
+                                icon: Icons.flash_on,
+                                text: 'Reportes en menos de 3 toques'),
                             SizedBox(height: 12),
-                            _FeatureBullet(icon: Icons.groups, text: 'Impacto comunitario visible'),
+                            _FeatureBullet(
+                                icon: Icons.groups,
+                                text: 'Impacto comunitario visible'),
                             SizedBox(height: 12),
-                            _FeatureBullet(icon: Icons.emoji_events, text: 'Puntos, rachas y logros épicos'),
+                            _FeatureBullet(
+                                icon: Icons.emoji_events,
+                                text: 'Puntos, rachas y logros épicos'),
                           ],
                         ),
                       ),

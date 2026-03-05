@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/dev_service.dart';
+import '../../services/core/dev_service.dart';
 
 /// Widget que detecta gesto secreto (1 tap) para activar modo desarrollador
 class SecretDevActivation extends StatefulWidget {
@@ -25,7 +25,8 @@ class _SecretDevActivationState extends State<SecretDevActivation> {
         final now = DateTime.now();
 
         // Reset si pasó más de 2 segundos desde el último tap
-        if (lastTap != null && now.difference(lastTap!) > const Duration(seconds: 2)) {
+        if (lastTap != null &&
+            now.difference(lastTap!) > const Duration(seconds: 2)) {
           tapCount = 0;
         }
 
@@ -35,13 +36,13 @@ class _SecretDevActivationState extends State<SecretDevActivation> {
         // 1 tap activa modo dev
         if (tapCount >= 1) {
           DevService.toggleDevMode();
-          
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  DevService.devModeEnabled 
-                      ? '🧪 Modo Desarrollador Activado' 
+                  DevService.devModeEnabled
+                      ? '🧪 Modo Desarrollador Activado'
                       : '🧪 Modo Desarrollador Desactivado',
                 ),
                 backgroundColor: Colors.blue,
@@ -49,7 +50,7 @@ class _SecretDevActivationState extends State<SecretDevActivation> {
               ),
             );
           }
-          
+
           tapCount = 0;
         }
       },
@@ -57,4 +58,3 @@ class _SecretDevActivationState extends State<SecretDevActivation> {
     );
   }
 }
-

@@ -5,7 +5,7 @@ import 'package:metropty/firebase_options.dart';
 
 /// Script para actualizar todas las estaciones en Firestore con las coordenadas exactas
 /// y eliminar documentos duplicados
-/// 
+///
 /// Uso: dart run scripts/update_stations_firestore.dart
 
 // Datos exactos de las estaciones
@@ -273,7 +273,7 @@ Future<void> main() async {
     print('\n🗑️  Eliminando documentos duplicados...');
     final idsToDelete = ['l2_san_miguelito_l1', 'l2_san_miguelito'];
     int deletedCount = 0;
-    
+
     for (final idToDelete in idsToDelete) {
       if (existingIds.contains(idToDelete)) {
         try {
@@ -307,7 +307,8 @@ Future<void> main() async {
         'id': stationData['id'],
         'nombre': stationData['nombre'],
         'linea': stationData['linea'],
-        'ubicacion': GeoPoint(stationData['lat'] as double, stationData['lng'] as double),
+        'ubicacion': GeoPoint(
+            stationData['lat'] as double, stationData['lng'] as double),
         'estado_actual': 'normal',
         'aglomeracion': 1,
         'ultima_actualizacion': FieldValue.serverTimestamp(),
@@ -322,10 +323,10 @@ Future<void> main() async {
       }
 
       if (existingIds.contains(stationId)) {
-        currentBatch!.update(docRef, stationDoc);
+        currentBatch.update(docRef, stationDoc);
         updatedCount++;
       } else {
-        currentBatch!.set(docRef, stationDoc);
+        currentBatch.set(docRef, stationDoc);
         createdCount++;
       }
       operationsInBatch++;
@@ -356,10 +357,10 @@ Future<void> main() async {
     print('✅ Total de estaciones en Firestore: ${finalIds.length}');
 
     // Verificar que no haya San Miguelitos duplicados
-    final sanMiguelitoStations = finalIds.where((id) => 
-      id.contains('san_miguelito')
-    ).toList();
-    print('📊 Estaciones San Miguelito encontradas: ${sanMiguelitoStations.length}');
+    final sanMiguelitoStations =
+        finalIds.where((id) => id.contains('san_miguelito')).toList();
+    print(
+        '📊 Estaciones San Miguelito encontradas: ${sanMiguelitoStations.length}');
     for (final id in sanMiguelitoStations) {
       print('   - $id');
     }
@@ -367,7 +368,8 @@ Future<void> main() async {
     if (sanMiguelitoStations.length == 2) {
       print('✅ Correcto: Solo hay 2 San Miguelito (uno por línea)');
     } else {
-      print('⚠️  Advertencia: Se encontraron ${sanMiguelitoStations.length} San Miguelito');
+      print(
+          '⚠️  Advertencia: Se encontraron ${sanMiguelitoStations.length} San Miguelito');
     }
 
     print('\n🎉 ¡Script completado exitosamente!');
@@ -377,4 +379,3 @@ Future<void> main() async {
     exit(1);
   }
 }
-

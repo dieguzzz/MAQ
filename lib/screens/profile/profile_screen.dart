@@ -144,7 +144,8 @@ class ProfileScreen extends StatelessWidget {
                       Card(
                         margin: const EdgeInsets.all(16),
                         child: ListTile(
-                          leading: const Icon(Icons.emoji_events, color: Colors.amber),
+                          leading: const Icon(Icons.emoji_events,
+                              color: Colors.amber),
                           title: const Text('Ranking Global'),
                           subtitle: Text('Posición #$ranking'),
                           trailing: const Icon(Icons.chevron_right),
@@ -162,7 +163,8 @@ class ProfileScreen extends StatelessWidget {
                       Card(
                         margin: const EdgeInsets.all(16),
                         child: ListTile(
-                          leading: const Icon(Icons.emoji_events, color: Colors.grey),
+                          leading: const Icon(Icons.emoji_events,
+                              color: Colors.grey),
                           title: const Text('Ranking Global'),
                           subtitle: const Text('Aún no tienes ranking'),
                           trailing: const Icon(Icons.chevron_right),
@@ -181,7 +183,8 @@ class ProfileScreen extends StatelessWidget {
                     Card(
                       margin: const EdgeInsets.all(16),
                       child: ListTile(
-                        leading: const Icon(Icons.collections, color: Colors.purple),
+                        leading:
+                            const Icon(Icons.collections, color: Colors.purple),
                         title: const Text('Colección de Logros'),
                         subtitle: const Text('Explora tus logros y medallas'),
                         trailing: const Icon(Icons.chevron_right),
@@ -209,7 +212,8 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const EditProfileScreen(),
+                                  builder: (context) =>
+                                      const EditProfileScreen(),
                                 ),
                               );
                             },
@@ -218,13 +222,15 @@ class ProfileScreen extends StatelessWidget {
                           ListTile(
                             leading: const Icon(Icons.history),
                             title: const Text('Historial de Reportes'),
-                            subtitle: Text('${user.reportesCount} reportes creados'),
+                            subtitle:
+                                Text('${user.reportesCount} reportes creados'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const ReportHistoryScreen(),
+                                  builder: (context) =>
+                                      const ReportHistoryScreen(),
                                 ),
                               );
                             },
@@ -254,7 +260,8 @@ class ProfileScreen extends StatelessWidget {
                         onPressed: () async {
                           await authProvider.signOut();
                           if (context.mounted) {
-                            Navigator.of(context).pushReplacementNamed('/login');
+                            Navigator.of(context)
+                                .pushReplacementNamed('/login');
                           }
                         },
                         style: ElevatedButton.styleFrom(

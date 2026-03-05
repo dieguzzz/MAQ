@@ -6,30 +6,30 @@ class EnhancedReportModel {
   final String scope; // 'station' | 'train'
   final String stationId;
   final String userId;
-  
+
   // Metadata temporal
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? expiresAt; // TTL: 25 minutos
-  
+
   // Estado del reporte
   final String status; // 'active' | 'verified' | 'expired' | 'rejected'
   final int confirmations;
   final double confidence; // 0.0 a 1.0
-  
+
   // Puntos otorgados
   final int basePoints;
   final int bonusPoints;
   final int totalPoints;
-  
+
   // Datos específicos por scope
   final StationReportData? stationData;
   final TrainReportData? trainData;
-  
+
   // Ubicación del usuario al reportar
   final GeoPoint userLocation;
   final double accuracy; // metros
-  
+
   // Sistema de reputación
   final double userConfidence; // Basado en historial
   final double weightedValue; // = confidence * userConfidence
@@ -58,7 +58,7 @@ class EnhancedReportModel {
 
   factory EnhancedReportModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return EnhancedReportModel(
       id: doc.id,
       scope: data['scope'] ?? 'station',
@@ -66,8 +66,8 @@ class EnhancedReportModel {
       userId: data['userId'] ?? '',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      expiresAt: data['expiresAt'] != null 
-          ? (data['expiresAt'] as Timestamp).toDate() 
+      expiresAt: data['expiresAt'] != null
+          ? (data['expiresAt'] as Timestamp).toDate()
           : null,
       status: data['status'] ?? 'active',
       confirmations: data['confirmations'] ?? 0,
@@ -75,7 +75,7 @@ class EnhancedReportModel {
       basePoints: data['basePoints'] ?? 0,
       bonusPoints: data['bonusPoints'] ?? 0,
       totalPoints: data['totalPoints'] ?? 0,
-      stationData: data['stationData'] != null 
+      stationData: data['stationData'] != null
           ? StationReportData.fromMap(data['stationData'])
           : null,
       trainData: data['trainData'] != null
@@ -151,16 +151,17 @@ class TrainReportData {
   final int crowdLevel; // 1-5
   final String trainStatus; // 'normal' | 'slow' | 'stopped' | 'express'
   final String trainType; // 'normal' | 'express' | 'extended'
-  
+
   // Estimación de tiempo
   final String etaBucket; // '<1' | '1-2' | '3-5' | '6-10' | '10+' | 'unknown'
   final DateTime? etaExpectedAt; // Calculado server-side
-  
+
   // Validación
   final bool needsValidation;
-  final String validationStatus; // 'pending' | 'validated' | 'corrected' | 'expired'
+  final String
+      validationStatus; // 'pending' | 'validated' | 'corrected' | 'expired'
   final int validationPoints;
-  
+
   // Para análisis
   final DateTime? actualArrivalTime;
   final int? timeErrorSeconds;
@@ -203,11 +204,13 @@ class TrainReportData {
       'trainStatus': trainStatus,
       'trainType': trainType,
       'etaBucket': etaBucket,
-      if (etaExpectedAt != null) 'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
+      if (etaExpectedAt != null)
+        'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
       'needsValidation': needsValidation,
       'validationStatus': validationStatus,
       'validationPoints': validationPoints,
-      if (actualArrivalTime != null) 'actualArrivalTime': Timestamp.fromDate(actualArrivalTime!),
+      if (actualArrivalTime != null)
+        'actualArrivalTime': Timestamp.fromDate(actualArrivalTime!),
       if (timeErrorSeconds != null) 'timeErrorSeconds': timeErrorSeconds,
     };
   }

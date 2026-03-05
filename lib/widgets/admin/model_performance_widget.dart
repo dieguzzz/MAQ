@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/admin_learning_service.dart';
+import '../../services/learning/admin_learning_service.dart';
 import '../../theme/metro_theme.dart';
 
 /// Widget para visualizar el rendimiento del modelo de aprendizaje
@@ -206,7 +206,9 @@ class _ModelPerformanceWidgetState extends State<ModelPerformanceWidget> {
                   ? '📈 +${velocity.toStringAsFixed(2)}% por día'
                   : '📉 ${velocity.toStringAsFixed(2)}% por día',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: velocity >= 0 ? MetroColors.green : MetroColors.stateCritical,
+                color: velocity >= 0
+                    ? MetroColors.green
+                    : MetroColors.stateCritical,
               ),
             ),
           ],
@@ -258,8 +260,10 @@ class _ModelPerformanceWidgetState extends State<ModelPerformanceWidget> {
   }
 
   Widget _buildStationPerformance(Map<String, dynamic> data, ThemeData theme) {
-    final bestStations = (data['best_performing_stations'] as List<dynamic>?) ?? [];
-    final worstStations = (data['worst_performing_stations'] as List<dynamic>?) ?? [];
+    final bestStations =
+        (data['best_performing_stations'] as List<dynamic>?) ?? [];
+    final worstStations =
+        (data['worst_performing_stations'] as List<dynamic>?) ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,4 +337,3 @@ class _ModelPerformanceWidgetState extends State<ModelPerformanceWidget> {
     );
   }
 }
-

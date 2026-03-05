@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 
 class LocationPermissionDialog extends StatelessWidget {
   final bool isGpsEnabled;
@@ -14,15 +13,15 @@ class LocationPermissionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Row(
+      title: const Row(
         children: [
           Icon(
             Icons.location_on,
             color: Colors.blue,
             size: 28,
           ),
-          const SizedBox(width: 8),
-          const Text('Permisos de Ubicación'),
+          SizedBox(width: 8),
+          Text('Permisos de Ubicación'),
         ],
       ),
       content: Column(
@@ -102,7 +101,8 @@ class LocationPermissionDialog extends StatelessWidget {
     );
   }
 
-  static Future<bool?> show(BuildContext context, {
+  static Future<bool?> show(
+    BuildContext context, {
     required bool isGpsEnabled,
     required bool hasPermission,
   }) {
@@ -116,17 +116,3 @@ class LocationPermissionDialog extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

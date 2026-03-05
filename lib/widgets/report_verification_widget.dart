@@ -15,9 +15,8 @@ class ReportVerificationWidget extends StatelessWidget {
     this.isVerified = false,
   });
 
-  int get _verificationCount => report.confirmationCount > 0 
-      ? report.confirmationCount 
-      : verificaciones;
+  int get _verificationCount =>
+      report.confirmationCount > 0 ? report.confirmationCount : verificaciones;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +48,8 @@ class ReportVerificationWidget extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (report.estadoPrincipal != null && report.estadoPrincipal!.isNotEmpty) ...[
+                      if (report.estadoPrincipal != null &&
+                          report.estadoPrincipal!.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           _getEstadoPrincipalText(),
@@ -76,7 +76,8 @@ class ReportVerificationWidget extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        const Icon(Icons.check_circle,
+                            size: 16, color: Colors.green),
                         const SizedBox(width: 4),
                         Text(
                           '$_verificationCount confirmaciones',
@@ -90,7 +91,7 @@ class ReportVerificationWidget extends StatelessWidget {
                     ),
                   ),
                 // Mostrar badge de verificado si está verificado
-                if (report.verificationStatus == 'verified' || 
+                if (report.verificationStatus == 'verified' ||
                     report.verificationStatus == 'community_verified')
                   Container(
                     margin: const EdgeInsets.only(left: 8),
@@ -222,7 +223,7 @@ class ReportVerificationWidget extends StatelessWidget {
     }
 
     final estado = report.estadoPrincipal!;
-    
+
     // Mapeo de estados principales
     final estadoMap = {
       // Estados de estación
@@ -243,4 +244,3 @@ class ReportVerificationWidget extends StatelessWidget {
     return estadoMap[estado] ?? estado;
   }
 }
-

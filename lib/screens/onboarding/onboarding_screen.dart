@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../theme/metro_theme.dart';
-import '../../services/location_service.dart';
-import '../../services/notification_service.dart';
+import '../../services/location/location_service.dart';
+import '../../services/core/notification_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, required this.onFinished});
@@ -83,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Pedir permisos de ubicación
     final locationService = LocationService();
     final status = await locationService.checkLocationStatus();
-    
+
     if (!status.hasPermission) {
       // Solo pedir si no está denegado permanentemente
       if (status.permission != LocationPermission.deniedForever) {
@@ -304,4 +304,3 @@ extension on Color {
     return hslDark.toColor();
   }
 }
-

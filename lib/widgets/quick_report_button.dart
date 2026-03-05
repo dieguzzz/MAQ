@@ -43,22 +43,23 @@ class _QuickReportButtonState extends State<QuickReportButton> {
     return minDistance <= 2000 ? nearest : null;
   }
 
-
   /// Maneja el reporte de estación (1 toque) - Abre directamente el formulario
   Future<void> _handleStationReport() async {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
 
     // Buscar estación más cercana (ubicación opcional)
     Position? userPosition;
     try {
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final locationProvider =
+          Provider.of<LocationProvider>(context, listen: false);
       userPosition = locationProvider.currentPosition;
     } catch (e) {
       // Si no hay ubicación, continuar de todas formas
     }
 
     StationModel? nearestStation;
-    
+
     if (userPosition != null) {
       // Si hay ubicación, buscar la más cercana
       nearestStation = _findNearestStation(
@@ -99,7 +100,8 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         builder: (sheetContext) => StationReportSheet(
           station: nearestStation!,
           initialPage: 1, // Abrir directamente en la vista de reporte
-          initialReportType: 'station', // Abrir directamente en formulario de estación
+          initialReportType:
+              'station', // Abrir directamente en formulario de estación
         ),
       );
     }
@@ -107,19 +109,21 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de tren (2 toques) - Abre directamente el formulario
   Future<void> _handleTrainReport() async {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
 
     // Buscar estación más cercana para el reporte de tren
     Position? userPosition;
     try {
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final locationProvider =
+          Provider.of<LocationProvider>(context, listen: false);
       userPosition = locationProvider.currentPosition;
     } catch (e) {
       // Si no hay ubicación, continuar de todas formas
     }
 
     StationModel? nearestStation;
-    
+
     if (userPosition != null) {
       // Si hay ubicación, buscar la estación más cercana
       nearestStation = _findNearestStation(
@@ -160,7 +164,8 @@ class _QuickReportButtonState extends State<QuickReportButton> {
         builder: (sheetContext) => StationReportSheet(
           station: nearestStation!,
           initialPage: 1, // Abrir directamente en la vista de reporte
-          initialReportType: 'train', // Abrir directamente en formulario de tren
+          initialReportType:
+              'train', // Abrir directamente en formulario de tren
         ),
       );
     }

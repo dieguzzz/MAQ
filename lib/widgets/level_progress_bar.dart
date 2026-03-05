@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/level_service.dart';
+import '../services/gamification/level_service.dart';
 
 /// Widget que muestra una barra de progreso animada hacia el siguiente nivel
 class LevelProgressBar extends StatelessWidget {
@@ -89,4 +89,3 @@ class LevelProgressBar extends StatelessWidget {
     );
   }
 }
-

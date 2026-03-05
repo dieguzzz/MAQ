@@ -20,31 +20,31 @@ enum EstadoReporte {
 
 // Estados principales para estaciones
 enum EstadoPrincipalEstacion {
-  normal,      // 🟢 Normal
-  moderado,   // 🟡 Moderado
-  lleno,      // 🔴 Lleno
-  retraso,    // ⚠️ Retraso
-  cerrado,    // 🚫 Cerrado
+  normal, // 🟢 Normal
+  moderado, // 🟡 Moderado
+  lleno, // 🔴 Lleno
+  retraso, // ⚠️ Retraso
+  cerrado, // 🚫 Cerrado
 }
 
 // Estados principales para trenes
 enum EstadoPrincipalTren {
-  asientosDisponibles,  // 🟢 Asientos Disponibles
-  dePieComodo,         // 🟡 De Pie Cómodo
-  sardina,             // 🔴 Sardina
-  express,             // ⚡ Express
-  lento,               // 🐌 Lento
-  detenido,            // 🛑 Detenido
+  asientosDisponibles, // 🟢 Asientos Disponibles
+  dePieComodo, // 🟡 De Pie Cómodo
+  sardina, // 🔴 Sardina
+  express, // ⚡ Express
+  lento, // 🐌 Lento
+  detenido, // 🛑 Detenido
 }
 
 // Problemas específicos
 enum ProblemaEspecifico {
-  aireAcondicionado,   // ❄️ Aire Acondicionado roto
-  puertas,             // 🚪 Puertas automáticas fallando
-  limpieza,            // 🧹 Problemas de limpieza
-  mantenimiento,       // 🔧 Mantenimiento en progreso
-  sonido,              // 🔊 Sistema de sonido dañado
-  luces,               // 💡 Luces intermitentes
+  aireAcondicionado, // ❄️ Aire Acondicionado roto
+  puertas, // 🚪 Puertas automáticas fallando
+  limpieza, // 🧹 Problemas de limpieza
+  mantenimiento, // 🔧 Mantenimiento en progreso
+  sonido, // 🔊 Sistema de sonido dañado
+  luces, // 💡 Luces intermitentes
 }
 
 class ReportModel {
@@ -58,17 +58,20 @@ class ReportModel {
   final int verificaciones;
   final EstadoReporte estado;
   final DateTime creadoEn;
-  
+
   // Nuevos campos
   final String? estadoPrincipal; // 'normal', 'moderado', 'lleno', etc.
   final List<String> problemasEspecificos; // Lista de problemas
   final bool prioridad;
   final String? fotoUrl;
   final double confidence; // 0.0-1.0
-  final String verificationStatus; // 'pending', 'verified', 'community_verified'
+  final String
+      verificationStatus; // 'pending', 'verified', 'community_verified'
   final int confirmationCount;
-  final int? tiempoEstimadoReportado; // Tiempo estimado reportado por el usuario (en minutos)
-  final bool? tiempoEstimadoValidado; // Si el tiempo reportado es válido según cálculo
+  final int?
+      tiempoEstimadoReportado; // Tiempo estimado reportado por el usuario (en minutos)
+  final bool?
+      tiempoEstimadoValidado; // Si el tiempo reportado es válido según cálculo
 
   ReportModel({
     required this.id,
@@ -106,7 +109,8 @@ class ReportModel {
       estado: _parseEstadoReporte(data['estado'] ?? 'activo'),
       creadoEn: (data['creado_en'] as Timestamp).toDate(),
       estadoPrincipal: data['estado_principal'],
-      problemasEspecificos: List<String>.from(data['problemas_especificos'] ?? []),
+      problemasEspecificos:
+          List<String>.from(data['problemas_especificos'] ?? []),
       prioridad: data['prioridad'] ?? false,
       fotoUrl: data['foto_url'],
       confidence: (data['confidence'] ?? 0.5).toDouble(),
@@ -197,4 +201,3 @@ class ReportModel {
     }
   }
 }
-

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/route_model.dart';
 import '../../models/station_model.dart';
-import '../../services/route_calculation_service.dart';
+import '../../services/location/route_calculation_service.dart';
 import '../../providers/metro_data_provider.dart';
 import '../home/map_widget.dart';
 import '../../widgets/custom_metro_map.dart';
@@ -36,7 +36,8 @@ class _RouteResultsState extends State<RouteResults> {
   }
 
   void _calculateRouteStations() {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
     setState(() {
       _routeStations = RouteCalculationService.calculateRoute(
         widget.origen,
@@ -141,7 +142,8 @@ class _RouteResultsState extends State<RouteResults> {
                         ),
                         const SizedBox(height: 16),
                         _buildStationInfo('Origen', widget.origen),
-                        if (_routeStations != null && _routeStations!.length > 2) ...[
+                        if (_routeStations != null &&
+                            _routeStations!.length > 2) ...[
                           const SizedBox(height: 8),
                           Text(
                             '${_routeStations!.length - 2} estaciones intermedias',
@@ -222,4 +224,3 @@ class _RouteResultsState extends State<RouteResults> {
     );
   }
 }
-

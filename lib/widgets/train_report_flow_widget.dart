@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/station_model.dart';
-import '../services/simplified_report_service.dart';
-import '../services/location_service.dart';
+import '../services/reports/simplified_report_service.dart';
+import '../services/location/location_service.dart';
 import '../widgets/points_reward_animation.dart';
 import '../theme/metro_theme.dart';
 
@@ -25,14 +25,14 @@ class TrainReportFlowWidget extends StatefulWidget {
 class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
   late PageController _pageController;
   int _currentPage = 0;
-  
+
   // Pregunta 1: Información básica
   String? _operational; // 'yes' | 'partial' | 'no'
   int? _crowdLevel; // 1-5
-  
+
   // Pregunta 3: Problemas específicos (opcional)
   final Set<String> _selectedIssues = {};
-  
+
   final SimplifiedReportService _reportService = SimplifiedReportService();
   bool _isSubmitting = false;
 
@@ -81,17 +81,18 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                   Expanded(
                     child: Text(
                       'Reportar: ${widget.station.nombre}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: MetroColors.grayDark,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
                   ),
                   Text(
                     '${_currentPage + 1} de 3',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: MetroColors.grayDark,
-                    ),
+                          color: MetroColors.grayDark,
+                        ),
                   ),
                 ],
               ),
@@ -142,9 +143,9 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
           Text(
             '1. ¿El tren está operativo?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 24),
           _buildOptionCard(
@@ -182,11 +183,11 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _operational != null
-                ? () {
-                    HapticFeedback.lightImpact();
-                    _nextPage();
-                  }
-                : null,
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      _nextPage();
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.green,
@@ -215,40 +216,41 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
           Text(
             '2. ¿Qué tan lleno está?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: MetroColors.grayDark,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: MetroColors.grayDark,
+                ),
           ),
           const SizedBox(height: 24),
           _buildCrowdOption(1, '🟢 BAJA', 'Cómodo moverse', Colors.green),
           _buildCrowdOption(2, '🟡 MODERADA', 'Algo llena', Colors.orange),
-          _buildCrowdOption(3, '🟠 LLENA', 'Difícil moverse', Colors.deepOrange),
+          _buildCrowdOption(
+              3, '🟠 LLENA', 'Difícil moverse', Colors.deepOrange),
           _buildCrowdOption(4, '🔴 MUY LLENA', 'Muy apretado', Colors.red),
           _buildCrowdOption(5, '💀 SARDINA', 'Extremo', Colors.purple),
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _previousPage();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text('ANTERIOR'),
+                child: OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _previousPage();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
+                  child: const Text('ANTERIOR'),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _crowdLevel != null
-                        ? () {
-                            HapticFeedback.lightImpact();
-                            _nextPage();
-                          }
-                        : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _crowdLevel != null
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _nextPage();
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.green,
@@ -374,37 +376,37 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ...issues.map((issue) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildIssueCheckbox(
-            issue['id']!,
-            issue['icon']!,
-            issue['title']!,
-          ),
-        )),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildIssueCheckbox(
+                issue['id']!,
+                issue['icon']!,
+                issue['title']!,
+              ),
+            )),
         if (_selectedIssues.isNotEmpty) ...[
           const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green[200]!),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.green, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+${_selectedIssues.length * 5} puntos por problemas',
-                    style: TextStyle(
-                      color: Colors.green[800],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green[200]!),
             ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.green, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '+${_selectedIssues.length * 5} puntos por problemas',
+                  style: TextStyle(
+                    color: Colors.green[800],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );
@@ -474,7 +476,8 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                       title,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? iconColor : Colors.grey[800],
                       ),
                     ),
@@ -505,7 +508,8 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
     );
   }
 
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+  Widget _buildCrowdOption(
+      int level, String emoji, String subtitle, Color color) {
     final isSelected = _crowdLevel == level;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
@@ -564,7 +568,8 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                       '$emoji $subtitle',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         color: isSelected ? color : Colors.grey[800],
                       ),
                     ),
@@ -635,7 +640,9 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.green.withValues(alpha: 0.1) : Colors.grey[200],
+                    color: isSelected
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
@@ -651,7 +658,8 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
                     title,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
                       color: isSelected ? Colors.green[800] : Colors.grey[800],
                     ),
                   ),

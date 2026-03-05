@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/dev_service.dart';
+import '../../services/core/dev_service.dart';
 
 /// Tab de ajustes para el panel de desarrollador
 class DevSettingsTab extends StatefulWidget {
@@ -134,7 +134,7 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             '⚙️ Parámetros del Algoritmo',
             style: TextStyle(
               color: Colors.white,
@@ -142,9 +142,9 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Tasa de aprendizaje
           Card(
             color: Colors.grey[800],
@@ -174,7 +174,7 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
               ),
             ),
           ),
-          
+
           // Pesos del modelo
           Card(
             color: Colors.grey[800],
@@ -247,7 +247,7 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
               ),
             ),
           ),
-          
+
           // Botones de control
           const SizedBox(height: 16),
           Row(
@@ -282,4 +282,3 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
     );
   }
 }
-

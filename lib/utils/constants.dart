@@ -27,4 +27,3 @@ class AppConstants {
   static const String linea1 = 'linea1';
   static const String linea2 = 'linea2';
 }
-

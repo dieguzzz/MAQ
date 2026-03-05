@@ -63,7 +63,7 @@ class BadgeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badges = _getFilteredBadges(BadgesData.allBadges);
-    
+
     // Agrupar por categoría
     final Map<BadgeCategory, List<BadgeModel>> groupedBadges = {};
     for (var badge in badges) {
@@ -161,7 +161,7 @@ class BadgeGrid extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                
+
                                 // Name
                                 Flexible(
                                   child: Text(
@@ -178,10 +178,10 @@ class BadgeGrid extends StatelessWidget {
                               ],
                             ),
                           ),
-                          
+
                           // Rarity indicator
                           if (badge.rarity == BadgeRarity.legendary)
-                            Positioned(
+                            const Positioned(
                               top: 4,
                               right: 4,
                               child: Icon(
@@ -190,13 +190,13 @@ class BadgeGrid extends StatelessWidget {
                                 color: Colors.amber,
                               ),
                             ),
-                          
+
                           // Lock overlay
                           if (!badge.unlocked)
                             Positioned.fill(
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
@@ -221,4 +221,3 @@ class BadgeGrid extends StatelessWidget {
     );
   }
 }
-

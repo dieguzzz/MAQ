@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/points_history_service.dart';
+import '../../services/gamification/points_history_service.dart';
 import '../../models/points_transaction_model.dart';
 
 class PointsHistoryScreen extends StatelessWidget {
@@ -92,7 +92,7 @@ class PointsHistoryScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -163,4 +163,3 @@ class PointsHistoryScreen extends StatelessWidget {
     }
   }
 }
-

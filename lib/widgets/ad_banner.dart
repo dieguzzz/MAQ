@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../services/ad_service.dart';
+import '../services/ads/ad_service.dart';
 
 class AdBanner extends StatefulWidget {
   final AdSize size;
@@ -73,4 +73,3 @@ class _AdBannerState extends State<AdBanner> {
     );
   }
 }
-

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/dev_service.dart';
+import '../../services/core/dev_service.dart';
 
 /// Tab de métricas en tiempo real para el panel de desarrollador
 class DevMetricsTab extends StatelessWidget {
@@ -10,13 +10,14 @@ class DevMetricsTab extends StatelessWidget {
     return StreamBuilder<Map<String, dynamic>>(
       stream: DevService.getRealtimeMetrics(),
       builder: (context, snapshot) {
-        final data = snapshot.data ?? {
-          'accuracy': 0.0,
-          'todayReports': 0,
-          'learningSpeed': 0.0,
-          'accuracyHistory': [],
-          'problemStations': [],
-        };
+        final data = snapshot.data ??
+            {
+              'accuracy': 0.0,
+              'todayReports': 0,
+              'learningSpeed': 0.0,
+              'accuracyHistory': [],
+              'problemStations': [],
+            };
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -30,7 +31,7 @@ class DevMetricsTab extends StatelessWidget {
                 'Basado en últimos 100 reportes',
                 Colors.blue,
               ),
-              
+
               _buildMetricCard(
                 context,
                 '📈 Reportes de Hoy',
@@ -38,7 +39,7 @@ class DevMetricsTab extends StatelessWidget {
                 'Simulados + reales',
                 Colors.green,
               ),
-              
+
               _buildMetricCard(
                 context,
                 '⚡ Velocidad de Aprendizaje',
@@ -46,7 +47,7 @@ class DevMetricsTab extends StatelessWidget {
                 'Mejora por cada 100 reportes',
                 Colors.orange,
               ),
-              
+
               // Gráfico simple
               Container(
                 margin: const EdgeInsets.only(top: 16),
@@ -72,15 +73,15 @@ class DevMetricsTab extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Estaciones problemáticas
-              if (data['problemStations'] != null && 
+              if (data['problemStations'] != null &&
                   (data['problemStations'] as List).isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(top: 16),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red[900]!.withOpacity(0.3),
+                    color: Colors.red[900]!.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red),
                   ),
@@ -92,15 +93,15 @@ class DevMetricsTab extends StatelessWidget {
                         style: TextStyle(color: Colors.white),
                       ),
                       const SizedBox(height: 8),
-                      ...(data['problemStations'] as List).map<Widget>((station) => 
-                        Padding(
+                      ...(data['problemStations'] as List).map<Widget>(
+                        (station) => Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Text(
                             '• ${station['name']}: +${station['avgDelay']}min',
                             style: const TextStyle(color: Colors.white70),
                           ),
                         ),
-                      ).toList(),
+                      ),
                     ],
                   ),
                 ),
@@ -126,7 +127,7 @@ class DevMetricsTab extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Icon(Icons.analytics, color: color),
@@ -184,7 +185,7 @@ class _ChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = Colors.blue.withOpacity(0.2)
+      ..color = Colors.blue.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
 
     final maxValue = data.reduce((a, b) => a > b ? a : b).toDouble();
@@ -199,7 +200,8 @@ class _ChartPainter extends CustomPainter {
 
     for (int i = 0; i < data.length; i++) {
       final x = i * stepX;
-      final normalizedY = ((data[i].toDouble() - minValue) / normalizedRange) * size.height;
+      final normalizedY =
+          ((data[i].toDouble() - minValue) / normalizedRange) * size.height;
       final y = size.height - normalizedY;
 
       if (i == 0) {
@@ -222,4 +224,3 @@ class _ChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-

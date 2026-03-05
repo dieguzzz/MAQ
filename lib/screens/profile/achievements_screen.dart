@@ -23,10 +23,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   Map<BadgeRarity, int> get _badgesByRarity {
     final unlocked = BadgesData.allBadges.where((b) => b.unlocked).toList();
     return {
-      BadgeRarity.legendary: unlocked.where((b) => b.rarity == BadgeRarity.legendary).length,
-      BadgeRarity.epic: unlocked.where((b) => b.rarity == BadgeRarity.epic).length,
-      BadgeRarity.rare: unlocked.where((b) => b.rarity == BadgeRarity.rare).length,
-      BadgeRarity.common: unlocked.where((b) => b.rarity == BadgeRarity.common).length,
+      BadgeRarity.legendary:
+          unlocked.where((b) => b.rarity == BadgeRarity.legendary).length,
+      BadgeRarity.epic:
+          unlocked.where((b) => b.rarity == BadgeRarity.epic).length,
+      BadgeRarity.rare:
+          unlocked.where((b) => b.rarity == BadgeRarity.rare).length,
+      BadgeRarity.common:
+          unlocked.where((b) => b.rarity == BadgeRarity.common).length,
     };
   }
 
@@ -85,7 +89,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                           ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Rarity breakdown
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -113,7 +117,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Progress
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -199,6 +203,4 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       ],
     );
   }
-
 }
-

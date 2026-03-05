@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/station_model.dart';
-import '../../services/firebase_service.dart';
-import '../../services/dev_service.dart';
+import '../../services/core/firebase_service.dart';
+import '../../services/core/dev_service.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/report_model.dart';
@@ -121,8 +121,9 @@ class _DevStationsTabState extends State<DevStationsTab> {
     setState(() => _isLoading = true);
     try {
       if (!mounted) return;
-      final reportProvider = Provider.of<ReportProvider>(context, listen: false);
-      
+      final reportProvider =
+          Provider.of<ReportProvider>(context, listen: false);
+
       // Mapear estado a string
       String estadoString;
       switch (estado) {
@@ -292,7 +293,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
                   key: ValueKey(_selectedLinea),
                   initialValue: _selectedLinea,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -304,15 +306,18 @@ class _DevStationsTabState extends State<DevStationsTab> {
                   items: const [
                     DropdownMenuItem(
                       value: 'all',
-                      child: Text('Todas las líneas', style: TextStyle(color: Colors.white)),
+                      child: Text('Todas las líneas',
+                          style: TextStyle(color: Colors.white)),
                     ),
                     DropdownMenuItem(
                       value: 'linea1',
-                      child: Text('Línea 1', style: TextStyle(color: Colors.white)),
+                      child: Text('Línea 1',
+                          style: TextStyle(color: Colors.white)),
                     ),
                     DropdownMenuItem(
                       value: 'linea2',
-                      child: Text('Línea 2', style: TextStyle(color: Colors.white)),
+                      child: Text('Línea 2',
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ],
                   onChanged: (value) {
@@ -331,7 +336,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ElevatedButton.icon(
             icon: const Icon(Icons.delete_sweep, size: 18),
-            label: const Text('Limpiar Datos de Prueba', style: TextStyle(fontSize: 12)),
+            label: const Text('Limpiar Datos de Prueba',
+                style: TextStyle(fontSize: 12)),
             onPressed: _isClearing ? null : _clearTestData,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red[800],
@@ -354,7 +360,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   itemCount: _filteredStations.length,
                   itemBuilder: (context, index) {
                     final station = _filteredStations[index];
@@ -363,15 +370,19 @@ class _DevStationsTabState extends State<DevStationsTab> {
                       margin: const EdgeInsets.only(bottom: 6),
                       child: ListTile(
                         dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
                         leading: CircleAvatar(
                           radius: 20,
-                          backgroundColor: _getEstadoColor(station.estadoActual),
-                          child: const Icon(Icons.train, color: Colors.white, size: 18),
+                          backgroundColor:
+                              _getEstadoColor(station.estadoActual),
+                          child: const Icon(Icons.train,
+                              color: Colors.white, size: 18),
                         ),
                         title: Text(
                           station.nombre,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,11 +390,13 @@ class _DevStationsTabState extends State<DevStationsTab> {
                           children: [
                             Text(
                               'Línea: ${station.linea}',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
                             ),
                             Text(
                               _getEstadoText(station.estadoActual),
-                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
                             ),
                           ],
                         ),
@@ -396,7 +409,8 @@ class _DevStationsTabState extends State<DevStationsTab> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue[700],
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               minimumSize: const Size(60, 32),
                               textStyle: const TextStyle(fontSize: 11),
                             ),
@@ -412,4 +426,3 @@ class _DevStationsTabState extends State<DevStationsTab> {
     );
   }
 }
-

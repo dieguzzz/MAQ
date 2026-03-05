@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/station_model.dart';
 import '../theme/metro_theme.dart';
-import '../services/firebase_service.dart';
-import '../services/learning_report_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/learning/learning_report_service.dart';
 import '../models/learning_report_model.dart';
 
 /// Modal para reportar retraso detallado
@@ -119,11 +119,15 @@ class _DelayReportModalState extends State<DelayReportModal> {
                       _selectedDelayMinutes = selected ? minutes : null;
                     });
                   },
-                  selectedColor: MetroColors.stateCritical.withOpacity(0.2),
+                  selectedColor:
+                      MetroColors.stateCritical.withValues(alpha: 0.2),
                   checkmarkColor: MetroColors.stateCritical,
                   labelStyle: TextStyle(
-                    color: isSelected ? MetroColors.stateCritical : MetroColors.grayDark,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? MetroColors.stateCritical
+                        : MetroColors.grayDark,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 );
               }),
@@ -140,7 +144,7 @@ class _DelayReportModalState extends State<DelayReportModal> {
                     }
                   });
                 },
-                selectedColor: MetroColors.stateCritical.withOpacity(0.2),
+                selectedColor: MetroColors.stateCritical.withValues(alpha: 0.2),
                 checkmarkColor: MetroColors.stateCritical,
               ),
             ],
@@ -185,7 +189,8 @@ class _DelayReportModalState extends State<DelayReportModal> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      _isLoading ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancelar'),
                 ),
               ),
@@ -206,7 +211,8 @@ class _DelayReportModalState extends State<DelayReportModal> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text('Enviar Reporte'),
@@ -293,4 +299,3 @@ class _DelayReportModalState extends State<DelayReportModal> {
     }
   }
 }
-

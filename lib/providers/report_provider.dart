@@ -1,15 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/firebase_service.dart';
-import '../services/gamification_service.dart';
-import '../services/report_validation_service.dart';
-import '../services/confidence_service.dart';
-import '../services/alert_service.dart';
-import '../services/accuracy_service.dart';
-import '../services/error_handler_service.dart';
-import '../services/app_mode_service.dart';
-import '../services/time_estimation_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/gamification/gamification_service.dart';
+import '../services/reports/report_validation_service.dart';
+import '../services/reports/confidence_service.dart';
+import '../services/premium/alert_service.dart';
+import '../services/reports/accuracy_service.dart';
+import '../services/core/error_handler_service.dart';
+import '../services/core/app_mode_service.dart';
 import '../models/report_model.dart';
 
 class ReportProvider with ChangeNotifier {
@@ -19,7 +18,7 @@ class ReportProvider with ChangeNotifier {
   final ConfidenceService _confidenceService = ConfidenceService();
   final AlertService _alertService = AlertService();
   final AccuracyService _accuracyService = AccuracyService();
-  
+
   List<ReportModel> _activeReports = [];
   bool _isLoading = false;
   bool _streamInitialized = false;
@@ -28,7 +27,7 @@ class ReportProvider with ChangeNotifier {
     _ensureStreamInitialized();
     return _activeReports;
   }
-  
+
   bool get isLoading => _isLoading;
 
   ReportProvider() {
@@ -83,13 +82,14 @@ class ReportProvider with ChangeNotifier {
       // Obtener el modo de app del usuario
       final appModeService = AppModeService();
       final appMode = await appModeService.getCurrentMode(usuarioId);
-      
+
       // Validación anti-spam
-      final canReport = await _validationService.canUserReport(usuarioId, objetivoId);
+      final canReport =
+          await _validationService.canUserReport(usuarioId, objetivoId);
       if (!canReport) {
         _isLoading = false;
         notifyListeners();
-        
+
         // Obtener mensaje de error específico
         final errorMessage = await _validationService.getValidationErrorMessage(
           usuarioId,
@@ -98,8 +98,9 @@ class ReportProvider with ChangeNotifier {
           ubicacion,
           appMode: appMode,
         );
-        
-        throw Exception(errorMessage ?? 'No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
+
+        throw Exception(errorMessage ??
+            'No puedes reportar en este momento. Límite de spam alcanzado o ya reportaste recientemente.');
       }
 
       // Validación de ubicación deshabilitada - se puede reportar desde cualquier ubicación
@@ -117,7 +118,7 @@ class ReportProvider with ChangeNotifier {
       // }
 
       final createdAt = DateTime.now();
-      
+
       // Buscar reportes similares para verificación automática
       final similarReports = await _firebaseService.findSimilarReports(
         objetivoId,
@@ -128,7 +129,7 @@ class ReportProvider with ChangeNotifier {
       // Calcular confidence inicial
       double confidence = 0.5;
       String verificationStatus = 'pending';
-      
+
       // Si hay 2 o más reportes similares, marcar como verificado
       if (similarReports.length >= 2) {
         confidence = 0.8;
@@ -165,7 +166,7 @@ class ReportProvider with ChangeNotifier {
       );
 
       final reportId = await _firebaseService.createReport(report);
-      
+
       // Incrementar contador de reportes del usuario
       final user = await _firebaseService.getUser(usuarioId);
       if (user != null) {
@@ -173,14 +174,16 @@ class ReportProvider with ChangeNotifier {
           usuarioId,
           {'reportes_count': user.reportesCount + 1},
         );
-        
+
         // Actualizar streak y gamificación
         await _gamificationService.updateStreak(usuarioId);
       }
 
       // Enviar alertas a usuarios afectados (en background)
-      if (prioridad || estadoPrincipal == 'lleno' || 
-          estadoPrincipal == 'cerrado' || estadoPrincipal == 'detenido' ||
+      if (prioridad ||
+          estadoPrincipal == 'lleno' ||
+          estadoPrincipal == 'cerrado' ||
+          estadoPrincipal == 'detenido' ||
           estadoPrincipal == 'sardina') {
         // Crear reporte con ID para alertas
         final reportWithId = ReportModel(
@@ -227,20 +230,21 @@ class ReportProvider with ChangeNotifier {
   Future<bool> confirmReport(String reportId, String userId) async {
     try {
       // Verificar si ya confirmó
-      final hasConfirmed = await _firebaseService.hasUserConfirmedReport(reportId, userId);
+      final hasConfirmed =
+          await _firebaseService.hasUserConfirmedReport(reportId, userId);
       if (hasConfirmed) {
         return false; // Ya confirmó este reporte
       }
 
       // Confirmar el reporte
       await _firebaseService.confirmReport(reportId, userId);
-      
+
       // Obtener información del reporte para saber la línea
       final reportDoc = await _firebaseService.firestore
           .collection('reports')
           .doc(reportId)
           .get();
-      
+
       final reportData = reportDoc.data();
       if (reportData == null) {
         return false; // El reporte no existe
@@ -248,7 +252,7 @@ class ReportProvider with ChangeNotifier {
 
       final objetivoId = reportData['objetivo_id'] as String?;
       final confirmationCount = reportData['confirmation_count'] ?? 0;
-      
+
       // Obtener estación para saber la línea
       String? linea;
       if (objetivoId != null) {
@@ -258,10 +262,10 @@ class ReportProvider with ChangeNotifier {
             .get();
         linea = stationDoc.data()?['linea'] as String?;
       }
-      
+
       // Otorgar puntos por confirmar
       await _gamificationService.awardPointsForVerifying(userId, reportId);
-      
+
       // Si el reporte alcanza 3 confirmaciones, otorgar puntos al creador
       if (confirmationCount >= 3) {
         final creadorId = reportData['usuario_id'] as String?;
@@ -278,16 +282,16 @@ class ReportProvider with ChangeNotifier {
           await _updateStationStatusFromReport(objetivoId, reportData);
         }
       }
-      
+
       // Actualizar confianza del reporte
       await _confidenceService.updateReportConfidence(reportId);
-      
+
       // Actualizar precisión del creador del reporte
       final creadorId = reportData['usuario_id'] as String?;
       if (creadorId != null) {
         await _accuracyService.onReportVerified(creadorId);
       }
-      
+
       // Incrementar reputación del usuario que confirmó
       final user = await _firebaseService.getUser(userId);
       if (user != null) {
@@ -314,15 +318,14 @@ class ReportProvider with ChangeNotifier {
     try {
       final tipo = reportData['tipo'] as String?;
       final estadoPrincipal = reportData['estado_principal'] as String?;
-      
+
       if (estadoPrincipal == null) return;
 
       if (tipo == 'estacion') {
         // Actualizar estado de estación
-        final stationRef = _firebaseService.firestore
-            .collection('stations')
-            .doc(objetivoId);
-        
+        final stationRef =
+            _firebaseService.firestore.collection('stations').doc(objetivoId);
+
         // Mapear estadoPrincipal a estadoActual de estación
         String? estadoActual;
         switch (estadoPrincipal) {
@@ -348,10 +351,9 @@ class ReportProvider with ChangeNotifier {
         }
       } else if (tipo == 'tren') {
         // Actualizar estado de tren
-        final trainRef = _firebaseService.firestore
-            .collection('trains')
-            .doc(objetivoId);
-        
+        final trainRef =
+            _firebaseService.firestore.collection('trains').doc(objetivoId);
+
         // Mapear estadoPrincipal a estado de tren
         String? estadoTren;
         switch (estadoPrincipal) {
@@ -395,4 +397,3 @@ class ReportProvider with ChangeNotifier {
     }
   }
 }
-

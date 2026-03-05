@@ -53,7 +53,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
   @override
   void initState() {
     super.initState();
-    
+
     // Vibración fuerte al inicio
     HapticFeedback.mediumImpact();
 
@@ -193,7 +193,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
               );
             },
           ),
-          
+
           // Tren animado
           AnimatedBuilder(
             animation: _trainController,
@@ -250,7 +250,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.5),
+            color: Colors.blue.withValues(alpha: 0.5),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -266,7 +266,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
               width: 25,
               height: 25,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -278,7 +278,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
               width: 25,
               height: 25,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -290,7 +290,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
               width: 25,
               height: 25,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -321,7 +321,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.5),
+            color: Colors.green.withValues(alpha: 0.5),
             blurRadius: 30,
             spreadRadius: 10,
           ),
@@ -376,7 +376,7 @@ class ParticlesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.3 * (1 - progress));
+      ..color = Colors.white.withValues(alpha: 0.3 * (1 - progress));
 
     final random = math.Random(42);
     for (int i = 0; i < 30; i++) {
@@ -392,4 +392,3 @@ class ParticlesPainter extends CustomPainter {
     return oldDelegate.progress != progress;
   }
 }
-

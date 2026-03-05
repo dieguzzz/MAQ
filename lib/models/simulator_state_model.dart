@@ -46,7 +46,8 @@ class SimulatorState {
   final String? destinationStationId;
   final String? selectedLinea;
   final SimulatorStationStatus stationStatus;
-  final int aglomeracion; // 1-5 (mapea a: 1=Baja, 2=Media, 3=Alta, 4=Completa, 5=Completa)
+  final int
+      aglomeracion; // 1-5 (mapea a: 1=Baja, 2=Media, 3=Alta, 4=Completa, 5=Completa)
   final SimulatorTrainStatus trainStatus;
   final int? nextTrainInSeconds; // Próximo tren en X segundos
   final SimulatorPassengerLoad passengerLoad;
@@ -147,24 +148,24 @@ class SimulatorState {
   /// Obtiene el texto descriptivo del estado
   String getStatusDescription() {
     final parts = <String>[];
-    
+
     parts.add('Estación: ${_getStationStatusText()}');
     parts.add('Tren: ${_getTrainStatusText()}');
-    
+
     if (nextTrainInSeconds != null) {
       parts.add('Próximo tren: ${nextTrainInSeconds}s');
     }
-    
+
     parts.add('Pasajeros: ${_getPassengerLoadText()}');
-    
+
     if (incidentType != SimulatorIncidentType.ninguno) {
       parts.add('Incidente: ${_getIncidentText()}');
     }
-    
+
     if (simulatedLocation != null) {
       parts.add('Ubicación: ${_getLocationText()}');
     }
-    
+
     return parts.join(' | ');
   }
 
@@ -240,4 +241,3 @@ class SimulatorState {
   String getIncidentText() => _getIncidentText();
   String getLocationText() => _getLocationText();
 }
-

@@ -5,7 +5,8 @@ class LearningData {
   final String stationId;
   final int expectedArrival; // Tiempo que mostramos al usuario (en minutos)
   final DateTime actualArrival; // Tiempo real de llegada
-  final int delayMinutes; // Diferencia en minutos (puede ser negativo si llegó antes)
+  final int
+      delayMinutes; // Diferencia en minutos (puede ser negativo si llegó antes)
   final TimeContext timeContext; // Contexto temporal
   final double confidence; // Calidad del dato (0.0-1.0)
 
@@ -25,7 +26,8 @@ class LearningData {
       expectedArrival: map['expectedArrival'] as int,
       actualArrival: (map['actualArrival'] as Timestamp).toDate(),
       delayMinutes: map['delayMinutes'] as int,
-      timeContext: TimeContext.fromMap(map['timeContext'] as Map<String, dynamic>),
+      timeContext:
+          TimeContext.fromMap(map['timeContext'] as Map<String, dynamic>),
       confidence: (map['confidence'] as num?)?.toDouble() ?? 1.0,
     );
   }
@@ -64,7 +66,7 @@ class TimeContext {
     final dayOfWeek = dateTime.weekday; // 1 = Monday, 7 = Sunday
     final isWeekend = dayOfWeek == 6 || dayOfWeek == 7;
     final hour = dateTime.hour;
-    
+
     // Determinar timeSlot
     String timeSlot;
     if (hour >= 7 && hour <= 9) {
@@ -74,7 +76,7 @@ class TimeContext {
     } else {
       timeSlot = 'normal'; // Hora normal
     }
-    
+
     return TimeContext(
       arrivalTime: dateTime,
       dayOfWeek: dayOfWeek,
@@ -106,4 +108,3 @@ class TimeContext {
     };
   }
 }
-

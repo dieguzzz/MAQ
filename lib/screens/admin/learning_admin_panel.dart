@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../services/metro_simulator_service.dart';
-import '../../services/firebase_service.dart';
+import '../../services/simulation/metro_simulator_service.dart';
+import '../../services/core/firebase_service.dart';
 import '../../models/simulator_state_model.dart';
 import '../../models/station_model.dart';
 import '../../theme/metro_theme.dart';
@@ -50,7 +50,6 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
     if (selectedLinea == null) return _allStations;
     return _allStations.where((s) => s.linea == selectedLinea).toList();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -593,7 +592,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
   Widget _buildLogPanel(MetroSimulatorService simulator) {
     return Container(
       height: 150,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: MetroColors.grayLight,
         border: Border(
           top: BorderSide(color: MetroColors.grayMedium, width: 1),
@@ -604,7 +603,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
           // Header del log
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: MetroColors.grayMedium,
             ),
             child: Row(

@@ -59,7 +59,7 @@ class TrainSimulationTable {
   }
 
   static double getSpeedFactor(String trainId, TrainModel train) {
-    return getConfig(trainId)?.speedFactor ?? (train.velocidad / 40).clamp(0.5, 2.0);
+    return getConfig(trainId)?.speedFactor ??
+        (train.velocidad / 40).clamp(0.5, 2.0);
   }
 }
-

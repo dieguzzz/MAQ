@@ -22,183 +22,184 @@ class SettingsScreen extends StatelessWidget {
         ),
         body: ListView(
           children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Cuenta',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Cuenta',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
               ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Editar Perfil'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen(),
-                ),
-              );
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Privacidad',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.location_on),
-            title: const Text('Permisos de Ubicación'),
-            subtitle: const Text('Gestionar consentimiento de ubicación'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showLocationConsentDialog(context);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.notifications),
-            title: const Text('Notificaciones'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.star, color: Colors.amber),
-            title: const Text('Premium'),
-            subtitle: const Text('Desbloquea funciones exclusivas'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PremiumScreen(),
-                ),
-              );
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Legal',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Política de Privacidad'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PrivacyPolicyScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.description),
-            title: const Text('Términos de Servicio'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TermsScreen(),
-                ),
-              );
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Datos',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, _) {
-              return ListTile(
-                leading: const Icon(Icons.delete_forever, color: Colors.red),
-                title: const Text(
-                  'Borrar mis Datos',
-                  style: TextStyle(color: Colors.red),
-                ),
-                subtitle: const Text('Eliminar cuenta y todos los datos asociados'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  _showDeleteDataDialog(context, authProvider);
-                },
-              );
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Acerca de',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('Versión'),
-            subtitle: const Text('1.0.0'),
-          ),
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange[200]!),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.orange),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Esta aplicación NO es oficial del Metro de Panamá. Los datos son proporcionados por la comunidad.',
-                    style: TextStyle(fontSize: 12),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Editar Perfil'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfileScreen(),
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          ),
-        ],
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Privacidad',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on),
+              title: const Text('Permisos de Ubicación'),
+              subtitle: const Text('Gestionar consentimiento de ubicación'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                _showLocationConsentDialog(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications),
+              title: const Text('Notificaciones'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star, color: Colors.amber),
+              title: const Text('Premium'),
+              subtitle: const Text('Desbloquea funciones exclusivas'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PremiumScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Legal',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip),
+              title: const Text('Política de Privacidad'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description),
+              title: const Text('Términos de Servicio'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TermsScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Datos',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, _) {
+                return ListTile(
+                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  title: const Text(
+                    'Borrar mis Datos',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  subtitle:
+                      const Text('Eliminar cuenta y todos los datos asociados'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    _showDeleteDataDialog(context, authProvider);
+                  },
+                );
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Acerca de',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            const ListTile(
+              leading: Icon(Icons.info),
+              title: Text('Versión'),
+              subtitle: Text('1.0.0'),
+            ),
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Esta aplicación NO es oficial del Metro de Panamá. Los datos son proporcionados por la comunidad.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -271,7 +272,8 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 );
 
-                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final authProvider =
+                    Provider.of<AuthProvider>(context, listen: false);
                 final success = await authProvider.deleteAccount();
 
                 if (context.mounted) {
@@ -285,14 +287,16 @@ class SettingsScreen extends StatelessWidget {
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Tu cuenta ha sido eliminada exitosamente'),
+                        content:
+                            Text('Tu cuenta ha sido eliminada exitosamente'),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Error al eliminar la cuenta. Por favor, intenta de nuevo.'),
+                        content: Text(
+                            'Error al eliminar la cuenta. Por favor, intenta de nuevo.'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -312,7 +316,7 @@ class SettingsScreen extends StatelessWidget {
   static Future<void> _openAppSettings(BuildContext context) async {
     try {
       Uri settingsUri;
-      
+
       if (Platform.isAndroid) {
         // Android: Abrir configuración de la app específica
         const packageName = 'com.example.metropty';
@@ -325,7 +329,8 @@ class SettingsScreen extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No se puede abrir la configuración en esta plataforma'),
+              content:
+                  Text('No se puede abrir la configuración en esta plataforma'),
             ),
           );
         }
@@ -438,4 +443,3 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     );
   }
 }
-

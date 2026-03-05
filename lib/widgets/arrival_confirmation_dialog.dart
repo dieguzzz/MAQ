@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/station_model.dart';
 import '../theme/metro_theme.dart';
-import '../services/firebase_service.dart';
-import '../services/learning_report_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/learning/learning_report_service.dart';
 import '../models/learning_report_model.dart';
 import 'delay_report_modal.dart';
 
@@ -201,4 +201,3 @@ class ArrivalConfirmationDialog extends StatelessWidget {
     }
   }
 }
-

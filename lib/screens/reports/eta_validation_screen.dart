@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../../services/enhanced_report_service.dart';
+import '../../services/reports/enhanced_report_service.dart';
 
 /// Pantalla de validación ETA para confirmar si el tren llegó
 class ETAValidationScreen extends StatefulWidget {
@@ -75,7 +75,8 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
     await _submitValidation('cant_confirm');
   }
 
-  Future<void> _submitValidation(String result, {DateTime? actualArrival}) async {
+  Future<void> _submitValidation(String result,
+      {DateTime? actualArrival}) async {
     try {
       final response = await _reportService.submitETAValidation(
         reportId: widget.reportId,
@@ -187,7 +188,8 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
                   LinearProgressIndicator(
                     value: _secondsRemaining / 240,
                     backgroundColor: Colors.grey[300],
-                    color: _secondsRemaining > 60 ? Colors.green : Colors.orange,
+                    color:
+                        _secondsRemaining > 60 ? Colors.green : Colors.orange,
                   ),
                 ],
               ),
@@ -358,7 +360,8 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _submitValidation('arrived', actualArrival: _selectedArrivalTime);
+                      _submitValidation('arrived',
+                          actualArrival: _selectedArrivalTime);
                     },
                     child: const Text('Confirmar'),
                   ),
@@ -463,7 +466,8 @@ class ValidationSuccessScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  onPressed: () =>
+                      Navigator.popUntil(context, (route) => route.isFirst),
                   child: const Text('VOLVER AL MAPA'),
                 ),
               ),

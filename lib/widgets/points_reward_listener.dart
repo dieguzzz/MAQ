@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/points_history_service.dart';
+import '../services/gamification/points_history_service.dart';
 import '../models/points_transaction_model.dart';
 import 'points_reward_animation.dart';
 import 'dart:async';
@@ -38,7 +38,10 @@ class _PointsRewardListenerState extends State<PointsRewardListener> {
 
   void _startListening(String userId) {
     // Cargar transacciones existentes primero para no mostrarlas
-    _pointsHistoryService.getPointsHistory(userId, limit: 10).first.then((initialTransactions) {
+    _pointsHistoryService
+        .getPointsHistory(userId, limit: 10)
+        .first
+        .then((initialTransactions) {
       for (var transaction in initialTransactions) {
         _shownTransactions.add(transaction.id);
       }
@@ -59,7 +62,8 @@ class _PointsRewardListenerState extends State<PointsRewardListener> {
 
           // Solo mostrar si la transacción es muy reciente (menos de 10 segundos)
           // Esto evita mostrar transacciones antiguas cuando el usuario inicia sesión
-          final transactionAge = DateTime.now().difference(transaction.timestamp);
+          final transactionAge =
+              DateTime.now().difference(transaction.timestamp);
           if (transactionAge.inSeconds > 10) {
             continue; // Ignorar transacciones antiguas
           }
@@ -126,4 +130,3 @@ class _PointsRewardListenerState extends State<PointsRewardListener> {
     return widget.child;
   }
 }
-

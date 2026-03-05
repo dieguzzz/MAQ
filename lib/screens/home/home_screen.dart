@@ -5,28 +5,26 @@ import 'package:geolocator/geolocator.dart';
 import '../../providers/metro_data_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/app_mode_service.dart';
+import '../../services/core/app_mode_service.dart';
 import 'map_widget.dart';
 import '../../widgets/quick_report_button.dart';
 import '../../widgets/custom_metro_map.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/simulated_clock_widget.dart';
-import '../../services/simulated_time_service.dart';
-import '../../services/ad_service.dart';
-import '../../services/ad_session_service.dart';
+import '../../services/simulation/simulated_time_service.dart';
+import '../../services/ads/ad_service.dart';
+import '../../services/ads/ad_session_service.dart';
 import '../admin/learning_demo_panel.dart';
-import '../../services/station_edit_mode_service.dart';
+import '../../services/stations/station_edit_mode_service.dart';
 import '../../widgets/dev/secret_dev_activation.dart';
 import '../../widgets/location_permission_dialog.dart';
 import '../../widgets/confirm_reports_sheet.dart';
 import '../../widgets/train_arrival_animation.dart';
 import '../../widgets/pulsing_button.dart';
-import '../../services/simplified_report_service.dart';
+import '../../services/reports/simplified_report_service.dart';
 import '../../models/station_model.dart';
-import '../../services/location_service.dart';
-import '../../providers/metro_data_provider.dart';
+import '../../services/location/location_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,7 +35,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showCustomMap = false; // Toggle entre Google Maps y mapa personalizado
-  static const String _locationDialogShownKey = 'location_permission_dialog_shown';
+  static const String _locationDialogShownKey =
+      'location_permission_dialog_shown';
   bool _isCheckingLocation = false;
   bool _lastGpsStatus = true;
   bool _lastPermissionStatus = true;
@@ -76,16 +75,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _checkLocationPermissionOnResume() async {
     if (_isCheckingLocation) return;
-    
+
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     if (!mounted) return;
 
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final locationProvider =
+        Provider.of<LocationProvider>(context, listen: false);
     final status = await locationProvider.checkLocationStatus();
-    
+
     // Si el estado cambió (GPS se desactivó o permisos se revocaron), mostrar diálogo
-    if ((_lastGpsStatus != status.isGpsEnabled || _lastPermissionStatus != status.hasPermission) &&
+    if ((_lastGpsStatus != status.isGpsEnabled ||
+            _lastPermissionStatus != status.hasPermission) &&
         (!status.isGpsEnabled || !status.hasPermission)) {
       if (mounted) {
         final result = await LocationPermissionDialog.show(
@@ -93,13 +94,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           isGpsEnabled: status.isGpsEnabled,
           hasPermission: status.hasPermission,
         );
-        
+
         if (result == true && mounted) {
           await locationProvider.getCurrentLocation();
         }
       }
     }
-    
+
     _lastGpsStatus = status.isGpsEnabled;
     _lastPermissionStatus = status.hasPermission;
   }
@@ -107,28 +108,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _checkLocationPermission() async {
     if (_isCheckingLocation) return;
     _isCheckingLocation = true;
-    
+
     // Esperar un momento para que el LocationProvider se inicialice
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     if (!mounted) {
       _isCheckingLocation = false;
       return;
     }
 
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final locationProvider =
+        Provider.of<LocationProvider>(context, listen: false);
     final status = await locationProvider.checkLocationStatus();
-    
+
     // Guardar estado actual
     _lastGpsStatus = status.isGpsEnabled;
     _lastPermissionStatus = status.hasPermission;
-    
+
     final prefs = await SharedPreferences.getInstance();
-    final hasShownNotification = prefs.getBool(_locationDialogShownKey) ?? false;
-    
+    final hasShownNotification =
+        prefs.getBool(_locationDialogShownKey) ?? false;
+
     // Solo mostrar notificación si YA rechazó los permisos permanentemente
     // NO pedir permisos aquí - eso se hace en el onboarding
-    if (status.permission == LocationPermission.deniedForever && !hasShownNotification) {
+    if (status.permission == LocationPermission.deniedForever &&
+        !hasShownNotification) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -146,17 +150,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.setBool(_locationDialogShownKey, true);
       }
     }
-    
+
     _isCheckingLocation = false;
   }
 
   Future<void> _checkReopenInterstitial() async {
     // Esperar un momento para que la UI se cargue
     await Future.delayed(const Duration(seconds: 2));
-    
+
     if (!mounted) return;
-    
-    final shouldShow = await AdSessionService.instance.shouldShowInterstitialOnReopen();
+
+    final shouldShow =
+        await AdSessionService.instance.shouldShowInterstitialOnReopen();
     if (shouldShow) {
       await AdService.instance.showInterstitialIfAppropriate(
         onAdDismissed: () {
@@ -166,7 +171,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showModeDialog(BuildContext context, AppMode currentMode, String userId) async {
+  Future<void> _showModeDialog(
+      BuildContext context, AppMode currentMode, String userId) async {
     final newMode = await showDialog<AppMode>(
       context: context,
       builder: (context) => AlertDialog(
@@ -176,7 +182,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             RadioListTile<AppMode>(
               title: const Text('Desarrollo'),
-              subtitle: const Text('Versión oficial con todas las validaciones'),
+              subtitle:
+                  const Text('Versión oficial con todas las validaciones'),
               value: AppMode.development,
               groupValue: currentMode,
               onChanged: (value) {
@@ -187,7 +194,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             RadioListTile<AppMode>(
               title: const Text('Test'),
-              subtitle: const Text('Permite reportar desde cualquier ubicación'),
+              subtitle:
+                  const Text('Permite reportar desde cualquier ubicación'),
               value: AppMode.test,
               groupValue: currentMode,
               onChanged: (value) {
@@ -210,13 +218,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (newMode != null && newMode != currentMode && context.mounted) {
       try {
         await AppModeService().setMode(userId, newMode);
+        if (!context.mounted) return;
         // Actualizar MetroDataProvider con el nuevo modo
-        final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+        final metroProvider =
+            Provider.of<MetroDataProvider>(context, listen: false);
         metroProvider.setTestMode(newMode == AppMode.test);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Modo cambiado a: ${newMode == AppMode.test ? "Test" : "Desarrollo"}'),
+              content: Text(
+                  'Modo cambiado a: ${newMode == AppMode.test ? "Test" : "Desarrollo"}'),
               backgroundColor: Colors.green,
             ),
           );
@@ -238,9 +249,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
     if (user != null) {
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
       await metroProvider.checkTestMode(user.uid);
-      
+
       // Verificar si estamos en modo test e iniciar tiempo simulado
       final appModeService = AppModeService();
       final isTestMode = await appModeService.isTestMode(user.uid);
@@ -256,15 +268,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Maneja el botón "Ya llegó el metro"
   void _handleTrainArrival() {
     final now = DateTime.now();
-    
+
     // Si hay un toque previo dentro de 500ms, es doble toque
-    if (_lastTrainButtonTap != null && 
-        now.difference(_lastTrainButtonTap!) < const Duration(milliseconds: 500)) {
+    if (_lastTrainButtonTap != null &&
+        now.difference(_lastTrainButtonTap!) <
+            const Duration(milliseconds: 500)) {
       // Cancelar el timer del primer toque
       _trainButtonTimer?.cancel();
       _trainButtonTimer = null;
       _lastTrainButtonTap = null;
-      
+
       // Doble toque: esperar medio segundo antes de enviar reporte
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
@@ -273,19 +286,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
       return;
     }
-    
+
     // Registrar este toque
     _lastTrainButtonTap = now;
-    
+
     // Cancelar timer anterior si existe
     _trainButtonTimer?.cancel();
-    
+
     // Esperar 500ms para ver si hay un segundo toque
     _trainButtonTimer = Timer(const Duration(milliseconds: 500), () {
       // Si pasó el tiempo sin segundo toque, mostrar diálogo
       _trainButtonTimer = null;
       _lastTrainButtonTap = null;
-      
+
       if (!mounted) return;
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -331,14 +344,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   /// Envía el reporte de llegada del tren
-  Future<void> _sendTrainArrivalReport({bool showAnimationFirst = false}) async {
+  Future<void> _sendTrainArrivalReport(
+      {bool showAnimationFirst = false}) async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final user = authProvider.currentUser;
       if (user == null) return;
 
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final locationProvider =
+          Provider.of<LocationProvider>(context, listen: false);
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
       final currentPosition = locationProvider.currentPosition;
 
       // Obtener estación más cercana
@@ -376,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return;
       }
 
-      final station = nearestStation!;
+      final station = nearestStation;
       final arrivalTime = DateTime.now();
 
       // Si showAnimationFirst es true, mostrar animación inmediatamente con 15 puntos
@@ -443,16 +459,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               builder: (context, authProvider, child) {
                 final user = authProvider.currentUser;
                 if (user == null) return const SizedBox.shrink();
-                
+
                 return StreamBuilder<AppMode>(
                   stream: AppModeService().watchMode(user.uid),
                   builder: (context, snapshot) {
                     final mode = snapshot.data ?? AppMode.development;
                     // Actualizar MetroDataProvider y tiempo simulado cuando cambie el modo
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+                      final metroProvider = Provider.of<MetroDataProvider>(
+                          context,
+                          listen: false);
                       metroProvider.setTestMode(mode == AppMode.test);
-                      
+
                       // Iniciar/detener tiempo simulado según el modo
                       final simulatedTimeService = SimulatedTimeService();
                       if (mode == AppMode.test) {
@@ -467,16 +485,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         GestureDetector(
                           onTap: () => _showModeDialog(context, mode, user.uid),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: mode == AppMode.test ? Colors.orange : Colors.blue,
+                              color: mode == AppMode.test
+                                  ? Colors.orange
+                                  : Colors.blue,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  mode == AppMode.test ? Icons.bug_report : Icons.code,
+                                  mode == AppMode.test
+                                      ? Icons.bug_report
+                                      : Icons.code,
                                   size: 16,
                                   color: Colors.white,
                                 ),
@@ -500,7 +523,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           // Botón para activar/desactivar modo de edición de estaciones
                           Consumer<StationEditModeService>(
                             builder: (context, editModeService, child) {
-                              final isEditModeActive = editModeService.isEditModeActive;
+                              final isEditModeActive =
+                                  editModeService.isEditModeActive;
                               return GestureDetector(
                                 onTap: () {
                                   editModeService.toggle();
@@ -512,17 +536,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             : 'Modo edición activado - Toca y arrastra estaciones',
                                       ),
                                       duration: const Duration(seconds: 2),
-                                      backgroundColor: isEditModeActive ? Colors.grey : Colors.blue,
+                                      backgroundColor: isEditModeActive
+                                          ? Colors.grey
+                                          : Colors.blue,
                                     ),
                                   );
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: isEditModeActive ? Colors.blue : Colors.grey[600],
+                                    color: isEditModeActive
+                                        ? Colors.blue
+                                        : Colors.grey[600],
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Row(
+                                  child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
@@ -547,7 +576,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           const SizedBox(width: 8),
                           SecretDevActivation(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.purple,
                                 borderRadius: BorderRadius.circular(12),
@@ -579,12 +609,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const LearningDemoPanel(),
+                                  builder: (context) =>
+                                      const LearningDemoPanel(),
                                 ),
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.blue,
                                 borderRadius: BorderRadius.circular(12),
@@ -659,23 +691,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onSelected: (String value) async {
                   // Registrar cambio de línea para anuncios inteligentes
                   final previousLine = metroProvider.selectedLinea;
-                  
+
                   // Debug: verificar que se llamó
-                  print('🔍 HomeScreen: onSelected llamado con value=$value, previousLine=$previousLine');
-                  
+                  print(
+                      '🔍 HomeScreen: onSelected llamado con value=$value, previousLine=$previousLine');
+
                   // Asegurar que se establece el valor
                   metroProvider.setSelectedLinea(value);
-                  
+
                   // Verificar que se actualizó
-                  print('🔍 HomeScreen: Después de setSelectedLinea, selectedLinea=${metroProvider.selectedLinea}');
-                  print('🔍 HomeScreen: Estaciones después del cambio: ${metroProvider.stations.length}');
-                  
+                  print(
+                      '🔍 HomeScreen: Después de setSelectedLinea, selectedLinea=${metroProvider.selectedLinea}');
+                  print(
+                      '🔍 HomeScreen: Estaciones después del cambio: ${metroProvider.stations.length}');
+
                   // Notificar cambio de línea al servicio de sesión
-                  await AdSessionService.instance.onLineChanged(value == 'all' ? null : value);
-                  
+                  await AdSessionService.instance
+                      .onLineChanged(value == 'all' ? null : value);
+
                   // Verificar si se debe mostrar intersticial (solo si cambió de línea y estuvo tiempo suficiente)
                   if (previousLine != value && previousLine != 'all') {
-                    final shouldShow = await AdSessionService.instance.shouldShowInterstitialOnLineChange();
+                    final shouldShow = await AdSessionService.instance
+                        .shouldShowInterstitialOnLineChange();
                     if (shouldShow && context.mounted) {
                       await AdService.instance.showInterstitialIfAppropriate(
                         onAdDismissed: () {
@@ -756,26 +793,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Expanded(
                 child: _showCustomMap
-              ? Consumer<MetroDataProvider>(
-                  builder: (context, metroProvider, child) {
-                    return metroProvider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : CustomMetroMap(
-                            stations: metroProvider.stations,
-                            trains: metroProvider.trains,
-                            onStationTap: (station) {
-                              // Mostrar detalles de estación
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Estación: ${station.nombre}'),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                          );
-                  },
-                )
-              : const MapWidget(),
+                    ? Consumer<MetroDataProvider>(
+                        builder: (context, metroProvider, child) {
+                          return metroProvider.isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : CustomMetroMap(
+                                  stations: metroProvider.stations,
+                                  trains: metroProvider.trains,
+                                  onStationTap: (station) {
+                                    // Mostrar detalles de estación
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text('Estación: ${station.nombre}'),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                );
+                        },
+                      )
+                    : const MapWidget(),
               ),
               // Banner de publicidad
               const SafeArea(
@@ -799,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onPressed: () async {
                     // Verificar estado antes de obtener ubicación
                     final status = await locationProvider.checkLocationStatus();
-                    
+
                     // Si el GPS está desactivado o no hay permisos, mostrar diálogo
                     if (!status.isGpsEnabled || !status.hasPermission) {
                       if (mounted) {
@@ -808,7 +846,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           isGpsEnabled: status.isGpsEnabled,
                           hasPermission: status.hasPermission,
                         );
-                        
+
                         if (result == true && mounted) {
                           await locationProvider.getCurrentLocation();
                         }
@@ -830,22 +868,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Consumer<LocationProvider>(
               builder: (context, locationProvider, child) {
                 final speed = locationProvider.currentPosition?.speed ?? 0.0;
-                final speedKmh = (speed * 3.6).clamp(0.0, 200.0); // Convertir m/s a km/h
-                
+                final speedKmh =
+                    (speed * 3.6).clamp(0.0, 200.0); // Convertir m/s a km/h
+
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Medidor de velocidad
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.speed, color: Colors.white, size: 16),
+                          const Icon(Icons.speed,
+                              color: Colors.white, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             '${speedKmh.toStringAsFixed(0)} km/h',
@@ -864,8 +905,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       builder: (context, metroProvider, child) {
                         // Obtener estación más cercana para el pulso
                         StationModel? nearestStation;
-                        final currentPosition = locationProvider.currentPosition;
-                        if (currentPosition != null && metroProvider.stations.isNotEmpty) {
+                        final currentPosition =
+                            locationProvider.currentPosition;
+                        if (currentPosition != null &&
+                            metroProvider.stations.isNotEmpty) {
                           double minDistance = double.infinity;
                           for (final station in metroProvider.stations) {
                             final distance = Geolocator.distanceBetween(
@@ -910,4 +953,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
-

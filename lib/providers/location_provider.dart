@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/location_service.dart';
-import '../services/firebase_service.dart';
-import '../services/metro_simulator_service.dart';
+import '../services/location/location_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/simulation/metro_simulator_service.dart';
 import '../models/simulator_state_model.dart';
 import '../utils/metro_data.dart';
 
@@ -10,7 +10,7 @@ class LocationProvider with ChangeNotifier {
   final LocationService _locationService = LocationService();
   final FirebaseService _firebaseService = FirebaseService();
   final MetroSimulatorService _simulator = MetroSimulatorService();
-  
+
   Position? _currentPosition;
   bool _isTracking = false;
   bool _hasPermission = false;
@@ -24,17 +24,17 @@ class LocationProvider with ChangeNotifier {
     }
     return _currentPosition;
   }
-  
+
   /// Obtiene una posición simulada basada en el tipo de ubicación
   Position? _getSimulatedPosition(SimulatorLocationType locationType) {
     final stationId = _simulator.state.stationId;
     if (stationId == null) return _currentPosition;
-    
+
     // Obtener la estación seleccionada
     final allStations = MetroData.getAllStations();
     try {
       final station = allStations.firstWhere((s) => s.id == stationId);
-      
+
       // Calcular posición basada en la distancia simulada
       switch (locationType) {
         case SimulatorLocationType.enEstacion:
@@ -87,6 +87,7 @@ class LocationProvider with ChangeNotifier {
       return _currentPosition;
     }
   }
+
   bool get isTracking => _isTracking;
   bool get hasPermission => _hasPermission;
   bool get isGpsEnabled => _isGpsEnabled;
@@ -117,7 +118,7 @@ class LocationProvider with ChangeNotifier {
     final status = await _locationService.checkLocationStatus();
     _isGpsEnabled = status.isGpsEnabled;
     _hasPermission = status.hasPermission;
-    
+
     if (!_hasPermission) {
       notifyListeners();
       return;
@@ -134,7 +135,8 @@ class LocationProvider with ChangeNotifier {
 
     try {
       _currentPosition = await _locationService.getCurrentPosition();
-      if (_currentPosition != null && _firebaseService.getCurrentUser() != null) {
+      if (_currentPosition != null &&
+          _firebaseService.getCurrentUser() != null) {
         // Actualizar ubicación del usuario en Firestore
         final geoPoint = _locationService.positionToGeoPoint(_currentPosition!);
         await _firebaseService.updateUser(
@@ -156,7 +158,7 @@ class LocationProvider with ChangeNotifier {
 
     _locationService.getPositionStream().listen((Position position) {
       _currentPosition = position;
-      
+
       // Actualizar ubicación del usuario en Firestore
       if (_firebaseService.getCurrentUser() != null) {
         final geoPoint = _locationService.positionToGeoPoint(position);
@@ -165,7 +167,7 @@ class LocationProvider with ChangeNotifier {
           {'ultima_ubicacion': geoPoint},
         );
       }
-      
+
       notifyListeners();
     });
   }
@@ -175,4 +177,3 @@ class LocationProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-

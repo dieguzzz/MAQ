@@ -3,7 +3,7 @@ import '../models/station_model.dart';
 /// Utilidad para mapear datos de reportes simplificados a estado de estación
 class StationStatusMapper {
   /// Mapea stationOperational + stationCrowd a estadoActual
-  /// 
+  ///
   /// Lógica:
   /// - 'yes' + crowdLevel 1-2 → 'normal'
   /// - 'yes' + crowdLevel 3 → 'moderado'
@@ -49,7 +49,7 @@ class StationStatusMapper {
   /// Calcula confidence string ('high'/'medium'/'low') desde número (0.0-1.0)
   static String? mapToConfidenceString(double? confidence) {
     if (confidence == null) return null;
-    
+
     if (confidence >= 0.7) {
       return 'high';
     } else if (confidence >= 0.4) {
@@ -87,4 +87,3 @@ class StationStatusMapper {
     }
   }
 }
-

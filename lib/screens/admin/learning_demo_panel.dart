@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/learning_data_model.dart';
 import '../../models/station_knowledge_model.dart';
-import '../../services/station_learning_service.dart';
+import '../../services/learning/station_learning_service.dart';
 import '../../providers/metro_data_provider.dart';
 
 /// Panel de demostración del algoritmo de aprendizaje
@@ -17,7 +17,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
   final StationLearningService _learningService = StationLearningService();
   final TextEditingController _expectedTimeController = TextEditingController();
   final TextEditingController _actualTimeController = TextEditingController();
-  
+
   String? _selectedStationId;
   StationKnowledge? _currentKnowledge;
   bool _isLoading = false;
@@ -32,13 +32,14 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
 
   Future<void> _loadStationKnowledge() async {
     if (_selectedStationId == null) return;
-    
+
     setState(() {
       _isLoading = true;
     });
 
-    final knowledge = await _learningService.getStationKnowledge(_selectedStationId!);
-    
+    final knowledge =
+        await _learningService.getStationKnowledge(_selectedStationId!);
+
     setState(() {
       _currentKnowledge = knowledge;
       _isLoading = false;
@@ -75,7 +76,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
       // Crear LearningData
       final now = DateTime.now();
       final delayMinutes = actualTime - expectedTime;
-      
+
       final learningData = LearningData(
         stationId: _selectedStationId!,
         expectedArrival: expectedTime,
@@ -140,11 +141,11 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
             // Sección 1: Ingresar Reporte de Prueba
             _buildReportInputSection(),
             const SizedBox(height: 24),
-            
+
             // Sección 2: Estado Actual de la Estación
             _buildStationStatusSection(),
             const SizedBox(height: 24),
-            
+
             // Sección 3: Cálculo de Nueva Predicción
             _buildPredictionSection(),
           ],
@@ -168,7 +169,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Dropdown de estaciones
             DropdownButtonFormField<String>(
               initialValue: _selectedStationId,
@@ -191,7 +192,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               },
             ),
             const SizedBox(height: 16),
-            
+
             // Campo tiempo esperado
             TextField(
               controller: _expectedTimeController,
@@ -203,7 +204,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-            
+
             // Campo tiempo real
             TextField(
               controller: _actualTimeController,
@@ -215,7 +216,7 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-            
+
             // Botón simular
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _simulateReport,
@@ -294,28 +295,28 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Retraso promedio
             _buildInfoRow(
               'Retraso promedio:',
               '${_currentKnowledge!.averageDelay.toStringAsFixed(2)} min',
             ),
             const SizedBox(height: 8),
-            
+
             // Reportes recibidos
             _buildInfoRow(
               'Reportes recibidos:',
               '${_currentKnowledge!.totalReports}',
             ),
             const SizedBox(height: 8),
-            
+
             // Confiabilidad
             _buildInfoRow(
               'Confiabilidad:',
               '${(_currentKnowledge!.reliabilityScore * 100).toStringAsFixed(1)}%',
             ),
             const SizedBox(height: 16),
-            
+
             // Patrones por hora
             if (_currentKnowledge!.hourlyPatterns.isNotEmpty) ...[
               const Text(
@@ -364,7 +365,8 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
         const TableRow(
           children: [
             Text('Hora', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Retraso (min)', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Retraso (min)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         ...sortedHours.map((hour) {
@@ -395,7 +397,6 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
             if (_lastResult != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
@@ -421,4 +422,3 @@ class _LearningDemoPanelState extends State<LearningDemoPanel> {
     );
   }
 }
-

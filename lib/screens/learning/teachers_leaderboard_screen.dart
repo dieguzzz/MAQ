@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
+import '../../services/core/firebase_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/leaderboard_user_card.dart';
 import '../../theme/metro_theme.dart';
@@ -116,13 +116,11 @@ class TeachersLeaderboardScreen extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Los profesores ayudan a mejorar las predicciones del sistema',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: MetroColors.blue,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: MetroColors.blue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                           ),
                         ),
                       ],
@@ -138,10 +136,8 @@ class TeachersLeaderboardScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final user = users[index];
                     final position = index + 1;
-                    final isCurrentUser =
-                        currentUser?.uid == user.uid;
-                    final teachingScore =
-                        user.gamification?.teachingScore ?? 0;
+                    final isCurrentUser = currentUser?.uid == user.uid;
+                    final teachingScore = user.gamification?.teachingScore ?? 0;
                     final teachingReportsCount =
                         user.gamification?.teachingReportsCount ?? 0;
 
@@ -187,4 +183,3 @@ class TeachersLeaderboardScreen extends StatelessWidget {
     );
   }
 }
-

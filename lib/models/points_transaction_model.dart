@@ -56,4 +56,3 @@ class PointsTransaction {
   static const String typeBadge = 'badge';
   static const String typeReportAuthorBonus = 'report_author_bonus';
 }
-

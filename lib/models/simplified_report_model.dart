@@ -8,34 +8,36 @@ class SimplifiedReportModel {
   final String userId;
   final String? trainLine; // 'L1' | 'L2' | null
   final String? direction; // 'A' | 'B' | null
-  
+
   // Station core (solo si scope === 'station')
   final String? stationOperational; // 'yes' | 'partial' | 'no' | null
   final int? stationCrowd; // 1..5 | null
-  final List<String> stationIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
-  
+  final List<String>
+      stationIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
+
   // Train core (solo si scope === 'train')
   final String? trainOperational; // 'yes' | 'partial' | 'no' | null
   final int? trainCrowd; // 1..5 | null
-  final List<String> trainIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
+  final List<String>
+      trainIssues; // ['recharge', 'atm', 'ac', 'escalator', 'elevator'] | []
   final String? trainStatus; // 'normal' | 'slow' | 'stopped' | null
-  
+
   // ETA reported (solo si scope === 'train')
   final String? etaBucket; // '1-2' | '3-5' | '6-8' | '9+' | 'unknown' | null
   final DateTime? etaExpectedAt; // server-side: now + bucket mid-point
   final DateTime? arrivalTime; // Hora exacta cuando el tren llegó
-  
+
   // Metadata
   final DateTime createdAt;
   final String status; // 'active' | 'resolved' | 'rejected'
   final int confirmations;
   final double confidence; // 0..1
-  
+
   // Puntos
   final int basePoints;
   final int bonusPoints;
   final int totalPoints;
-  
+
   // Ubicación (opcional)
   final GeoPoint? userLocation;
   final double? accuracy;
@@ -70,7 +72,7 @@ class SimplifiedReportModel {
 
   factory SimplifiedReportModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return SimplifiedReportModel(
       id: doc.id,
       scope: data['scope'] ?? 'station',
@@ -99,8 +101,12 @@ class SimplifiedReportModel {
       basePoints: data['basePoints'] ?? 0,
       bonusPoints: data['bonusPoints'] ?? 0,
       totalPoints: data['totalPoints'] ?? 0,
-      userLocation: data['userLocation'] != null ? data['userLocation'] as GeoPoint : null,
-      accuracy: data['accuracy'] != null ? (data['accuracy'] as num).toDouble() : null,
+      userLocation: data['userLocation'] != null
+          ? data['userLocation'] as GeoPoint
+          : null,
+      accuracy: data['accuracy'] != null
+          ? (data['accuracy'] as num).toDouble()
+          : null,
     );
   }
 
@@ -120,7 +126,8 @@ class SimplifiedReportModel {
       'trainIssues': trainIssues,
       if (trainStatus != null) 'trainStatus': trainStatus,
       if (etaBucket != null) 'etaBucket': etaBucket,
-      if (etaExpectedAt != null) 'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
+      if (etaExpectedAt != null)
+        'etaExpectedAt': Timestamp.fromDate(etaExpectedAt!),
       if (arrivalTime != null) 'arrivalTime': Timestamp.fromDate(arrivalTime!),
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status,

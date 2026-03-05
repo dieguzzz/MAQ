@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/simulated_time_service.dart';
-import '../services/app_mode_service.dart';
+import '../services/simulation/simulated_time_service.dart';
+import '../services/core/app_mode_service.dart';
 import '../providers/auth_provider.dart';
 
 /// Widget que muestra el tiempo simulado cuando está en modo test
@@ -45,12 +45,13 @@ class _SimulatedClockWidgetState extends State<SimulatedClockWidget> {
           stream: AppModeService().watchMode(user.uid),
           builder: (context, snapshot) {
             final mode = snapshot.data ?? AppMode.development;
-            
+
             if (mode != AppMode.test) {
               return const SizedBox.shrink();
             }
 
-            final simulatedTime = _simulatedTimeService.getCurrentSimulatedTime();
+            final simulatedTime =
+                _simulatedTimeService.getCurrentSimulatedTime();
             final hour = simulatedTime.hour.toString().padLeft(2, '0');
             final minute = simulatedTime.minute.toString().padLeft(2, '0');
             final second = simulatedTime.second.toString().padLeft(2, '0');
@@ -88,4 +89,3 @@ class _SimulatedClockWidgetState extends State<SimulatedClockWidget> {
     );
   }
 }
-

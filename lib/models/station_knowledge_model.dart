@@ -21,9 +21,10 @@ class StationKnowledge {
 
   /// Crea un StationKnowledge desde un Map (JSON)
   factory StationKnowledge.fromMap(Map<String, dynamic> map) {
-    final hourlyPatternsMap = map['hourlyPatterns'] as Map<String, dynamic>? ?? {};
+    final hourlyPatternsMap =
+        map['hourlyPatterns'] as Map<String, dynamic>? ?? {};
     final hourlyPatterns = <int, double>{};
-    
+
     hourlyPatternsMap.forEach((key, value) {
       hourlyPatterns[int.parse(key)] = (value as num).toDouble();
     });
@@ -75,7 +76,7 @@ class StationKnowledge {
   /// Actualiza el patrón para una hora específica
   void updatePatternForHour(int hour, double delay, double learningRate) {
     final currentPattern = hourlyPatterns[hour] ?? 0.0;
-    hourlyPatterns[hour] = currentPattern * (1 - learningRate) + delay * learningRate;
+    hourlyPatterns[hour] =
+        currentPattern * (1 - learningRate) + delay * learningRate;
   }
 }
-

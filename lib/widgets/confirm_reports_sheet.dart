@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/report_provider.dart';
 import '../providers/metro_data_provider.dart';
-import '../services/firebase_service.dart';
-import '../services/simplified_report_service.dart';
+import '../services/core/firebase_service.dart';
+import '../services/reports/simplified_report_service.dart';
 import '../models/simplified_report_model.dart';
 import '../theme/metro_theme.dart';
 import 'points_reward_animation.dart';
@@ -67,10 +67,10 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Center(
+        child: const Center(
           child: Text(
             'Debes iniciar sesión para confirmar reportes',
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: Colors.black),
           ),
         ),
       );
@@ -97,20 +97,21 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  MetroColors.blue.withOpacity(0.1),
-                  Colors.orange.withOpacity(0.05),
+                  MetroColors.blue.withValues(alpha: 0.1),
+                  Colors.orange.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(32)),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       colors: [MetroColors.blue, Colors.orange],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -118,13 +119,14 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: MetroColors.blue.withOpacity(0.3),
+                        color: MetroColors.blue.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.verified_user, color: Colors.white, size: 24),
+                  child: const Icon(Icons.verified_user,
+                      color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -166,7 +168,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -175,7 +177,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [MetroColors.blue, Colors.orange],
                 ),
                 borderRadius: BorderRadius.circular(8),
@@ -190,7 +192,9 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
               tabs: const [
                 Tab(icon: Icon(Icons.all_inclusive, size: 20), text: 'Todos'),
                 Tab(icon: Icon(Icons.train, size: 20), text: 'Estaciones'),
-                Tab(icon: Icon(Icons.directions_transit, size: 20), text: 'Trenes'),
+                Tab(
+                    icon: Icon(Icons.directions_transit, size: 20),
+                    text: 'Trenes'),
               ],
             ),
           ),
@@ -208,7 +212,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const Icon(Icons.error_outline,
+                            size: 64, color: Colors.red),
                         const SizedBox(height: 16),
                         Text('Error: ${snapshot.error}'),
                       ],
@@ -230,7 +235,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 }
 
                 // Ordenar por más recientes primero
-                otherUsersReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                otherUsersReports
+                    .sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                 if (otherUsersReports.isEmpty) {
                   return Center(
@@ -252,8 +258,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     shape: BoxShape.circle,
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.orange.withOpacity(0.1),
-                                        MetroColors.blue.withOpacity(0.1),
+                                        Colors.orange.withValues(alpha: 0.1),
+                                        MetroColors.blue.withValues(alpha: 0.1),
                                       ],
                                     ),
                                   ),
@@ -268,7 +274,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           },
                         ),
                         const SizedBox(height: 24),
-                        Text(
+                        const Text(
                           'No hay reportes para confirmar',
                           style: TextStyle(
                             fontSize: 18,
@@ -281,7 +287,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           _selectedReportType == null
                               ? 'Los reportes de otros usuarios aparecerán aquí'
                               : 'No hay reportes de ${_selectedReportType == 'station' ? 'estaciones' : 'trenes'} para confirmar',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
                           ),
@@ -334,7 +340,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
         return Consumer<MetroDataProvider>(
           builder: (context, metroProvider, child) {
             final station = metroProvider.getStationById(report.stationId);
-            final stationName = station?.nombre ?? 'Estación ${report.stationId}';
+            final stationName =
+                station?.nombre ?? 'Estación ${report.stationId}';
 
             return TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.95, end: 1.0),
@@ -353,7 +360,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           (report.scope == 'station'
                                   ? MetroColors.blue
                                   : MetroColors.green)
-                              .withOpacity(0.03),
+                              .withValues(alpha: 0.03),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -362,7 +369,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           color: (report.scope == 'station'
                                   ? MetroColors.blue
                                   : MetroColors.green)
-                              .withOpacity(0.1),
+                              .withValues(alpha: 0.1),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -373,7 +380,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                       child: InkWell(
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          _showReportDetails(context, report, stationName, metroProvider, currentUserId);
+                          _showReportDetails(context, report, stationName,
+                              metroProvider, currentUserId);
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
@@ -389,8 +397,16 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: report.scope == 'station'
-                                            ? [MetroColors.blue, MetroColors.blue.withOpacity(0.7)]
-                                            : [MetroColors.green, MetroColors.green.withOpacity(0.7)],
+                                            ? [
+                                                MetroColors.blue,
+                                                MetroColors.blue
+                                                    .withValues(alpha: 0.7)
+                                              ]
+                                            : [
+                                                MetroColors.green,
+                                                MetroColors.green
+                                                    .withValues(alpha: 0.7)
+                                              ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
@@ -400,7 +416,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                           color: (report.scope == 'station'
                                                   ? MetroColors.blue
                                                   : MetroColors.green)
-                                              .withOpacity(0.3),
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -417,7 +433,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           stationName,
@@ -437,8 +454,9 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                             color: (report.scope == 'station'
                                                     ? MetroColors.blue
                                                     : MetroColors.green)
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
+                                                .withValues(alpha: 0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             report.scope == 'station'
@@ -459,7 +477,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                   if (!isVerified)
                                     TweenAnimationBuilder<double>(
                                       tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 400),
+                                      duration:
+                                          const Duration(milliseconds: 400),
                                       curve: Curves.elasticOut,
                                       builder: (context, value, child) {
                                         return Transform.scale(
@@ -467,12 +486,17 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                           child: Container(
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
-                                                colors: [MetroColors.green, Colors.green[700]!],
+                                                colors: [
+                                                  MetroColors.green,
+                                                  Colors.green[700]!
+                                                ],
                                               ),
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: MetroColors.green.withOpacity(0.4),
+                                                  color: MetroColors.green
+                                                      .withValues(alpha: 0.4),
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 4),
                                                 ),
@@ -483,24 +507,30 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                               child: InkWell(
                                                 onTap: () async {
                                                   HapticFeedback.mediumImpact();
-                                                  await _confirmReport(context, report.id, currentUserId);
+                                                  await _confirmReport(context,
+                                                      report.id, currentUserId);
                                                 },
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.symmetric(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.symmetric(
                                                     horizontal: 16,
                                                     vertical: 10,
                                                   ),
-                                                  child: const Row(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
-                                                      Icon(Icons.check_circle, size: 18, color: Colors.white),
+                                                      Icon(Icons.check_circle,
+                                                          size: 18,
+                                                          color: Colors.white),
                                                       SizedBox(width: 6),
                                                       Text(
                                                         'Confirmar',
                                                         style: TextStyle(
                                                           color: Colors.white,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                           fontSize: 13,
                                                         ),
                                                       ),
@@ -521,14 +551,18 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                       ),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [Colors.green, Colors.green[700]!],
+                                          colors: [
+                                            Colors.green,
+                                            Colors.green[700]!
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.check_circle, size: 18, color: Colors.white),
+                                          Icon(Icons.check_circle,
+                                              size: 18, color: Colors.white),
                                           SizedBox(width: 6),
                                           Text(
                                             'Confirmado',
@@ -558,145 +592,158 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                            if (report.scope == 'station') ...[
-                              if (report.stationOperational != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.info_outline,
-                                  'Estado',
-                                  report.stationOperational == 'yes'
-                                      ? 'Operativa'
-                                      : report.stationOperational == 'partial'
-                                          ? 'Parcialmente operativa'
-                                          : 'No operativa',
-                                  report.stationOperational == 'yes'
-                                      ? Colors.green
-                                      : report.stationOperational == 'partial'
-                                          ? Colors.orange
-                                          : Colors.red,
-                                ),
-                                if (report.stationCrowd != null ||
-                                    report.stationIssues.isNotEmpty)
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.stationCrowd != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.people,
-                                  'Aglomeración',
-                                  'Nivel ${report.stationCrowd}/5',
-                                  Colors.blue,
-                                ),
-                                if (report.stationIssues.isNotEmpty)
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.stationIssues.isNotEmpty) ...[
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: report.stationIssues.take(3).map((issue) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.orange.withOpacity(0.2),
-                                            Colors.orange.withOpacity(0.1),
-                                          ],
+                                    if (report.scope == 'station') ...[
+                                      if (report.stationOperational !=
+                                          null) ...[
+                                        _buildModernInfoRow(
+                                          Icons.info_outline,
+                                          'Estado',
+                                          report.stationOperational == 'yes'
+                                              ? 'Operativa'
+                                              : report.stationOperational ==
+                                                      'partial'
+                                                  ? 'Parcialmente operativa'
+                                                  : 'No operativa',
+                                          report.stationOperational == 'yes'
+                                              ? Colors.green
+                                              : report.stationOperational ==
+                                                      'partial'
+                                                  ? Colors.orange
+                                                  : Colors.red,
                                         ),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.orange.withOpacity(0.3),
+                                        if (report.stationCrowd != null ||
+                                            report.stationIssues.isNotEmpty)
+                                          const SizedBox(height: 12),
+                                      ],
+                                      if (report.stationCrowd != null) ...[
+                                        _buildModernInfoRow(
+                                          Icons.people,
+                                          'Aglomeración',
+                                          'Nivel ${report.stationCrowd}/5',
+                                          Colors.blue,
                                         ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.warning_amber_rounded,
-                                            size: 14,
-                                            color: Colors.orange[700],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _getProblemaTexto(issue),
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.orange[900],
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ] else if (report.scope == 'train') ...[
-                              if (report.trainCrowd != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.people,
-                                  'Aglomeración',
-                                  'Nivel ${report.trainCrowd}/5',
-                                  Colors.blue,
-                                ),
-                                if (report.trainStatus != null ||
-                                    (report.etaBucket != null &&
-                                        report.etaBucket != 'unknown'))
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.trainStatus != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.speed,
-                                  'Estado',
-                                  report.trainStatus == 'normal'
-                                      ? 'Normal'
-                                      : report.trainStatus == 'slow'
-                                          ? 'Lento'
-                                          : 'Detenido',
-                                  report.trainStatus == 'normal'
-                                      ? Colors.green
-                                      : report.trainStatus == 'slow'
-                                          ? Colors.orange
-                                          : Colors.red,
-                                ),
-                                if (report.etaBucket != null &&
-                                    report.etaBucket != 'unknown')
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.etaBucket != null &&
-                                  report.etaBucket != 'unknown') ...[
-                                _buildModernInfoRow(
-                                  Icons.schedule,
-                                  'ETA',
-                                  '${report.etaBucket} minutos',
-                                  Colors.purple,
-                                ),
-                              ],
-                            ],
+                                        if (report.stationIssues.isNotEmpty)
+                                          const SizedBox(height: 12),
+                                      ],
+                                      if (report.stationIssues.isNotEmpty) ...[
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: report.stationIssues
+                                              .take(3)
+                                              .map((issue) {
+                                            return Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.orange
+                                                        .withValues(alpha: 0.2),
+                                                    Colors.orange
+                                                        .withValues(alpha: 0.1),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: Colors.orange
+                                                      .withValues(alpha: 0.3),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.warning_amber_rounded,
+                                                    size: 14,
+                                                    color: Colors.orange[700],
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    _getProblemaTexto(issue),
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Colors.orange[900],
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ] else if (report.scope == 'train') ...[
+                                      if (report.trainCrowd != null) ...[
+                                        _buildModernInfoRow(
+                                          Icons.people,
+                                          'Aglomeración',
+                                          'Nivel ${report.trainCrowd}/5',
+                                          Colors.blue,
+                                        ),
+                                        if (report.trainStatus != null ||
+                                            (report.etaBucket != null &&
+                                                report.etaBucket != 'unknown'))
+                                          const SizedBox(height: 12),
+                                      ],
+                                      if (report.trainStatus != null) ...[
+                                        _buildModernInfoRow(
+                                          Icons.speed,
+                                          'Estado',
+                                          report.trainStatus == 'normal'
+                                              ? 'Normal'
+                                              : report.trainStatus == 'slow'
+                                                  ? 'Lento'
+                                                  : 'Detenido',
+                                          report.trainStatus == 'normal'
+                                              ? Colors.green
+                                              : report.trainStatus == 'slow'
+                                                  ? Colors.orange
+                                                  : Colors.red,
+                                        ),
+                                        if (report.etaBucket != null &&
+                                            report.etaBucket != 'unknown')
+                                          const SizedBox(height: 12),
+                                      ],
+                                      if (report.etaBucket != null &&
+                                          report.etaBucket != 'unknown') ...[
+                                        _buildModernInfoRow(
+                                          Icons.schedule,
+                                          'ETA',
+                                          '${report.etaBucket} minutos',
+                                          Colors.purple,
+                                        ),
+                                      ],
+                                    ],
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 16),
                               // Footer moderno con confirmaciones y fecha
                               Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 16),
                                 decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.grey[100]!,
-                                    Colors.grey[50]!,
-                                  ],
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey[100]!,
+                                      Colors.grey[50]!,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
                                 child: Row(
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
+                                        color:
+                                            Colors.blue.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -708,7 +755,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     const SizedBox(width: 8),
                                     Text(
                                       '${report.confirmations} confirmaciones',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black,
                                         fontWeight: FontWeight.w600,
@@ -730,7 +777,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                                     const SizedBox(width: 8),
                                     Text(
                                       _formatDate(report.createdAt),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black,
                                         fontWeight: FontWeight.w500,
@@ -745,8 +792,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                       ),
                     ),
                   ),
-              );
-            },
+                );
+              },
             );
           },
         );
@@ -754,13 +801,14 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     );
   }
 
-  Widget _buildModernInfoRow(IconData icon, String label, String value, Color color) {
+  Widget _buildModernInfoRow(
+      IconData icon, String label, String value, Color color) {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: color),
@@ -772,7 +820,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
                   color: Colors.black,
                   fontWeight: FontWeight.w500,
@@ -793,7 +841,6 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
       ],
     );
   }
-
 
   String _getProblemaTexto(String problema) {
     final map = {
@@ -895,8 +942,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: report.scope == 'station'
-                          ? MetroColors.blue.withOpacity(0.1)
-                          : MetroColors.green.withOpacity(0.1),
+                          ? MetroColors.blue.withValues(alpha: 0.1)
+                          : MetroColors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -927,7 +974,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                           report.scope == 'station'
                               ? 'Reporte de Estación'
                               : 'Reporte de Tren',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
                           ),
@@ -994,7 +1041,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     children: report.stationIssues.map((issue) {
                       return Chip(
                         label: Text(_getProblemaTexto(issue)),
-                        backgroundColor: MetroColors.energyOrange.withOpacity(0.1),
+                        backgroundColor:
+                            MetroColors.energyOrange.withValues(alpha: 0.1),
                       );
                     }).toList(),
                   ),
@@ -1042,7 +1090,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           Navigator.of(context).pop(); // Cerrar bottom sheet
-                          await _confirmReport(context, report.id, currentUserId);
+                          await _confirmReport(
+                              context, report.id, currentUserId);
                         },
                         icon: const Icon(Icons.check_circle),
                         label: const Text('Confirmar este reporte'),
@@ -1057,7 +1106,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Row(
@@ -1114,9 +1163,9 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1147,7 +1196,7 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: Colors.black,
                 ),

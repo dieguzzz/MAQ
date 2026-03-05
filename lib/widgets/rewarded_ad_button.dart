@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/ad_service.dart';
+import '../services/ads/ad_service.dart';
 
 class RewardedAdButton extends StatefulWidget {
   final Widget child;
@@ -36,7 +36,8 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('¡Recompensa obtenida! ${reward.amount} ${reward.type}'),
+              content:
+                  Text('¡Recompensa obtenida! ${reward.amount} ${reward.type}'),
               backgroundColor: Colors.green,
             ),
           );
@@ -56,7 +57,7 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
         });
       },
     );
-    
+
     // Asumir que el ad está listo después de un breve delay
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
@@ -92,7 +93,8 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('¡Recompensa obtenida! ${reward.amount} ${reward.type}'),
+              content:
+                  Text('¡Recompensa obtenida! ${reward.amount} ${reward.type}'),
               backgroundColor: Colors.green,
             ),
           );
@@ -135,4 +137,3 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
     );
   }
 }
-

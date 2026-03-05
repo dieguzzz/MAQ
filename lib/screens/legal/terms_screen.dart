@@ -37,34 +37,34 @@ class TermsScreen extends StatelessWidget {
             _buildSection(
               '2. Uso del Servicio',
               'MetroPTY es una aplicación colaborativa que permite a los usuarios reportar el estado del Metro de Panamá. Debes:\n\n'
-              '• Proporcionar información precisa y honesta\n'
-              '• No usar la aplicación para fines ilegales\n'
-              '• Respetar a otros usuarios\n'
-              '• No hacer reportes falsos o maliciosos',
+                  '• Proporcionar información precisa y honesta\n'
+                  '• No usar la aplicación para fines ilegales\n'
+                  '• Respetar a otros usuarios\n'
+                  '• No hacer reportes falsos o maliciosos',
             ),
             _buildSection(
               '3. Aviso Importante',
               '⚠️ ESTA APLICACIÓN NO ES OFICIAL DEL METRO DE PANAMÁ\n\n'
-              '• Los datos son proporcionados por la comunidad\n'
-              '• No garantizamos la precisión absoluta de los reportes\n'
-              '• Usa la información como referencia, no como fuente oficial\n'
-              '• Siempre verifica información crítica con fuentes oficiales',
+                  '• Los datos son proporcionados por la comunidad\n'
+                  '• No garantizamos la precisión absoluta de los reportes\n'
+                  '• Usa la información como referencia, no como fuente oficial\n'
+                  '• Siempre verifica información crítica con fuentes oficiales',
             ),
             _buildSection(
               '4. Responsabilidad del Usuario',
               'Eres responsable de:\n\n'
-              '• La veracidad de tus reportes\n'
-              '• Mantener segura tu cuenta\n'
-              '• Tu conducta en la aplicación\n'
-              '• El uso que hagas de la información proporcionada',
+                  '• La veracidad de tus reportes\n'
+                  '• Mantener segura tu cuenta\n'
+                  '• Tu conducta en la aplicación\n'
+                  '• El uso que hagas de la información proporcionada',
             ),
             _buildSection(
               '5. Limitación de Responsabilidad',
               'MetroPTY no se hace responsable de:\n\n'
-              '• Decisiones tomadas basadas en información de la app\n'
-              '• Retrasos o problemas en el servicio del metro\n'
-              '• Pérdidas o daños derivados del uso de la aplicación\n'
-              '• La precisión de reportes de otros usuarios',
+                  '• Decisiones tomadas basadas en información de la app\n'
+                  '• Retrasos o problemas en el servicio del metro\n'
+                  '• Pérdidas o daños derivados del uso de la aplicación\n'
+                  '• La precisión de reportes de otros usuarios',
             ),
             _buildSection(
               '6. Propiedad Intelectual',
@@ -93,7 +93,8 @@ class TermsScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'RECUERDA: Esta aplicación es una herramienta colaborativa. Los datos no son oficiales. Úsala como referencia complementaria.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -131,4 +132,3 @@ class TermsScreen extends StatelessWidget {
     );
   }
 }
-

@@ -7,8 +7,8 @@ import '../theme/metro_theme.dart';
 import '../utils/helpers.dart';
 import '../providers/location_provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/learning_report_service.dart';
-import '../services/schedule_service.dart';
+import '../services/learning/learning_report_service.dart';
+import '../services/simulation/schedule_service.dart';
 import '../models/learning_report_model.dart';
 import 'station_report_flow_widget.dart';
 import 'arrival_confirmation_dialog.dart';
@@ -19,8 +19,10 @@ class StationReportSheet extends StatefulWidget {
   final StationModel station;
   final List<TrainModel>? trains; // Trenes cercanos para reporte de tren
   final int initialPage; // Página inicial (0 = info estación, 1 = reporte)
-  final double? initialChildSize; // Tamaño inicial del sheet (null = usar default)
-  final String? initialReportType; // 'station' | 'train' | null - para abrir directamente el formulario
+  final double?
+      initialChildSize; // Tamaño inicial del sheet (null = usar default)
+  final String?
+      initialReportType; // 'station' | 'train' | null - para abrir directamente el formulario
 
   const StationReportSheet({
     super.key,
@@ -276,12 +278,14 @@ class _HeaderSection extends StatelessWidget {
           children: [
             _InfoChip(
               label: station.linea == 'linea1' ? 'Línea 1' : 'Línea 2',
-              color:
-                  station.linea == 'linea1' ? MetroColors.blue : MetroColors.green,
+              color: station.linea == 'linea1'
+                  ? MetroColors.blue
+                  : MetroColors.green,
             ),
             const SizedBox(width: 8),
             _InfoChip(
-              label: 'Actualizado ${Helpers.formatDateTime(station.ultimaActualizacion)}',
+              label:
+                  'Actualizado ${Helpers.formatDateTime(station.ultimaActualizacion)}',
               color: MetroColors.grayMedium,
             ),
           ],
@@ -471,7 +475,7 @@ class _QuickActionsState extends State<_QuickActions> {
     final formKey = GlobalKey<FormState>();
     final learningService = LearningReportService();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     if (authProvider.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -588,7 +592,8 @@ class _QuickActionsState extends State<_QuickActions> {
         linea: widget.station.linea,
         horaLlegadaReal: now,
         tiempoEstimadoMostrado: timeValue,
-        retrasoMinutos: 0, // Se actualizará cuando el usuario confirme llegada real
+        retrasoMinutos:
+            0, // Se actualizará cuando el usuario confirme llegada real
         llegadaATiempo: true, // Inicial
         creadoEn: now,
         calidadReporte: 1.0, // Reportes de pantalla tienen calidad máxima
@@ -598,7 +603,7 @@ class _QuickActionsState extends State<_QuickActions> {
 
       if (mounted) {
         Navigator.of(context).pop(); // Cerrar diálogo de carga
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(
@@ -616,7 +621,7 @@ class _QuickActionsState extends State<_QuickActions> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop(); // Cerrar diálogo de carga
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al reportar: ${e.toString()}'),
@@ -894,4 +899,3 @@ class _EtaData {
   final int minutes;
   final String confidence;
 }
-

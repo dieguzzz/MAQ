@@ -1,18 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 /// Helper para configurar Firebase en tests
-/// 
+///
 /// Nota: Para tests reales con Firebase Emulator, se necesita:
 /// 1. Inicializar Firebase con emulator
 /// 2. Configurar variables de entorno
-/// 
+///
 /// Por ahora, este helper proporciona estructura básica
 class FirebaseTestHelper {
   static bool _initialized = false;
 
   /// Inicializa Firebase para tests
-  /// 
+  ///
   /// En un entorno real, esto configuraría el emulador:
   /// ```dart
   /// await Firebase.initializeApp();
@@ -20,7 +19,7 @@ class FirebaseTestHelper {
   /// ```
   static Future<void> initialize() async {
     if (_initialized) return;
-    
+
     // TODO: Configurar Firebase Emulator cuando esté disponible
     // Por ahora, solo marcamos como inicializado
     _initialized = true;
@@ -77,10 +76,9 @@ class FirebaseTestHelper {
   }
 
   /// Limpia datos de prueba
-  /// 
+  ///
   /// En un entorno real con emulador, esto limpiaría las colecciones
   static Future<void> cleanup() async {
     // TODO: Implementar limpieza cuando Firebase Emulator esté configurado
   }
 }
-

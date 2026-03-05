@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/gamification_model.dart' hide Badge;
 import '../models/gamification_model.dart' as gamification show Badge;
 
 /// Widget que muestra un preview de los últimos badges desbloqueados
@@ -134,4 +133,3 @@ class ProfileBadgesPreview extends StatelessWidget {
     );
   }
 }
-
