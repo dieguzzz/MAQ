@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,7 +10,11 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
+  StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  StreamSubscription<RemoteMessage>? _backgroundSubscription;
+
   // Callback para navegación cuando se recibe notificación
   Function(Map<String, dynamic>)? onNotificationTapped;
 
@@ -44,13 +49,16 @@ class NotificationService {
       }
 
       // Listen to token refresh
-      _firebaseMessaging.onTokenRefresh.listen(_saveFCMToken);
+      _tokenRefreshSubscription =
+          _firebaseMessaging.onTokenRefresh.listen(_saveFCMToken);
 
       // Listen to foreground messages
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      _foregroundSubscription =
+          FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
       // Handle notification taps when app is in background
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
+      _backgroundSubscription =
+          FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
       
       // Handle notification when app was closed
       final initialMessage = await _firebaseMessaging.getInitialMessage();
@@ -161,6 +169,12 @@ class NotificationService {
 
   Future<void> unsubscribeFromTopic(String topic) async {
     await _firebaseMessaging.unsubscribeFromTopic(topic);
+  }
+
+  void dispose() {
+    _tokenRefreshSubscription?.cancel();
+    _foregroundSubscription?.cancel();
+    _backgroundSubscription?.cancel();
   }
 
   Future<void> showLocalNotification({

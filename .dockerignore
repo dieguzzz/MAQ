@@ -1,0 +1,30 @@
+# Usar .nixpacksignore para control específico de Nixpacks
+# Este .dockerignore es más general para Docker builds
+
+# Node.js build artifacts
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Firebase debug
+firebase-debug.log
+firestore-debug.log

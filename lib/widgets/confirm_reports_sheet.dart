@@ -6,6 +6,7 @@ import '../providers/report_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../services/firebase_service.dart';
 import '../services/simplified_report_service.dart';
+import '../services/debug_log_service.dart';
 import '../models/simplified_report_model.dart';
 import '../theme/metro_theme.dart';
 import 'points_reward_animation.dart';
@@ -24,24 +25,27 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
   final SimplifiedReportService _reportService = SimplifiedReportService();
   final FirebaseService _firebaseService = FirebaseService();
   late TabController _tabController;
-  String? _selectedReportType; // 'station', 'train', null = todos
+  String? _selectedFilter; // null=todos, 'status', 'crowd', 'issues'
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() {
           switch (_tabController.index) {
             case 0:
-              _selectedReportType = null; // Todos
+              _selectedFilter = null; // Todos
               break;
             case 1:
-              _selectedReportType = 'station';
+              _selectedFilter = 'status';
               break;
             case 2:
-              _selectedReportType = 'train';
+              _selectedFilter = 'crowd';
+              break;
+            case 3:
+              _selectedFilter = 'issues';
               break;
           }
         });
@@ -67,10 +71,10 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Center(
+        child: const Center(
           child: Text(
             'Debes iniciar sesión para confirmar reportes',
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: Colors.black),
           ),
         ),
       );
@@ -79,121 +83,108 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white,
-            Colors.grey[50]!,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Header moderno con gradiente
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  MetroColors.blue.withOpacity(0.1),
-                  Colors.orange.withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Handle superior
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             ),
+          ),
+          // Header Duolingo-style
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [MetroColors.blue, Colors.orange],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Confirmar Reportes',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: MetroColors.grayDark,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.8,
+                              ),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: MetroColors.blue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.verified_user, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Confirmar Reportes',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Ayuda a la comunidad',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
+                    Text(
+                      'Ayuda a la comunidad ✨',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: MetroColors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: MetroColors.grayDark),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.of(context).pop();
-                  },
+                  icon: const Icon(Icons.close_rounded,
+                      color: MetroColors.grayMedium),
+                  onPressed: () => Navigator.pop(context),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey[100],
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ],
             ),
           ),
-          // Tabs modernos con animación
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [MetroColors.blue, Colors.orange],
-                ),
-                borderRadius: BorderRadius.circular(8),
+          // Tabs modernos
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(16),
               ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.black,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: MetroColors.blue,
+                unselectedLabelColor: MetroColors.grayMedium,
+                labelStyle:
+                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: 'TODOS'),
+                  Tab(text: 'ESTADO'),
+                  Tab(text: 'NIVEL'),
+                  Tab(text: 'FALLAS'),
+                ],
               ),
-              tabs: const [
-                Tab(icon: Icon(Icons.all_inclusive, size: 20), text: 'Todos'),
-                Tab(icon: Icon(Icons.train, size: 20), text: 'Estaciones'),
-                Tab(icon: Icon(Icons.directions_transit, size: 20), text: 'Trenes'),
-              ],
             ),
           ),
+          const SizedBox(height: 16),
           // Lista de reportes
           Expanded(
             child: StreamBuilder<List<SimplifiedReportModel>>(
@@ -208,7 +199,8 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const Icon(Icons.error_outline,
+                            size: 64, color: Colors.red),
                         const SizedBox(height: 16),
                         Text('Error: ${snapshot.error}'),
                       ],
@@ -217,101 +209,167 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                 }
 
                 final allReports = snapshot.data ?? [];
-                // Filtrar reportes de otros usuarios y por tipo
-                var otherUsersReports = allReports
-                    .where((report) => report.userId != user.uid)
-                    .toList();
-
-                // Filtrar por tipo si está seleccionado
-                if (_selectedReportType != null) {
-                  otherUsersReports = otherUsersReports
-                      .where((report) => report.scope == _selectedReportType)
-                      .toList();
-                }
-
-                // Ordenar por más recientes primero
-                otherUsersReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                if (otherUsersReports.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.easeOut,
-                          builder: (context, value, child) {
-                            return Transform.scale(
-                              scale: value,
-                              child: Opacity(
-                                opacity: value,
-                                child: Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.orange.withOpacity(0.1),
-                                        MetroColors.blue.withOpacity(0.1),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.people_outline,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'No hay reportes para confirmar',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _selectedReportType == null
-                              ? 'Los reportes de otros usuarios aparecerán aquí'
-                              : 'No hay reportes de ${_selectedReportType == 'station' ? 'estaciones' : 'trenes'} para confirmar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                final logService = DebugLogService();
+                logService.addLog(
+                  'ConfirmReports',
+                  '${allReports.length} reportes recibidos del stream',
+                  level: LogLevel.info,
+                );
+                for (var report in allReports) {
+                  logService.addLog(
+                    'ConfirmReports',
+                    '  - ${report.id}: scope=${report.scope}, stationId=${report.stationId}, status=${report.status}',
+                    level: LogLevel.info,
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: otherUsersReports.length,
-                  itemBuilder: (context, index) {
-                    final report = otherUsersReports[index];
-                    return TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: Duration(milliseconds: 300 + (index * 50)),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: _buildReportCard(context, report, user.uid),
+                // Excluir reportes de tren (solo estación y fallas específicas)
+                var filteredReports = allReports
+                    .where((report) => report.scope != 'train')
+                    .toList();
+                logService.addLog(
+                  'ConfirmReports',
+                  'Reportes de estación (sin trenes): ${filteredReports.length}',
+                  level: LogLevel.info,
+                );
+
+                // Separar reportes generales de problemas específicos
+                final generalReports =
+                    filteredReports.where((r) => !r.isSpecificIssue).toList();
+                final specificIssueReports =
+                    filteredReports.where((r) => r.isSpecificIssue).toList();
+
+                // Ordenar ambas listas por más recientes primero
+                int sortByConfidenceAndDate(
+                    SimplifiedReportModel a, SimplifiedReportModel b) {
+                  // 1. Por confianza (descendente)
+                  final aConf = a.confidence ?? 0.0;
+                  final bConf = b.confidence ?? 0.0;
+                  final confidenceCompare = bConf.compareTo(aConf);
+                  if (confidenceCompare != 0) return confidenceCompare;
+
+                  // 2. Por fecha (más recientes primero)
+                  final dateCompare = b.createdAt.compareTo(a.createdAt);
+                  if (dateCompare != 0) return dateCompare;
+
+                  // 3. Por confirmaciones (más confirmaciones primero)
+                  return b.confirmations.compareTo(a.confirmations);
+                }
+
+                generalReports.sort(sortByConfidenceAndDate);
+                specificIssueReports.sort(sortByConfidenceAndDate);
+
+                final List<SimplifiedReportModel> combinedReports = [
+                  ...generalReports,
+                  ...specificIssueReports,
+                ];
+
+                if (combinedReports.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                // Desglosar reportes de estación en items individuales
+                final confirmableItems = <_ConfirmableItem>[];
+                for (final report in combinedReports) {
+                  if (report.scope == 'station' && !report.isSpecificIssue) {
+                    // Desglosar reporte de estación en items separados
+                    if (report.stationOperational != null) {
+                      confirmableItems.add(_ConfirmableItem(
+                        report: report,
+                        type: _ItemType.stationStatus,
+                      ));
+                    }
+                    if (report.stationCrowd != null) {
+                      confirmableItems.add(_ConfirmableItem(
+                        report: report,
+                        type: _ItemType.stationCrowd,
+                      ));
+                    }
+                    if (report.stationIssues?.isNotEmpty ?? false) {
+                      confirmableItems.add(_ConfirmableItem(
+                        report: report,
+                        type: _ItemType.stationIssues,
+                      ));
+                    }
+                  } else if (report.isSpecificIssue) {
+                    confirmableItems.add(_ConfirmableItem(
+                      report: report,
+                      type: _ItemType.specificIssue,
+                    ));
+                  }
+                }
+
+                // Filtrar items por tab seleccionado
+                final displayItems = _selectedFilter == null
+                    ? confirmableItems
+                    : confirmableItems.where((item) {
+                        switch (_selectedFilter) {
+                          case 'status':
+                            return item.type == _ItemType.stationStatus;
+                          case 'crowd':
+                            return item.type == _ItemType.stationCrowd;
+                          case 'issues':
+                            return item.type == _ItemType.stationIssues ||
+                                item.type == _ItemType.specificIssue;
+                          default:
+                            return true;
+                        }
+                      }).toList();
+
+                if (displayItems.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return Column(
+                  children: [
+                    // Contador de items
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: MetroColors.blue
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${displayItems.length} items',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: MetroColors.blue,
+                              ),
+                            ),
                           ),
-                        );
-                      },
-                    );
-                  },
+                          const Spacer(),
+                          Text(
+                            'Confirma lo que ves correcto',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 8),
+                        itemCount: displayItems.length,
+                        itemBuilder: (context, index) {
+                          final item = displayItems[index];
+                          return _buildConfirmableItemCard(
+                              context, item, user.uid);
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -321,479 +379,83 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     );
   }
 
-  Widget _buildReportCard(
-    BuildContext context,
-    SimplifiedReportModel report,
-    String currentUserId,
-  ) {
-    return FutureBuilder<bool>(
-      future: _firebaseService.hasUserConfirmedReport(report.id, currentUserId),
-      builder: (context, confirmationSnapshot) {
-        final isVerified = confirmationSnapshot.data ?? false;
-
-        return Consumer<MetroDataProvider>(
-          builder: (context, metroProvider, child) {
-            final station = metroProvider.getStationById(report.stationId);
-            final stationName = station?.nombre ?? 'Estación ${report.stationId}';
-
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.95, end: 1.0),
-              duration: const Duration(milliseconds: 200),
-              builder: (context, scale, child) {
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white,
-                          (report.scope == 'station'
-                                  ? MetroColors.blue
-                                  : MetroColors.green)
-                              .withOpacity(0.03),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (report.scope == 'station'
-                                  ? MetroColors.blue
-                                  : MetroColors.green)
-                              .withOpacity(0.1),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          _showReportDetails(context, report, stationName, metroProvider, currentUserId);
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header con tipo y botón de confirmar
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: report.scope == 'station'
-                                            ? [MetroColors.blue, MetroColors.blue.withOpacity(0.7)]
-                                            : [MetroColors.green, MetroColors.green.withOpacity(0.7)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (report.scope == 'station'
-                                                  ? MetroColors.blue
-                                                  : MetroColors.green)
-                                              .withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      report.scope == 'station'
-                                          ? Icons.train
-                                          : Icons.directions_transit,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          stationName,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: (report.scope == 'station'
-                                                    ? MetroColors.blue
-                                                    : MetroColors.green)
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            report.scope == 'station'
-                                                ? 'Reporte de Estación'
-                                                : 'Reporte de Tren',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: report.scope == 'station'
-                                                  ? MetroColors.blue
-                                                  : MetroColors.green,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (!isVerified)
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 400),
-                                      curve: Curves.elasticOut,
-                                      builder: (context, value, child) {
-                                        return Transform.scale(
-                                          scale: value,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [MetroColors.green, Colors.green[700]!],
-                                              ),
-                                              borderRadius: BorderRadius.circular(12),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: MetroColors.green.withOpacity(0.4),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 4),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onTap: () async {
-                                                  HapticFeedback.mediumImpact();
-                                                  await _confirmReport(context, report.id, currentUserId);
-                                                },
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 10,
-                                                  ),
-                                                  child: const Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Icon(Icons.check_circle, size: 18, color: Colors.white),
-                                                      SizedBox(width: 6),
-                                                      Text(
-                                                        'Confirmar',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 13,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  else
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Colors.green, Colors.green[700]!],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.check_circle, size: 18, color: Colors.white),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Confirmado',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              // Información del reporte con diseño moderno
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey[200]!,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                            if (report.scope == 'station') ...[
-                              if (report.stationOperational != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.info_outline,
-                                  'Estado',
-                                  report.stationOperational == 'yes'
-                                      ? 'Operativa'
-                                      : report.stationOperational == 'partial'
-                                          ? 'Parcialmente operativa'
-                                          : 'No operativa',
-                                  report.stationOperational == 'yes'
-                                      ? Colors.green
-                                      : report.stationOperational == 'partial'
-                                          ? Colors.orange
-                                          : Colors.red,
-                                ),
-                                if (report.stationCrowd != null ||
-                                    report.stationIssues.isNotEmpty)
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.stationCrowd != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.people,
-                                  'Aglomeración',
-                                  'Nivel ${report.stationCrowd}/5',
-                                  Colors.blue,
-                                ),
-                                if (report.stationIssues.isNotEmpty)
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.stationIssues.isNotEmpty) ...[
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: report.stationIssues.take(3).map((issue) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.orange.withOpacity(0.2),
-                                            Colors.orange.withOpacity(0.1),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.orange.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.warning_amber_rounded,
-                                            size: 14,
-                                            color: Colors.orange[700],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _getProblemaTexto(issue),
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.orange[900],
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ] else if (report.scope == 'train') ...[
-                              if (report.trainCrowd != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.people,
-                                  'Aglomeración',
-                                  'Nivel ${report.trainCrowd}/5',
-                                  Colors.blue,
-                                ),
-                                if (report.trainStatus != null ||
-                                    (report.etaBucket != null &&
-                                        report.etaBucket != 'unknown'))
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.trainStatus != null) ...[
-                                _buildModernInfoRow(
-                                  Icons.speed,
-                                  'Estado',
-                                  report.trainStatus == 'normal'
-                                      ? 'Normal'
-                                      : report.trainStatus == 'slow'
-                                          ? 'Lento'
-                                          : 'Detenido',
-                                  report.trainStatus == 'normal'
-                                      ? Colors.green
-                                      : report.trainStatus == 'slow'
-                                          ? Colors.orange
-                                          : Colors.red,
-                                ),
-                                if (report.etaBucket != null &&
-                                    report.etaBucket != 'unknown')
-                                  const SizedBox(height: 12),
-                              ],
-                              if (report.etaBucket != null &&
-                                  report.etaBucket != 'unknown') ...[
-                                _buildModernInfoRow(
-                                  Icons.schedule,
-                                  'ETA',
-                                  '${report.etaBucket} minutos',
-                                  Colors.purple,
-                                ),
-                              ],
-                            ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Footer moderno con confirmaciones y fecha
-                              Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.grey[100]!,
-                                    Colors.grey[50]!,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.verified,
-                                        size: 16,
-                                        color: Colors.blue[700],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${report.confirmations} confirmaciones',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[300],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.access_time,
-                                        size: 16,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _formatDate(report.createdAt),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              );
-            },
-            );
-          },
-        );
-      },
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.grey[100],
+            ),
+            child: Icon(
+              Icons.done_all_rounded,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '¡Todo al día!',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: MetroColors.grayDark,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              _selectedFilter == null
+                  ? 'No hay reportes pendientes para confirmar en este momento.'
+                  : 'No hay reportes de ${_selectedFilter == 'status' ? 'estado' : _selectedFilter == 'crowd' ? 'aglomeración' : 'fallas'} para confirmar.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: MetroColors.grayMedium,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildModernInfoRow(IconData icon, String label, String value, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.black,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  String _getIssueTypeName(String type) {
+    switch (type) {
+      case 'ac':
+        return 'Aire Acondicionado';
+      case 'escalator':
+        return 'Escalera Eléctrica';
+      case 'elevator':
+        return 'Elevador';
+      case 'atm':
+        return 'Cajero/ATM';
+      case 'recharge':
+        return 'Máquina de Recarga';
+      case 'bathroom':
+        return 'Baño';
+      case 'lights':
+        return 'Iluminación';
+      default:
+        return type;
+    }
   }
 
+  String _getStatusName(String status) {
+    switch (status) {
+      case 'not_working':
+        return '🔴 No Funciona';
+      case 'working_poorly':
+        return '🟡 Funciona Mal';
+      case 'out_of_service':
+        return '⚫ Fuera de Servicio';
+      default:
+        return status;
+    }
+  }
 
   String _getProblemaTexto(String problema) {
     final map = {
@@ -854,62 +516,67 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
     }
   }
 
-  void _showReportDetails(
+  Widget _buildConfirmableItemCard(
     BuildContext context,
-    SimplifiedReportModel report,
-    String stationName,
-    MetroDataProvider metroProvider,
+    _ConfirmableItem item,
     String currentUserId,
   ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+    final report = item.report;
+    final isOwnReport = report.userId == currentUserId;
+
+    return FutureBuilder<bool>(
+      future: isOwnReport
+          ? Future.value(false)
+          : _firebaseService.hasUserConfirmedReport(report.id, currentUserId),
+      builder: (context, confirmSnapshot) {
+        final isConfirmed = confirmSnapshot.data ?? false;
+
+        return Consumer<MetroDataProvider>(
+          builder: (context, metroProvider, child) {
+            final station = metroProvider.getStationById(report.stationId);
+            final stationName =
+                station?.nombre ?? 'Estación ${report.stationId}';
+
+            // Construir contenido según tipo de item
+            final itemInfo = _getItemInfo(item, stationName);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isConfirmed
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : Colors.grey[200]!,
+                  width: isConfirmed ? 2 : 1,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              Row(
+              child: Row(
                 children: [
+                  // Icono del tipo
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: report.scope == 'station'
-                          ? MetroColors.blue.withOpacity(0.1)
-                          : MetroColors.green.withOpacity(0.1),
+                      color: itemInfo.color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      report.scope == 'station'
-                          ? Icons.train
-                          : Icons.directions_transit,
-                      color: report.scope == 'station'
-                          ? MetroColors.blue
-                          : MetroColors.green,
-                      size: 32,
+                      itemInfo.icon,
+                      color: itemInfo.color,
+                      size: 22,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
+                  // Contenido
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,275 +584,191 @@ class _ConfirmReportsSheetState extends State<ConfirmReportsSheet>
                         Text(
                           stationName,
                           style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: MetroColors.grayMedium,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
-                          report.scope == 'station'
-                              ? 'Reporte de Estación'
-                              : 'Reporte de Tren',
+                          itemInfo.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: MetroColors.grayDark,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          itemInfo.subtitle,
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
+                            fontSize: 12,
+                            color: itemInfo.color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          _formatDate(report.createdAt),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[400],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  _buildStatusChip(report.status),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _buildDetailRow(
-                Icons.access_time,
-                'Fecha',
-                _formatDateTime(report.createdAt),
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                Icons.verified,
-                'Confirmaciones',
-                '${report.confirmations} usuarios confirmaron este reporte',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                Icons.stars,
-                'Puntos',
-                '${report.totalPoints} puntos (${report.basePoints} base + ${report.bonusPoints} bonus)',
-              ),
-              if (report.scope == 'station') ...[
-                if (report.stationOperational != null) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    Icons.info_outline,
-                    'Estado operacional',
-                    report.stationOperational == 'yes'
-                        ? 'Operativa'
-                        : report.stationOperational == 'partial'
-                            ? 'Parcialmente operativa'
-                            : 'No operativa',
-                  ),
-                ],
-                if (report.stationCrowd != null) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    Icons.people,
-                    'Aglomeración',
-                    'Nivel ${report.stationCrowd}/5',
-                  ),
-                ],
-                if (report.stationIssues.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Problemas reportados',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: report.stationIssues.map((issue) {
-                      return Chip(
-                        label: Text(_getProblemaTexto(issue)),
-                        backgroundColor: MetroColors.energyOrange.withOpacity(0.1),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ] else if (report.scope == 'train') ...[
-                if (report.trainCrowd != null) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    Icons.people,
-                    'Aglomeración',
-                    'Nivel ${report.trainCrowd}/5',
-                  ),
-                ],
-                if (report.trainStatus != null) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    Icons.speed,
-                    'Estado del tren',
-                    report.trainStatus == 'normal'
-                        ? 'Normal'
-                        : report.trainStatus == 'slow'
-                            ? 'Lento'
-                            : 'Detenido',
-                  ),
-                ],
-                if (report.etaBucket != null &&
-                    report.etaBucket != 'unknown') ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    Icons.schedule,
-                    'Tiempo estimado',
-                    '${report.etaBucket} minutos',
-                  ),
-                ],
-              ],
-              const SizedBox(height: 24),
-              FutureBuilder<bool>(
-                future: _firebaseService.hasUserConfirmedReport(
-                    report.id, currentUserId),
-                builder: (context, snapshot) {
-                  final isConfirmed = snapshot.data ?? false;
-                  if (!isConfirmed) {
-                    return SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          Navigator.of(context).pop(); // Cerrar bottom sheet
-                          await _confirmReport(context, report.id, currentUserId);
+                  const SizedBox(width: 8),
+                  // Botón confirmar
+                  if (isConfirmed || isOwnReport)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isConfirmed
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isConfirmed
+                            ? Icons.check_circle_rounded
+                            : Icons.block_rounded,
+                        color: isConfirmed ? Colors.green : Colors.grey[400],
+                        size: 24,
+                      ),
+                    )
+                  else
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          await _confirmReport(
+                              context, report.id, currentUserId);
                         },
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Confirmar este reporte'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: MetroColors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                MetroColors.green,
+                                Colors.green[700]!,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: MetroColors.green
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_rounded,
+                                  size: 16, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'Sí',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  }
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text(
-                          'Ya confirmaste este reporte',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    String text;
-    IconData icon;
-
-    switch (status) {
-      case 'active':
-        color = MetroColors.green;
-        text = 'Activo';
-        icon = Icons.check_circle;
-        break;
-      case 'resolved':
-        color = Colors.blue;
-        text = 'Resuelto';
-        icon = Icons.done_all;
-        break;
-      case 'rejected':
-        color = Colors.red;
-        text = 'Rechazado';
-        icon = Icons.cancel;
-        break;
-      default:
-        color = Colors.grey;
-        text = status;
-        icon = Icons.help_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatDateTime(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        if (difference.inMinutes == 0) {
-          return 'Hace unos momentos';
-        }
-        return 'Hace ${difference.inMinutes} minutos';
-      }
-      return 'Hace ${difference.inHours} horas';
-    } else if (difference.inDays == 1) {
-      return 'Ayer a las ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays < 7) {
-      return 'Hace ${difference.inDays} días';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
+  _ItemInfo _getItemInfo(_ConfirmableItem item, String stationName) {
+    final report = item.report;
+    switch (item.type) {
+      case _ItemType.stationStatus:
+        final statusText = report.stationOperational == 'yes'
+            ? 'Operativa'
+            : report.stationOperational == 'partial'
+                ? 'Parcialmente operativa'
+                : 'No operativa';
+        final color = report.stationOperational == 'yes'
+            ? Colors.green
+            : report.stationOperational == 'partial'
+                ? Colors.orange
+                : Colors.red;
+        return _ItemInfo(
+          icon: Icons.info_rounded,
+          title: 'Estado: $statusText',
+          subtitle: 'Reporte de estación',
+          color: color,
+        );
+      case _ItemType.stationCrowd:
+        return _ItemInfo(
+          icon: Icons.people_rounded,
+          title: 'Aglomeración: ${report.stationCrowd}/5',
+          subtitle: 'Reporte de estación',
+          color: MetroColors.blue,
+        );
+      case _ItemType.stationIssues:
+        final issuesText = (report.stationIssues ?? [])
+            .take(3)
+            .map(_getProblemaTexto)
+            .join(', ');
+        return _ItemInfo(
+          icon: Icons.warning_amber_rounded,
+          title: 'Problemas: $issuesText',
+          subtitle: 'Reporte de estación',
+          color: Colors.orange,
+        );
+      case _ItemType.specificIssue:
+        return _ItemInfo(
+          icon: Icons.build_rounded,
+          title:
+              '${_getIssueTypeName(report.issueType ?? '')} - ${_getStatusName(report.issueStatus ?? '')}',
+          subtitle: report.issueLocation ?? 'Problema específico',
+          color: Colors.orange,
+        );
     }
   }
+
+}
+
+enum _ItemType {
+  stationStatus,
+  stationCrowd,
+  stationIssues,
+  specificIssue,
+}
+
+class _ConfirmableItem {
+  final SimplifiedReportModel report;
+  final _ItemType type;
+
+  const _ConfirmableItem({required this.report, required this.type});
+}
+
+class _ItemInfo {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  const _ItemInfo({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
 }

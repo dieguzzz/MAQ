@@ -12,7 +12,6 @@ import '../providers/report_provider.dart';
 import '../theme/metro_theme.dart';
 import '../services/ad_service.dart';
 import '../services/ad_session_service.dart';
-import '../services/gamification_service.dart';
 
 class QuickReportSheet extends StatefulWidget {
   const QuickReportSheet({super.key});
@@ -108,58 +107,61 @@ class _QuickReportSheetState extends State<QuickReportSheet>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                    Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: MetroColors.grayMedium,
-                        borderRadius: BorderRadius.circular(100),
+                      Container(
+                        width: 48,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: MetroColors.grayMedium,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Reporte rápido',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: MetroColors.grayDark,
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Reporte rápido',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: MetroColors.grayDark,
+                              ),
                             ),
                           ),
-                        ),
-                        if (_isSubmitting)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTipoSelector(),
-                    const SizedBox(height: 12),
-                    if (_tipoSeleccionado == TipoReporte.estacion)
-                      hasStations
-                          ? _buildStationDropdown(estaciones)
-                          : _buildEmptyPlaceholder('No hay estaciones disponibles')
-                    else
-                      hasTrains
-                          ? _buildTrainDropdown(trenes)
-                          : _buildEmptyPlaceholder('No hay trenes disponibles'),
-                    const SizedBox(height: 16),
-                    _buildCategoriaSelector(),
-                    const SizedBox(height: 12),
-                    _buildDescripcionField(),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : () => _submit(context),
-                        child: const Text('Enviar'),
+                          if (_isSubmitting)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                        ],
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      _buildTipoSelector(),
+                      const SizedBox(height: 12),
+                      if (_tipoSeleccionado == TipoReporte.estacion)
+                        hasStations
+                            ? _buildStationDropdown(estaciones)
+                            : _buildEmptyPlaceholder(
+                                'No hay estaciones disponibles')
+                      else
+                        hasTrains
+                            ? _buildTrainDropdown(trenes)
+                            : _buildEmptyPlaceholder(
+                                'No hay trenes disponibles'),
+                      const SizedBox(height: 16),
+                      _buildCategoriaSelector(),
+                      const SizedBox(height: 12),
+                      _buildDescripcionField(),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed:
+                              _isSubmitting ? null : () => _submit(context),
+                          child: const Text('Enviar'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -403,17 +405,18 @@ class _QuickReportSheetState extends State<QuickReportSheet>
     if (reportId != null) {
       // Incrementar contador de reportes en la sesión
       await AdSessionService.instance.incrementReportCount();
-      
+
       // Mostrar animación de éxito antes de cerrar
       _showSuccessAnimation(context);
-      
+
       // Esperar un momento para que se vea la animación
       await Future.delayed(const Duration(milliseconds: 1500));
-      
+
       if (!mounted) return;
-      
+
       // Verificar si se debe mostrar intersticial (después del 3er reporte)
-      final shouldShowInterstitial = await AdSessionService.instance.shouldShowInterstitialAfterReport();
+      final shouldShowInterstitial =
+          await AdSessionService.instance.shouldShowInterstitialAfterReport();
       if (shouldShowInterstitial) {
         await AdService.instance.showInterstitialIfAppropriate(
           onAdDismissed: () {
@@ -421,14 +424,14 @@ class _QuickReportSheetState extends State<QuickReportSheet>
           },
         );
       }
-      
+
       navigator.pop();
-      
+
       // Mostrar opción de rewarded ad opcional (duplicar puntos)
       if (mounted) {
         _showRewardedAdOption(context);
       }
-      
+
       messenger.showSnackBar(
         SnackBar(
           content: const Row(
@@ -457,7 +460,7 @@ class _QuickReportSheetState extends State<QuickReportSheet>
     // Esperar un momento para que el usuario vea el éxito del reporte
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
-      
+
       showDialog(
         context: context,
         barrierDismissible: true,
@@ -507,7 +510,7 @@ class _QuickReportSheetState extends State<QuickReportSheet>
         // Duplicar puntos del último reporte (asumiendo 10 puntos base)
         const puntosBase = 10;
         const puntosDuplicados = puntosBase; // Total: 20 puntos
-        
+
         // Aquí deberías actualizar los puntos del usuario en Firestore
         // Por ahora solo mostramos un mensaje
         if (context.mounted) {
@@ -546,7 +549,8 @@ class _QuickReportSheetState extends State<QuickReportSheet>
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No se pudo mostrar el anuncio. Intenta más tarde.'),
+              content:
+                  Text('No se pudo mostrar el anuncio. Intenta más tarde.'),
             ),
           );
         }
@@ -578,7 +582,7 @@ class _SuccessAnimationDialog extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withOpacity(0.3),
+                      color: Colors.green.withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -597,4 +601,3 @@ class _SuccessAnimationDialog extends StatelessWidget {
     );
   }
 }
-

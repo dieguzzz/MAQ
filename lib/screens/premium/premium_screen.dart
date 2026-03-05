@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import '../../services/subscription_service.dart';
 import '../../services/firebase_service.dart';
+import '../../theme/metro_theme.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -46,12 +47,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
     try {
       await _subscriptionService.purchaseProduct(product);
       await _checkPremiumStatus();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('¡Suscripción activada exitosamente!'),
-            backgroundColor: Colors.green,
+            backgroundColor: MetroColors.stateNormal,
           ),
         );
       }
@@ -81,12 +82,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
     try {
       await _subscriptionService.restorePurchases();
       await _checkPremiumStatus();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Compras restauradas'),
-            backgroundColor: Colors.green,
+            backgroundColor: MetroColors.stateNormal,
           ),
         );
       }
@@ -95,7 +96,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: MetroColors.stateCritical,
           ),
         );
       }
@@ -128,7 +129,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               const Icon(
                 Icons.verified,
                 size: 80,
-                color: Colors.amber,
+                color: MetroColors.energyOrange,
               ),
               const SizedBox(height: 24),
               const Text(
@@ -139,9 +140,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Disfruta de todas las funciones premium',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(
+                    fontSize: 16,
+                    color: MetroColors.grayDark.withValues(alpha: 0.6)),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -168,7 +171,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   const Icon(
                     Icons.star,
                     size: 80,
-                    color: Colors.amber,
+                    color: MetroColors.energyOrange,
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -180,12 +183,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Accede a funciones exclusivas',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey,
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -224,7 +227,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       final isMonthly = product.id.contains('monthly');
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16),
-                        elevation: 4,
+                        elevation: 0,
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(16),
                           title: Text(
@@ -238,7 +241,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                             product.price,
                             style: const TextStyle(
                               fontSize: 18,
-                              color: Colors.blue,
+                              color: MetroColors.energyOrange,
                             ),
                           ),
                           trailing: ElevatedButton(
@@ -271,7 +274,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.blue, size: 32),
+          Icon(icon, color: MetroColors.blue, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -287,9 +290,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: MetroColors.grayDark.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -300,4 +303,3 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
   }
 }
-

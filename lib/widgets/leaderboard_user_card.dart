@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
-import '../services/level_service.dart';
 
 /// Widget que muestra un usuario en el leaderboard
 class LeaderboardUserCard extends StatelessWidget {
   final UserModel user;
   final int position;
   final bool isCurrentUser;
-  final String? displayValue; // Valor personalizado para mostrar (puntos, precisión, streak, etc.)
+  final String?
+      displayValue; // Valor personalizado para mostrar (puntos, precisión, streak, etc.)
 
   const LeaderboardUserCard({
     super.key,
@@ -84,7 +84,8 @@ class LeaderboardUserCard extends StatelessWidget {
               child: Text(
                 user.nombre,
                 style: TextStyle(
-                  fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal,
+                  fontWeight:
+                      isCurrentUser ? FontWeight.bold : FontWeight.normal,
                   fontSize: 16,
                 ),
               ),
@@ -152,4 +153,3 @@ class LeaderboardUserCard extends StatelessWidget {
     );
   }
 }
-

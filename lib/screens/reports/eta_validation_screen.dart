@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../../services/enhanced_report_service.dart';
+import '../../services/simplified_report_service.dart';
 
 /// Pantalla de validación ETA para confirmar si el tren llegó
 class ETAValidationScreen extends StatefulWidget {
@@ -19,7 +19,7 @@ class ETAValidationScreen extends StatefulWidget {
 }
 
 class _ETAValidationScreenState extends State<ETAValidationScreen> {
-  final EnhancedReportService _reportService = EnhancedReportService();
+  final SimplifiedReportService _reportService = SimplifiedReportService();
   Timer? _countdownTimer;
   int _secondsRemaining = 240; // 4 minutos por defecto
   bool _isLoading = true;
@@ -38,7 +38,7 @@ class _ETAValidationScreenState extends State<ETAValidationScreen> {
         setState(() {
           // Calcular tiempo restante basado en la ventana de validación
           final now = DateTime.now();
-          final windowEnd = report.trainData?.etaExpectedAt;
+          final windowEnd = report.etaExpectedAt;
           if (windowEnd != null) {
             final remaining = windowEnd.difference(now).inSeconds;
             _secondsRemaining = remaining > 0 ? remaining : 0;

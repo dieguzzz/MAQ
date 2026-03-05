@@ -475,6 +475,10 @@ exports.processReportConfirmation = functions.firestore
         // Actualizar estado de estación/tren con agregación completa
         if (report.scope === 'station' && report.stationId) {
           await updateStationStatus(report.stationId, report);
+          // Si es un problema específico, actualizar también los problemas de la estación
+          if (report.isSpecificIssue) {
+            await updateStationIssues(report.stationId, report);
+          }
         } else if (report.scope === 'train' && report.stationId) {
           // Actualizar estado de tren cuando alcanza 3 confirmaciones
           await updateTrainStatusAggregated(report.stationId, report);
@@ -684,8 +688,10 @@ exports.onReportCreated = functions.firestore
         basePoints = 15; // Reporte de estación básico
         bonusPoints = (report.stationIssues?.length || 0) * 5;
       } else if (report.scope === 'train') {
-        basePoints = 20; // Reporte de tren básico
-        bonusPoints = report.etaBucket && report.etaBucket !== 'unknown' ? 10 : 0;
+        // Sistema nuevo: 10 base por copiar panel + 5 por cada problema
+        // +20 puntos adicionales se otorgan cuando se valida la llegada
+        basePoints = 10; // Reporte de tren (copiar del panel)
+        bonusPoints = (report.trainIssues?.length || 0) * 5;
       }
       
       // 2. Actualizar reporte con puntos
@@ -707,6 +713,10 @@ exports.onReportCreated = functions.firestore
       // 5. Actualizar estado de estación si aplica (con agregación completa)
       if (report.scope === 'station' && report.stationId) {
         await updateStationStatus(report.stationId, report);
+        // Si es un problema específico, actualizar también los problemas de la estación
+        if (report.isSpecificIssue) {
+          await updateStationIssues(report.stationId, report);
+        }
       }
       
       // 6. Actualizar estado de tren si aplica (con agregación completa)
@@ -726,33 +736,53 @@ exports.onReportCreated = functions.firestore
 
 // Función auxiliar: Programar validación ETA
 async function scheduleETAValidation(reportId, report) {
-  // Configurar tiempos según bucket
-  const timingConfig = {
-    '<1': { waitMinutes: 1, windowMinutes: 2 },
-    '1-2': { waitMinutes: 2, windowMinutes: 4 },
-    '3-5': { waitMinutes: 3, windowMinutes: 6 },
-    '6-10': { waitMinutes: 5, windowMinutes: 10 },
-    '10+': { waitMinutes: 8, windowMinutes: 15 }
-  };
-  
-  const config = timingConfig[report.etaBucket];
-  if (!config) return;
-  
-  // Calcular hora esperada de llegada
-  const now = admin.firestore.Timestamp.now();
-  const waitSeconds = config.waitMinutes * 60;
-  const expectedArrival = new Date(now.toDate().getTime() + (waitSeconds * 1000));
-  const windowEnd = new Date(expectedArrival.getTime() + (config.windowMinutes * 60000));
-  
-  // Actualizar reporte con información de validación (modelo simplificado)
-  await db.collection('reports').doc(reportId).update({
-    'etaExpectedAt': admin.firestore.Timestamp.fromDate(expectedArrival),
-    'validationWindowEnd': admin.firestore.Timestamp.fromDate(windowEnd),
-    'needsValidation': true,
-    'validationStatus': 'pending'
-  });
-  
-  console.log(`Validation scheduled for report ${reportId} at ${expectedArrival}`);
+  try {
+    // El etaExpectedAt ya viene calculado desde el cliente
+    // Solo necesitamos programar la notificación push
+    if (!report.etaExpectedAt) {
+      console.log(`No etaExpectedAt for report ${reportId}, skipping validation scheduling`);
+      return;
+    }
+
+    const expectedArrival = report.etaExpectedAt.toDate();
+    const now = new Date();
+    
+    // Calcular cuándo enviar la notificación (etaBucket + 1 minuto de tolerancia)
+    const timingConfig = {
+      '1-2': 1.5, // minutos (punto medio)
+      '3-5': 4.0,
+      '6-8': 7.0,
+      '9+': 10.0,
+    };
+    
+    const bucketMinutes = timingConfig[report.etaBucket] || 4.0;
+    const notificationDelay = (bucketMinutes + 1) * 60 * 1000; // +1 minuto de tolerancia
+    const notificationTime = new Date(now.getTime() + notificationDelay);
+    
+    // Crear tarea programada para notificación
+    // Nota: Firebase no tiene programación nativa, usaremos un enfoque alternativo
+    // Guardar en una colección de notificaciones pendientes que se procesa periódicamente
+    await db.collection('pendingValidations').add({
+      reportId: reportId,
+      userId: report.userId,
+      stationId: report.stationId,
+      etaBucket: report.etaBucket,
+      expectedArrival: report.etaExpectedAt,
+      notificationTime: admin.firestore.Timestamp.fromDate(notificationTime),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending'
+    });
+    
+    // Marcar reporte como que necesita validación
+    await db.collection('reports').doc(reportId).update({
+      'needsValidation': true,
+      'validationStatus': 'pending'
+    });
+    
+    console.log(`Validation scheduled for report ${reportId}, notification at ${notificationTime}`);
+  } catch (error) {
+    console.error(`Error scheduling ETA validation for report ${reportId}:`, error);
+  }
 }
 
 // Cloud Function: Procesar respuesta de validación ETA
@@ -778,70 +808,75 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
       throw new functions.https.HttpsError('permission-denied', 'No puedes validar este reporte');
     }
     
-    if (report.trainData?.validationStatus !== 'pending') {
+    // Verificar que el reporte necesita validación (nuevo modelo simplificado)
+    if (report.scope !== 'train' || !report.etaBucket || report.etaBucket === 'unknown') {
+      throw new functions.https.HttpsError('failed-precondition', 'Este reporte no requiere validación');
+    }
+    
+    if (report.arrivalTime) {
       throw new functions.https.HttpsError('failed-precondition', 'Validación ya procesada');
     }
     
-    // 2. Calcular puntos por validación
-    let validationPoints = 0;
-    let timeErrorSeconds = null;
-    let accuracyBucket = 'wrong';
+    // 2. Calcular puntos por validación y error del panel
+    let validationPoints = 20; // Base por validar
+    let timeErrorMinutes = null;
+    let precisionBonus = 0;
     
-    if (result === 'arrived' && actualArrivalTime) {
+    if (result === 'arrived' && actualArrivalTime && report.etaExpectedAt) {
       const expectedArrival = report.etaExpectedAt.toDate();
       const actualArrival = new Date(actualArrivalTime);
       
-      timeErrorSeconds = Math.abs((actualArrival - expectedArrival) / 1000);
+      timeErrorMinutes = Math.round((actualArrival - expectedArrival) / (1000 * 60));
+      const absError = Math.abs(timeErrorMinutes);
       
-      // Determinar precisión
-      if (timeErrorSeconds <= 60) { // ±1 minuto
-        accuracyBucket = 'exact';
-        validationPoints = 40; // 10 base + 30 extra
-      } else if (timeErrorSeconds <= 120) { // ±2 minutos
-        accuracyBucket = 'close';
-        validationPoints = 35;
-      } else if (timeErrorSeconds <= 300) { // ±5 minutos
-        accuracyBucket = 'far';
-        validationPoints = 25;
-      } else {
-        accuracyBucket = 'wrong';
-        validationPoints = 10; // Solo puntos base
+      // Sistema de puntos por precisión del panel:
+      // ±1 min = +15 puntos (panel preciso)
+      // ±2-3 min = +5 puntos (error pequeño)
+      // Mayor error = +0 puntos (pero igual ayuda al sistema)
+      if (absError <= 1) {
+        precisionBonus = 15;
+      } else if (absError <= 3) {
+        precisionBonus = 5;
+      }
+      
+      validationPoints += precisionBonus;
+      
+      // Actualizar calibración de la estación si es reporte del panel
+      if (report.isPanelTime === true && report.stationId) {
+        await updateStationPanelCalibration(report.stationId, timeErrorMinutes, report.etaBucket);
       }
     } else if (result === 'not_arrived') {
       validationPoints = 15;
-      accuracyBucket = 'corrected';
     } else if (result === 'cant_confirm') {
       validationPoints = 0;
-      accuracyBucket = 'unconfirmed';
     }
     
-    // 3. Actualizar reporte
+    // 3. Actualizar reporte con arrivalTime y puntos
     const batch = db.batch();
     
     const reportRef = db.collection('reports').doc(reportId);
-    batch.update(reportRef, {
-      'validationStatus': result === 'cant_confirm' ? 'expired' : 'validated',
-      'actualArrivalTime': actualArrivalTime ? 
+    const updates = {
+      'arrivalTime': actualArrivalTime ? 
         admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      'timeErrorSeconds': timeErrorSeconds,
-      'accuracyBucket': accuracyBucket,
-      'validationPoints': validationPoints,
-      totalPoints: admin.firestore.FieldValue.increment(validationPoints),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      'bonusPoints': admin.firestore.FieldValue.increment(precisionBonus),
+      'totalPoints': admin.firestore.FieldValue.increment(validationPoints),
+    };
+    
+    batch.update(reportRef, updates);
     
     // Crear registro en subcolección de validaciones ETA
-    const validationRef = reportRef.collection('eta_validations').doc(userId);
-    batch.set(validationRef, {
-      userId: userId,
-      result: result,
-      answeredAt: admin.firestore.FieldValue.serverTimestamp(),
-      actualArrival: actualArrivalTime ? 
-        admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)) : null,
-      expectedArrival: report.etaExpectedAt,
-      deltaSeconds: timeErrorSeconds,
-      pointsAwarded: validationPoints
-    });
+    if (actualArrivalTime && report.etaExpectedAt) {
+      const validationRef = reportRef.collection('eta_validations').doc(userId);
+      batch.set(validationRef, {
+        userId: userId,
+        result: result,
+        answeredAt: admin.firestore.FieldValue.serverTimestamp(),
+        actualArrival: admin.firestore.Timestamp.fromDate(new Date(actualArrivalTime)),
+        expectedArrival: report.etaExpectedAt,
+        deltaMinutes: timeErrorMinutes,
+        pointsAwarded: validationPoints
+      });
+    }
     
     // 4. Actualizar estadísticas del usuario
     const userRef = db.collection('users').doc(userId);
@@ -986,6 +1021,103 @@ async function updateStationStatus(stationId, newReport) {
     console.log(`Station ${stationId} status updated from ${recentReports.length} reports`);
   } catch (error) {
     console.error(`Error updating station status for ${stationId}:`, error);
+  }
+}
+
+// Función auxiliar: Actualizar problemas específicos de infraestructura de una estación
+async function updateStationIssues(stationId, issueReport) {
+  try {
+    const stationRef = db.collection('stations').doc(stationId);
+    const now = admin.firestore.Timestamp.now();
+    const thirtyMinutesAgo = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 30 * 60 * 1000)
+    );
+
+    // Obtener todos los reportes de problemas específicos activos de los últimos 30 minutos
+    const issueReportsSnapshot = await db.collection('reports')
+      .where('stationId', '==', stationId)
+      .where('scope', '==', 'station')
+      .where('isSpecificIssue', '==', true)
+      .where('status', '==', 'active')
+      .get();
+
+    // Filtrar reportes recientes
+    const recentIssueReports = issueReportsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(report => {
+        const createdAt = report.createdAt?.toDate();
+        return createdAt && createdAt >= thirtyMinutesAgo.toDate();
+      });
+
+    // Agrupar por tipo de problema y calcular estadísticas
+    const issuesByType = {};
+    for (const report of recentIssueReports) {
+      const issueType = report.issueType;
+      if (!issueType) continue;
+
+      if (!issuesByType[issueType]) {
+        issuesByType[issueType] = {
+          locations: [],
+          statuses: [],
+          reportCount: 0,
+          confirmations: 0,
+          lastReported: report.createdAt,
+        };
+      }
+
+      issuesByType[issueType].locations.push(report.issueLocation || 'No especificada');
+      issuesByType[issueType].statuses.push(report.issueStatus || 'not_working');
+      issuesByType[issueType].reportCount += 1;
+      issuesByType[issueType].confirmations += (report.confirmations || 0);
+
+      // Mantener el reporte más reciente
+      const reportDate = report.createdAt?.toDate();
+      const currentDate = issuesByType[issueType].lastReported?.toDate();
+      if (!currentDate || reportDate > currentDate) {
+        issuesByType[issueType].lastReported = report.createdAt;
+      }
+    }
+
+    // Construir objeto de problemas activos
+    const activeIssues = {};
+    for (const [issueType, data] of Object.entries(issuesByType)) {
+      // Determinar ubicación más común (o la primera si todas son únicas)
+      const locationCounts = {};
+      for (const loc of data.locations) {
+        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+      }
+      const mostCommonLocation = Object.keys(locationCounts).reduce((a, b) =>
+        locationCounts[a] > locationCounts[b] ? a : b
+      );
+
+      // Determinar estado más común
+      const statusCounts = {};
+      for (const status of data.statuses) {
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      }
+      const mostCommonStatus = Object.keys(statusCounts).reduce((a, b) =>
+        statusCounts[a] > statusCounts[b] ? a : b
+      );
+
+      activeIssues[issueType] = {
+        location: mostCommonLocation,
+        status: mostCommonStatus,
+        reportCount: data.reportCount,
+        confirmations: data.confirmations,
+        lastReported: data.lastReported,
+      };
+    }
+
+    // Actualizar estación con problemas activos
+    await stationRef.update({
+      'active_issues': activeIssues,
+      'active_issues_count': Object.keys(activeIssues).length,
+      'active_issues_last_updated': now,
+    });
+
+    console.log(`Station ${stationId} issues updated: ${Object.keys(activeIssues).length} active issues`);
+  } catch (error) {
+    console.error(`Error updating station issues for ${stationId}:`, error);
   }
 }
 
@@ -1165,4 +1297,903 @@ function getWeightedAverageTrainEstado(reports, estados) {
 
   return maxEstado;
 }
+
+// Función auxiliar: Actualizar calibración del panel por estación
+async function updateStationPanelCalibration(stationId, errorMinutes, etaBucket) {
+  try {
+    const stationRef = db.collection('stations').doc(stationId);
+    const calibrationRef = stationRef.collection('panelCalibration').doc('latest');
+    
+    const calibrationDoc = await calibrationRef.get();
+    const now = admin.firestore.Timestamp.now();
+    
+    if (calibrationDoc.exists) {
+      const data = calibrationDoc.data();
+      const totalReports = (data.totalReports || 0) + 1;
+      const currentAvgError = data.avgError || 0.0;
+      
+      // Calcular nuevo error promedio
+      const newAvgError = ((currentAvgError * (totalReports - 1)) + errorMinutes) / totalReports;
+      
+      // Calcular precisión (porcentaje de reportes con error ≤ 1 minuto)
+      const accurateReports = (data.accurateReports || 0) + (Math.abs(errorMinutes) <= 1 ? 1 : 0);
+      const accuracy = (accurateReports / totalReports) * 100;
+      
+      // Calcular precisión por hora del día
+      const hourOfDay = new Date().getHours();
+      const hourKey = `hour_${hourOfDay}`;
+      const hourData = data.byHour || {};
+      const hourReports = (hourData[hourKey]?.reports || 0) + 1;
+      const hourAvgError = hourData[hourKey]?.avgError || 0.0;
+      const newHourAvgError = ((hourAvgError * (hourReports - 1)) + errorMinutes) / hourReports;
+      const hourAccurate = (hourData[hourKey]?.accurate || 0) + (Math.abs(errorMinutes) <= 1 ? 1 : 0);
+      const hourAccuracy = (hourAccurate / hourReports) * 100;
+      
+      hourData[hourKey] = {
+        reports: hourReports,
+        avgError: newHourAvgError,
+        accurate: hourAccurate,
+        accuracy: hourAccuracy,
+      };
+      
+      await calibrationRef.update({
+        totalReports: totalReports,
+        avgError: newAvgError,
+        accurateReports: accurateReports,
+        accuracy: accuracy,
+        lastUpdated: now,
+        lastError: errorMinutes,
+        byHour: hourData,
+      });
+    } else {
+      // Crear nueva calibración
+      const hourOfDay = new Date().getHours();
+      const hourKey = `hour_${hourOfDay}`;
+      
+      await calibrationRef.set({
+        totalReports: 1,
+        avgError: errorMinutes,
+        accurateReports: Math.abs(errorMinutes) <= 1 ? 1 : 0,
+        accuracy: Math.abs(errorMinutes) <= 1 ? 100.0 : 0.0,
+        lastUpdated: now,
+        lastError: errorMinutes,
+        createdAt: now,
+        byHour: {
+          [hourKey]: {
+            reports: 1,
+            avgError: errorMinutes,
+            accurate: Math.abs(errorMinutes) <= 1 ? 1 : 0,
+            accuracy: Math.abs(errorMinutes) <= 1 ? 100.0 : 0.0,
+          },
+        },
+      });
+    }
+    
+    console.log(`Panel calibration updated for station ${stationId}: error ${errorMinutes} min, accuracy ${Math.abs(errorMinutes) <= 1 ? 'high' : 'low'}`);
+  } catch (error) {
+    console.error(`Error updating station panel calibration for ${stationId}:`, error);
+    // No lanzar error, solo loggear - la calibración es opcional
+  }
+}
+
+// ============================================
+// ETA GROUPS (Panel de Tiempos) - Agregación estable + “Ya llegó”
+// ============================================
+
+const ETA_GROUPS_COLLECTION = 'eta_groups';
+const ETA_GROUP_ACTIVE_MINUTES = 10; // expiresAt = bucketStart + 10min
+const PRESENCE_TTL_MINUTES = 2; // TTL lógico para subcolección presence
+const ARRIVAL_COOLDOWN_MINUTES = 4;
+const GPS_ACCURACY_MAX_METERS = 75;
+const GEOFENCE_MAX_METERS = 150;
+
+function floorToMinute(date) {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    0,
+    0
+  );
+}
+
+function toEpochMinute(date) {
+  return Math.floor(date.getTime() / 60000);
+}
+
+function etaGroupId({ stationId, line, directionCode, bucketStartEpochMin }) {
+  return `${stationId}_${line}_${directionCode}_${bucketStartEpochMin}`;
+}
+
+function isValidDirectionCode(v) {
+  return v === 'A' || v === 'B';
+}
+
+function mapDirectionCode(line, directionLabel) {
+  // Línea 1: norte -> Villa Zaita, sur -> Albrook
+  // Línea 2: norte -> Nuevo Tocumen, sur -> Paraíso
+  // Convención: A = norte, B = sur
+  if (!line || !directionLabel) return null;
+
+  if (line === 'linea1') {
+    if (directionLabel === 'Villa Zaita') return 'A';
+    if (directionLabel === 'Albrook') return 'B';
+  }
+
+  if (line === 'linea2') {
+    if (directionLabel === 'Nuevo Tocumen') return 'A';
+    if (directionLabel === 'Paraíso') return 'B';
+  }
+
+  return null;
+}
+
+function mapNextRangeToEtaBucket(nextTrainRange) {
+  // train_time_reports: '0-1','2','3','4','5','5+','no-appears'
+  // eta bucket estándar: '1-2','3-5','6-8','9+','unknown'
+  switch (nextTrainRange) {
+    case '0-1':
+    case '2':
+      return '1-2';
+    case '3':
+    case '4':
+    case '5':
+      return '3-5';
+    case '5+':
+      return '9+';
+    case 'no-appears':
+      return 'unknown';
+    default:
+      return 'unknown';
+  }
+}
+
+function mapFollowingRangeToEtaBucket(followingTrainRange) {
+  // following: '3-4','5-6','7-8','10+','not-seen'
+  switch (followingTrainRange) {
+    case '3-4':
+      return '3-5';
+    case '5-6':
+      return '6-8';
+    case '7-8':
+      return '6-8';
+    case '10+':
+      return '9+';
+    case 'not-seen':
+      return null;
+    default:
+      return null;
+  }
+}
+
+function etaBucketMidpointMinutes(bucket) {
+  switch (bucket) {
+    case '1-2':
+      return 2;
+    case '3-5':
+      return 4;
+    case '6-8':
+      return 7;
+    case '9+':
+      return 10;
+    default:
+      return null;
+  }
+}
+
+function expectedAtFromBase(baseDate, bucket) {
+  const m = etaBucketMidpointMinutes(bucket);
+  if (m == null) return null;
+  return admin.firestore.Timestamp.fromDate(new Date(baseDate.getTime() + m * 60000));
+}
+
+function p50FromMinuteCounts(minCounts, minValue, maxValue) {
+  const counts = minCounts || {};
+  let total = 0;
+  for (let i = minValue; i <= maxValue; i++) {
+    total += Number(counts[String(i)] || 0);
+  }
+  if (total <= 0) return null;
+
+  const target = Math.ceil(total / 2);
+  let cum = 0;
+  for (let i = minValue; i <= maxValue; i++) {
+    cum += Number(counts[String(i)] || 0);
+    if (cum >= target) return i;
+  }
+  return null;
+}
+
+function minutesToEtaBucket(minutes) {
+  if (minutes == null) return 'unknown';
+  if (minutes <= 2) return '1-2';
+  if (minutes <= 5) return '3-5';
+  if (minutes <= 8) return '6-8';
+  return '9+';
+}
+
+function bucketCountsMode(counts) {
+  if (!counts) return { value: 'unknown', count: 0 };
+  let bestValue = 'unknown';
+  let bestCount = 0;
+  for (const [k, v] of Object.entries(counts)) {
+    const n = Number(v || 0);
+    if (n > bestCount) {
+      bestCount = n;
+      bestValue = k;
+    }
+  }
+  return { value: bestValue, count: bestCount };
+}
+
+function computeRecencyScore(ageMin) {
+  if (ageMin <= 2) return 0.10;
+  if (ageMin <= 5) return 0.06;
+  if (ageMin <= 10) return 0.02;
+  return 0.0;
+}
+
+function computeConfidence({
+  reportCount,
+  presenceCount,
+  arrivedCount,
+  nextBucketModeShare,
+  avgPrecision01,
+  isPanelSource,
+  ageMin,
+}) {
+  const reportScore = Math.min(0.25, (reportCount / 6) * 0.25);
+  const presenceScore = Math.min(0.20, (presenceCount / 5) * 0.20);
+  const arrivedScore = Math.min(0.15, (arrivedCount / 2) * 0.15);
+  const consensusScore = Math.min(0.35, nextBucketModeShare * 0.35);
+  const panelScore = isPanelSource ? 0.10 : 0.0;
+  const authorScore = Math.min(0.20, avgPrecision01 * 0.20);
+  const recencyScore = computeRecencyScore(ageMin);
+
+  const confidence = Math.min(
+    1.0,
+    reportScore +
+      presenceScore +
+      arrivedScore +
+      consensusScore +
+      panelScore +
+      authorScore +
+      recencyScore
+  );
+
+  return {
+    confidence,
+    signals: {
+      reportScore,
+      presenceScore,
+      arrivedScore,
+      consensusScore,
+      panelScore,
+      authorScore,
+      recencyScore,
+    },
+  };
+}
+
+async function getStationGeoPoint(stationId) {
+  const stationDoc = await db.collection('stations').doc(stationId).get();
+  if (!stationDoc.exists) return null;
+  return stationDoc.data()?.ubicacion || null;
+}
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  return calculateDistance(lat1, lon1, lat2, lon2) * 1000;
+}
+
+async function findLatestActiveEtaGroup({ stationId, directionCode }) {
+  let q = db
+    .collection(ETA_GROUPS_COLLECTION)
+    .where('stationId', '==', stationId)
+    .where('status', '==', 'active');
+
+  if (directionCode) {
+    q = q.where('directionCode', '==', directionCode);
+  }
+
+  // Evitamos inequality en expiresAt; filtramos en memoria después del limit.
+  const snap = await q.orderBy('bucketStart', 'desc').limit(10).get();
+  const now = new Date();
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const expiresAt = data.expiresAt?.toDate?.() || null;
+    if (expiresAt && expiresAt > now) {
+      return { id: doc.id, ref: doc.ref, data };
+    }
+  }
+  return null;
+}
+
+exports.onTrainTimeReportCreated = functions.firestore
+  .document('train_time_reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    try {
+      const report = snap.data();
+      const stationId = report.stationId;
+      const line = report.line;
+      const directionLabel = report.direction;
+      const userId = report.userId;
+
+      if (!stationId || !line || !directionLabel || !userId) {
+        console.log('train_time_report missing fields, skipping ETA group update');
+        return null;
+      }
+
+      const directionCode = mapDirectionCode(line, directionLabel);
+      if (!directionCode) {
+        console.log(`Unknown direction label for ${line}: ${directionLabel}`);
+        return null;
+      }
+
+      const reportedAtTs = report.reportedAt;
+      const reportedAt = reportedAtTs?.toDate?.() || new Date();
+      const bucketStart = floorToMinute(reportedAt);
+      const bucketStartEpochMin = toEpochMinute(bucketStart);
+      const groupId = etaGroupId({
+        stationId,
+        line,
+        directionCode,
+        bucketStartEpochMin,
+      });
+
+      const expiresAt = new Date(bucketStart.getTime() + ETA_GROUP_ACTIVE_MINUTES * 60000);
+
+      // Preferir minutos exactos (1..12) si existen; si no, fallback desde rangos legacy.
+      const rawNextMinutes = report.nextTrainMinutes;
+      const rawFollowingMinutes = report.followingTrainMinutes;
+
+      const nextTrainMinutes =
+        Number.isFinite(Number(rawNextMinutes)) ? Number(rawNextMinutes) : null;
+      const followingTrainMinutes =
+        Number.isFinite(Number(rawFollowingMinutes)) ? Number(rawFollowingMinutes) : null;
+
+      const nextEtaBucketLegacy = mapNextRangeToEtaBucket(report.nextTrainRange);
+      const followingEtaBucketLegacy = mapFollowingRangeToEtaBucket(report.followingTrainRange);
+
+      const nextEtaBucket = nextTrainMinutes != null ? minutesToEtaBucket(nextTrainMinutes) : nextEtaBucketLegacy;
+      const followingEtaBucket = followingTrainMinutes != null ? minutesToEtaBucket(followingTrainMinutes) : followingEtaBucketLegacy;
+      const isPanelSource = report.source === 'station_display';
+
+      const groupRef = db.collection(ETA_GROUPS_COLLECTION).doc(groupId);
+      const presenceRef = groupRef.collection('presence').doc(userId);
+
+      // Obtener precisión del usuario (best-effort).
+      const userRef = db.collection('users').doc(userId);
+
+      await db.runTransaction(async (tx) => {
+        const [groupDoc, userDoc, presenceDoc] = await Promise.all([
+          tx.get(groupRef),
+          tx.get(userRef),
+          tx.get(presenceRef),
+        ]);
+
+        const now = new Date();
+        const ageMin = Math.max(0, Math.floor((now.getTime() - bucketStart.getTime()) / 60000));
+
+        const existing = groupDoc.exists ? groupDoc.data() : null;
+        const reportCount = (existing?.reportCount || 0) + 1;
+        const arrivedCount = existing?.arrivedCount || 0;
+        let presenceCount = existing?.presenceCount || 0;
+
+        // Mantener conteos de buckets (compatibilidad) y de minutos (P50).
+        const nextCounts = Object.assign({}, existing?.nextBucketCounts || {});
+        nextCounts[nextEtaBucket] = (nextCounts[nextEtaBucket] || 0) + 1;
+
+        const followingCounts = Object.assign({}, existing?.followingBucketCounts || {});
+        if (followingEtaBucket) {
+          followingCounts[followingEtaBucket] = (followingCounts[followingEtaBucket] || 0) + 1;
+        }
+
+        const nextMinuteCounts = Object.assign({}, existing?.nextMinuteCounts || {});
+        const followingMinuteCounts = Object.assign({}, existing?.followingMinuteCounts || {});
+
+        if (nextTrainMinutes != null && nextTrainMinutes >= 1 && nextTrainMinutes <= 12) {
+          const k = String(nextTrainMinutes);
+          nextMinuteCounts[k] = (nextMinuteCounts[k] || 0) + 1;
+        } else if (nextEtaBucketLegacy && nextEtaBucketLegacy !== 'unknown') {
+          const approx = etaBucketMidpointMinutes(nextEtaBucketLegacy);
+          if (approx != null) {
+            const k = String(Math.max(1, Math.min(12, approx)));
+            nextMinuteCounts[k] = (nextMinuteCounts[k] || 0) + 1;
+          }
+        }
+
+        if (followingTrainMinutes != null && followingTrainMinutes >= 1 && followingTrainMinutes <= 12) {
+          const k = String(followingTrainMinutes);
+          followingMinuteCounts[k] = (followingMinuteCounts[k] || 0) + 1;
+        } else if (followingEtaBucketLegacy) {
+          const approx = etaBucketMidpointMinutes(followingEtaBucketLegacy);
+          if (approx != null) {
+            const k = String(Math.max(1, Math.min(12, approx)));
+            followingMinuteCounts[k] = (followingMinuteCounts[k] || 0) + 1;
+          }
+        }
+
+        // Presence TTL doc (idempotente por usuario en el grupo).
+        if (!presenceDoc.exists) {
+          presenceCount += 1;
+          tx.set(presenceRef, {
+            lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(
+              new Date(now.getTime() + PRESENCE_TTL_MINUTES * 60000)
+            ),
+          });
+        } else {
+          tx.update(presenceRef, {
+            lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(
+              new Date(now.getTime() + PRESENCE_TTL_MINUTES * 60000)
+            ),
+          });
+        }
+
+        const precision = userDoc.exists ? Number(userDoc.data()?.precision || 0.0) : 0.0;
+        const precisionSum = (existing?.authorPrecisionSum || 0.0) + precision;
+        const precisionCount = (existing?.authorPrecisionCount || 0) + 1;
+        const avgPrecision01 = precisionCount > 0 ? Math.max(0, Math.min(1, (precisionSum / precisionCount) / 100.0)) : 0.0;
+
+        // Consenso por minuto (moda del histograma) para confidence.
+        const minuteMode = bucketCountsMode(nextMinuteCounts);
+        const minuteTotal = Object.values(nextMinuteCounts).reduce((a, b) => a + Number(b || 0), 0);
+        const nextModeShare = minuteTotal > 0 ? minuteMode.count / minuteTotal : 0.0;
+
+        // firstReportedAt se mantiene estable; expectedAt se calcula con base en serverNow
+        // (se “resetea” solo cuando entra un nuevo reporte de tiempo, no por arrivals/presence).
+        const firstReportedAtTs = existing?.firstReportedAt || admin.firestore.Timestamp.fromDate(now);
+
+        const nextEtaMinutesP50 = p50FromMinuteCounts(nextMinuteCounts, 1, 12);
+        const followingEtaMinutesP50 = p50FromMinuteCounts(followingMinuteCounts, 1, 12);
+
+        const etaUpdatedAt = admin.firestore.Timestamp.fromDate(now);
+        const nextEtaExpectedAt =
+          nextEtaMinutesP50 != null
+            ? admin.firestore.Timestamp.fromDate(new Date(now.getTime() + nextEtaMinutesP50 * 60000))
+            : null;
+        const followingEtaExpectedAt =
+          followingEtaMinutesP50 != null
+            ? admin.firestore.Timestamp.fromDate(new Date(now.getTime() + followingEtaMinutesP50 * 60000))
+            : null;
+
+        const conf = computeConfidence({
+          reportCount,
+          presenceCount,
+          arrivedCount,
+          nextBucketModeShare: nextModeShare,
+          avgPrecision01,
+          isPanelSource,
+          ageMin,
+        });
+
+        const updates = {
+          stationId,
+          line,
+          directionCode,
+          directionLabel,
+          bucketStart: admin.firestore.Timestamp.fromDate(bucketStart),
+          firstReportedAt: firstReportedAtTs,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          status: 'active',
+
+          etaUpdatedAt,
+          nextEtaBucket: nextEtaMinutesP50 != null ? minutesToEtaBucket(nextEtaMinutesP50) : 'unknown',
+          followingEtaBucket: followingEtaMinutesP50 != null ? minutesToEtaBucket(followingEtaMinutesP50) : (existing?.followingEtaBucket || null),
+          nextEtaMinutesP50,
+          followingEtaMinutesP50,
+          nextEtaExpectedAt,
+          followingEtaExpectedAt,
+
+          reportCount,
+          presenceCount,
+          arrivedCount,
+          confidence: conf.confidence,
+          signals: conf.signals,
+
+          // Campos internos para evitar re-escaneo: no son arrays y son pequeños.
+          nextBucketCounts: nextCounts,
+          followingBucketCounts: followingCounts,
+          nextMinuteCounts,
+          followingMinuteCounts,
+          authorPrecisionSum: precisionSum,
+          authorPrecisionCount: precisionCount,
+        };
+
+        if (!groupDoc.exists) {
+          tx.set(groupRef, updates);
+        } else {
+          tx.update(groupRef, updates);
+        }
+      });
+
+      return null;
+    } catch (e) {
+      console.error('Error updating ETA groups from train_time_reports:', e);
+      return null;
+    }
+  });
+
+// Puente: reportes ETA creados en `reports` (SimplifiedReportModel scope=train)
+// alimentan el mismo agregado `eta_groups` (compatibilidad).
+exports.onSimplifiedEtaReportCreated = functions.firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    try {
+      const report = snap.data();
+      if (!report || report.scope !== 'train') return null;
+
+      const stationId = report.stationId;
+      const userId = report.userId;
+      const etaBucket = report.etaBucket;
+      const directionCode = report.direction; // en el modelo: 'A'|'B'
+
+      if (!stationId || !userId || !etaBucket || etaBucket === 'unknown') return null;
+      if (!isValidDirectionCode(directionCode)) return null;
+
+      // Resolver línea
+      let line = report.trainLine;
+      if (!line) {
+        const stationGeo = await db.collection('stations').doc(stationId).get();
+        line = stationGeo.exists ? stationGeo.data()?.linea : null;
+      }
+      if (!line) return null;
+
+      const createdAtTs = report.createdAt;
+      const createdAt = createdAtTs?.toDate?.() || new Date();
+      const bucketStart = floorToMinute(createdAt);
+      const bucketStartEpochMin = toEpochMinute(bucketStart);
+
+      const groupId = etaGroupId({ stationId, line, directionCode, bucketStartEpochMin });
+      const expiresAt = new Date(bucketStart.getTime() + ETA_GROUP_ACTIVE_MINUTES * 60000);
+
+      const isPanelSource = report.isPanelTime === true;
+      const groupRef = db.collection(ETA_GROUPS_COLLECTION).doc(groupId);
+      const presenceRef = groupRef.collection('presence').doc(userId);
+      const userRef = db.collection('users').doc(userId);
+
+      await db.runTransaction(async (tx) => {
+        const [groupDoc, userDoc, presenceDoc] = await Promise.all([
+          tx.get(groupRef),
+          tx.get(userRef),
+          tx.get(presenceRef),
+        ]);
+
+        const now = new Date();
+        const ageMin = Math.max(0, Math.floor((now.getTime() - bucketStart.getTime()) / 60000));
+
+        const existing = groupDoc.exists ? groupDoc.data() : null;
+        const reportCount = (existing?.reportCount || 0) + 1;
+        const arrivedCount = existing?.arrivedCount || 0;
+        let presenceCount = existing?.presenceCount || 0;
+
+        const nextCounts = Object.assign({}, existing?.nextBucketCounts || {});
+        nextCounts[etaBucket] = (nextCounts[etaBucket] || 0) + 1;
+
+        if (!presenceDoc.exists) {
+          presenceCount += 1;
+          tx.set(presenceRef, {
+            lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(
+              new Date(now.getTime() + PRESENCE_TTL_MINUTES * 60000)
+            ),
+          });
+        } else {
+          tx.update(presenceRef, {
+            lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(
+              new Date(now.getTime() + PRESENCE_TTL_MINUTES * 60000)
+            ),
+          });
+        }
+
+        const precision = userDoc.exists ? Number(userDoc.data()?.precision || 0.0) : 0.0;
+        const precisionSum = (existing?.authorPrecisionSum || 0.0) + precision;
+        const precisionCount = (existing?.authorPrecisionCount || 0) + 1;
+        const avgPrecision01 =
+          precisionCount > 0
+            ? Math.max(0, Math.min(1, (precisionSum / precisionCount) / 100.0))
+            : 0.0;
+
+        const approxMinutes = etaBucketMidpointMinutes(etaBucket);
+
+        const nextMinuteCounts = Object.assign({}, existing?.nextMinuteCounts || {});
+        if (approxMinutes != null) {
+          const k = String(Math.max(1, Math.min(12, approxMinutes)));
+          nextMinuteCounts[k] = (nextMinuteCounts[k] || 0) + 1;
+        }
+
+        const nextEtaMinutesP50 = p50FromMinuteCounts(nextMinuteCounts, 1, 12);
+
+        const minuteMode = bucketCountsMode(nextMinuteCounts);
+        const minuteTotal = Object.values(nextMinuteCounts).reduce((a, b) => a + Number(b || 0), 0);
+        const nextModeShare = minuteTotal > 0 ? minuteMode.count / minuteTotal : 0.0;
+
+        const firstReportedAtTs = existing?.firstReportedAt || admin.firestore.Timestamp.fromDate(now);
+
+        const etaUpdatedAt = admin.firestore.Timestamp.fromDate(now);
+        const nextEtaExpectedAt =
+          nextEtaMinutesP50 != null
+            ? admin.firestore.Timestamp.fromDate(new Date(now.getTime() + nextEtaMinutesP50 * 60000))
+            : null;
+
+        const conf = computeConfidence({
+          reportCount,
+          presenceCount,
+          arrivedCount,
+          nextBucketModeShare: nextModeShare,
+          avgPrecision01,
+          isPanelSource,
+          ageMin,
+        });
+
+        const updates = {
+          stationId,
+          line,
+          directionCode,
+          directionLabel: null,
+          bucketStart: admin.firestore.Timestamp.fromDate(bucketStart),
+          firstReportedAt: firstReportedAtTs,
+          etaUpdatedAt,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          status: 'active',
+          nextEtaBucket: nextEtaMinutesP50 != null ? minutesToEtaBucket(nextEtaMinutesP50) : etaBucket,
+          followingEtaBucket: existing?.followingEtaBucket || null,
+          nextEtaMinutesP50,
+          nextEtaExpectedAt,
+          followingEtaExpectedAt: existing?.followingEtaExpectedAt || null,
+          reportCount,
+          presenceCount,
+          arrivedCount,
+          confidence: conf.confidence,
+          signals: conf.signals,
+          nextBucketCounts: nextCounts,
+          nextMinuteCounts,
+          authorPrecisionSum: precisionSum,
+          authorPrecisionCount: precisionCount,
+        };
+
+        if (!groupDoc.exists) {
+          tx.set(groupRef, updates);
+        } else {
+          tx.update(groupRef, updates);
+        }
+      });
+
+      return null;
+    } catch (e) {
+      console.error('Error updating ETA groups from reports ETA:', e);
+      return null;
+    }
+  });
+
+exports.submitArrivalTap = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión');
+  }
+
+  const userId = context.auth.uid;
+  const stationId = data.stationId;
+  const requestedDirectionCode = data.directionCode;
+  const userLocation = data.userLocation;
+
+  if (!stationId) {
+    throw new functions.https.HttpsError('invalid-argument', 'stationId requerido');
+  }
+
+  // GPS confiable requerido para contar arrived
+  if (!userLocation || userLocation.lat == null || userLocation.lng == null) {
+    return { success: false, reason: 'no_gps', pointsAwarded: 0 };
+  }
+
+  const accuracy = Number(userLocation.accuracy || 999999);
+  if (!Number.isFinite(accuracy) || accuracy > GPS_ACCURACY_MAX_METERS) {
+    return { success: false, reason: 'no_gps', pointsAwarded: 0 };
+  }
+
+  const stationGeo = await getStationGeoPoint(stationId);
+  if (!stationGeo) {
+    return { success: false, reason: 'station_not_found', pointsAwarded: 0 };
+  }
+
+  const distM = distanceMeters(
+    Number(userLocation.lat),
+    Number(userLocation.lng),
+    stationGeo.latitude,
+    stationGeo.longitude
+  );
+
+  if (distM > GEOFENCE_MAX_METERS) {
+    return { success: false, reason: 'out_of_geofence', pointsAwarded: 0 };
+  }
+
+  let directionCode = null;
+  if (requestedDirectionCode && isValidDirectionCode(requestedDirectionCode)) {
+    directionCode = requestedDirectionCode;
+  } else {
+    // Resolver sin pedir UI: si hay un solo directionCode activo reciente, usarlo.
+    const recent = await db
+      .collection(ETA_GROUPS_COLLECTION)
+      .where('stationId', '==', stationId)
+      .where('status', '==', 'active')
+      .orderBy('bucketStart', 'desc')
+      .limit(10)
+      .get();
+
+    const now = new Date();
+    const active = recent.docs
+      .map((d) => ({ id: d.id, ref: d.ref, data: d.data() }))
+      .filter((x) => (x.data.expiresAt?.toDate?.() || new Date(0)) > now);
+
+    const directions = new Set(active.map((x) => x.data.directionCode).filter(Boolean));
+    if (directions.size === 1) {
+      directionCode = Array.from(directions)[0];
+    } else {
+      return { success: false, reason: 'ambiguous_direction', pointsAwarded: 0 };
+    }
+  }
+
+  // Cooldown por usuario+estación+dirección
+  const cooldownDocId = `${stationId}_${directionCode}`;
+  const cooldownRef = db
+    .collection('users')
+    .doc(userId)
+    .collection('eta_arrival_cooldowns')
+    .doc(cooldownDocId);
+
+  const cooldownDoc = await cooldownRef.get();
+  const now = new Date();
+  const cooldownUntil = cooldownDoc.exists ? cooldownDoc.data()?.cooldownUntil?.toDate?.() : null;
+
+  if (cooldownUntil && cooldownUntil > now) {
+    const secs = Math.max(1, Math.floor((cooldownUntil.getTime() - now.getTime()) / 1000));
+    return { success: false, reason: 'cooldown', pointsAwarded: 0, cooldownSeconds: secs, directionCode };
+  }
+
+  const group = await findLatestActiveEtaGroup({ stationId, directionCode });
+  if (!group) {
+    return { success: false, reason: 'no_active_group', pointsAwarded: 0, directionCode };
+  }
+
+  const arrivalRef = group.ref.collection('arrivals').doc(userId);
+
+  const txResult = await db.runTransaction(async (tx) => {
+    const [arrivalDoc, groupDoc] = await Promise.all([tx.get(arrivalRef), tx.get(group.ref)]);
+    if (arrivalDoc.exists) {
+      return { success: false, reason: 'already_counted' };
+    }
+
+    const groupData = groupDoc.data();
+    const arrivedCount = (groupData?.arrivedCount || 0) + 1;
+    const reportCount = groupData?.reportCount || 0;
+    const presenceCount = groupData?.presenceCount || 0;
+
+    const nextCounts = groupData?.nextBucketCounts || {};
+    const mode = bucketCountsMode(nextCounts);
+    const modeShare = reportCount > 0 ? mode.count / reportCount : 0.0;
+
+    const precisionSum = Number(groupData?.authorPrecisionSum || 0.0);
+    const precisionCount = Number(groupData?.authorPrecisionCount || 0);
+    const avgPrecision01 = precisionCount > 0 ? Math.max(0, Math.min(1, (precisionSum / precisionCount) / 100.0)) : 0.0;
+
+    const bucketStart = groupData?.bucketStart?.toDate?.() || now;
+    const ageMin = Math.max(0, Math.floor((now.getTime() - bucketStart.getTime()) / 60000));
+    const isPanelSource = true; // este arrived tap es una señal fuerte en sí misma
+
+    const conf = computeConfidence({
+      reportCount,
+      presenceCount,
+      arrivedCount,
+      nextBucketModeShare: modeShare,
+      avgPrecision01,
+      isPanelSource,
+      ageMin,
+    });
+
+    tx.set(arrivalRef, {
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      source: 'arrival_button',
+      userLocation: new admin.firestore.GeoPoint(Number(userLocation.lat), Number(userLocation.lng)),
+      accuracy,
+    });
+
+    tx.update(group.ref, {
+      arrivedCount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      confidence: conf.confidence,
+      signals: conf.signals,
+    });
+
+    return { success: true, reason: 'ok' };
+  });
+
+  if (txResult.success !== true) {
+    return { success: false, reason: txResult.reason, pointsAwarded: 0, directionCode };
+  }
+
+  // Guardar cooldown
+  const until = new Date(now.getTime() + ARRIVAL_COOLDOWN_MINUTES * 60000);
+  await cooldownRef.set(
+    {
+      stationId,
+      directionCode,
+      cooldownUntil: admin.firestore.Timestamp.fromDate(until),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // Puntos: se devuelven al cliente; el cliente usa GamificationService para aplicarlos.
+  const pointsAwarded = 10;
+  return { success: true, reason: 'ok', groupId: group.id, directionCode, pointsAwarded };
+});
+
+exports.expireOldEtaGroups = functions.pubsub
+  .schedule('every 5 minutes')
+  .onRun(async () => {
+    try {
+      const now = admin.firestore.Timestamp.now();
+      const snapshot = await db
+        .collection(ETA_GROUPS_COLLECTION)
+        .where('status', '==', 'active')
+        .where('expiresAt', '<=', now)
+        .limit(200)
+        .get();
+
+      if (snapshot.empty) return null;
+
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, { status: 'expired', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      });
+      await batch.commit();
+
+      console.log(`Expired ${snapshot.size} eta_groups`);
+      return null;
+    } catch (e) {
+      console.error('Error expiring eta_groups:', e);
+      return null;
+    }
+  });
+
+// Limpieza de presencia (TTL lógico): elimina presence expirado y ajusta contador.
+exports.cleanupEtaPresence = functions.pubsub
+  .schedule('every 5 minutes')
+  .onRun(async () => {
+    try {
+      const now = admin.firestore.Timestamp.now();
+
+      const presenceSnap = await db
+        .collectionGroup('presence')
+        .where('expiresAt', '<=', now)
+        .limit(500)
+        .get();
+
+      if (presenceSnap.empty) return null;
+
+      const batch = db.batch();
+      for (const doc of presenceSnap.docs) {
+        const groupRef = doc.ref.parent.parent;
+        if (groupRef) {
+          batch.update(groupRef, {
+            presenceCount: admin.firestore.FieldValue.increment(-1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        batch.delete(doc.ref);
+      }
+
+      await batch.commit();
+      console.log(`Cleaned ${presenceSnap.size} presence docs`);
+      return null;
+    } catch (e) {
+      console.error('Error cleaning presence:', e);
+      return null;
+    }
+  });
 

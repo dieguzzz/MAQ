@@ -220,24 +220,27 @@ class GamificationService {
     }
   }
 
-  // Otorgar badge
+  // Otorgar badge (usa transacción para evitar duplicados en concurrent calls)
   Future<void> _awardBadge(String userId, BadgeType badgeType) async {
     try {
       final badge = _createBadge(badgeType);
       final userRef = _firestore.collection('users').doc(userId);
-      
-      final userDoc = await userRef.get();
-      final gamification = userDoc.data()?['gamification'] as Map<String, dynamic>?;
-      final currentBadges = (gamification?['badges'] as List<dynamic>?) ?? [];
 
-      // Verificar si ya tiene el badge
-      final hasBadge = currentBadges.any((b) => b['type'] == badgeType.toString());
-      if (hasBadge) return;
+      await _firestore.runTransaction((transaction) async {
+        final userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) return;
 
-      currentBadges.add(badge.toFirestore());
-      
-      await userRef.update({
-        'gamification.badges': currentBadges,
+        final gamification =
+            userDoc.data()?['gamification'] as Map<String, dynamic>?;
+        final currentBadges =
+            List<dynamic>.from(gamification?['badges'] ?? []);
+
+        final hasBadge =
+            currentBadges.any((b) => b['type'] == badgeType.toString());
+        if (hasBadge) return;
+
+        currentBadges.add(badge.toFirestore());
+        transaction.update(userRef, {'gamification.badges': currentBadges});
       });
     } catch (e) {
       print('Error awarding badge: $e');
@@ -690,6 +693,173 @@ class GamificationService {
   /// Otorga el badge "Profesor del Metro"
   Future<void> _awardTeachingBadge(String userId) async {
     await _awardBadge(userId, BadgeType.profesorDelMetro);
+  }
+
+  /// Otorga puntos por crear un reporte simplificado
+  /// Actualiza los puntos del usuario, puntos por línea, nivel y streak
+  Future<void> awardPointsForSimplifiedReport({
+    required String userId,
+    required int points,
+    required String stationId,
+    required String reportId,
+  }) async {
+    try {
+      // Obtener información de la estación para saber la línea
+      final stationDoc = await _firestore.collection('stations').doc(stationId).get();
+      if (!stationDoc.exists) {
+        print('Estación no encontrada: $stationId');
+        return;
+      }
+
+      final stationData = stationDoc.data()!;
+      final linea = stationData['linea'] as String?;
+      
+      if (linea == null) {
+        print('Estación sin línea: $stationId');
+        return;
+      }
+
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      
+      if (!userDoc.exists) {
+        print('Usuario no encontrado: $userId');
+        return;
+      }
+
+      final currentData = userDoc.data()!;
+      final gamification = currentData['gamification'] as Map<String, dynamic>?;
+      
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final puntosPorLinea = Map<String, int>.from(
+          gamification?['puntos_por_linea'] ?? {});
+      
+      final newPuntos = currentPuntos + points;
+      puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + points;
+
+      // Calcular nuevo nivel
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.puntos_por_linea': puntosPorLinea,
+      });
+
+      // Actualizar streak
+      await updateStreak(userId);
+
+      // Verificar si desbloquea algún badge
+      await _checkAndAwardBadges(userId, newPuntos);
+      
+      print('✅ Puntos otorgados: $points puntos a usuario $userId (Total: $newPuntos)');
+    } catch (e) {
+      print('Error awarding points for simplified report: $e');
+      // No lanzar error, solo loggear - los puntos ya están en el reporte
+    }
+  }
+
+  /// Otorga puntos adicionales por validar llegada de tren
+  /// Se llama cuando se actualiza un reporte con arrivalTime
+  Future<void> awardPointsForArrivalValidation({
+    required String userId,
+    required int additionalPoints,
+    required String stationId,
+  }) async {
+    try {
+      // Obtener información de la estación para saber la línea
+      final stationDoc = await _firestore.collection('stations').doc(stationId).get();
+      if (!stationDoc.exists) {
+        print('Estación no encontrada: $stationId');
+        return;
+      }
+
+      final stationData = stationDoc.data()!;
+      final linea = stationData['linea'] as String?;
+      
+      if (linea == null) {
+        print('Estación sin línea: $stationId');
+        return;
+      }
+
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      
+      if (!userDoc.exists) {
+        print('Usuario no encontrado: $userId');
+        return;
+      }
+
+      final currentData = userDoc.data()!;
+      final gamification = currentData['gamification'] as Map<String, dynamic>?;
+      
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final puntosPorLinea = Map<String, int>.from(
+          gamification?['puntos_por_linea'] ?? {});
+      
+      final newPuntos = currentPuntos + additionalPoints;
+      puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + additionalPoints;
+
+      // Calcular nuevo nivel
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+      
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.puntos_por_linea': puntosPorLinea,
+      });
+
+      // Verificar si desbloquea algún badge
+      await _checkAndAwardBadges(userId, newPuntos);
+      
+      print('✅ Puntos adicionales otorgados: $additionalPoints puntos a usuario $userId (Total: $newPuntos)');
+    } catch (e) {
+      print('Error awarding points for arrival validation: $e');
+      // No lanzar error, solo loggear
+    }
+  }
+
+  /// Otorga puntos por reportar tiempos del panel (ETA).
+  ///
+  /// A diferencia de `awardPointsForArrivalValidation`, este método también
+  /// actualiza la racha (streak), porque es una acción de reporte.
+  Future<void> awardPointsForEtaPanelReport({
+    required String userId,
+    required int points,
+    required String stationId,
+  }) async {
+    try {
+      final stationDoc = await _firestore.collection('stations').doc(stationId).get();
+      if (!stationDoc.exists) return;
+
+      final linea = stationDoc.data()?['linea'] as String?;
+      if (linea == null) return;
+
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userRef.get();
+      if (!userDoc.exists) return;
+
+      final currentData = userDoc.data()!;
+      final gamification = currentData['gamification'] as Map<String, dynamic>?;
+      final currentPuntos = gamification?['puntos'] ?? 0;
+      final puntosPorLinea = Map<String, int>.from(gamification?['puntos_por_linea'] ?? {});
+
+      final newPuntos = currentPuntos + points;
+      puntosPorLinea[linea] = (puntosPorLinea[linea] ?? 0) + points;
+
+      final nuevoNivel = LevelService.calculateLevel(newPuntos);
+
+      await userRef.update({
+        'gamification.puntos': newPuntos,
+        'gamification.nivel': nuevoNivel,
+        'gamification.puntos_por_linea': puntosPorLinea,
+      });
+
+      await updateStreak(userId);
+      await _checkAndAwardBadges(userId, newPuntos);
+    } catch (e) {
+      print('Error awarding points for ETA panel report: $e');
+    }
   }
 }
 

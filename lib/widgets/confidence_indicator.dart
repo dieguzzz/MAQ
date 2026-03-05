@@ -13,11 +13,11 @@ class ConfidenceIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (confidence == null) return const SizedBox.shrink();
-    
+
     Color color;
     String label;
     IconData icon;
-    
+
     switch (confidence) {
       case 'high':
         color = Colors.green;
@@ -36,11 +36,11 @@ class ConfidenceIndicator extends StatelessWidget {
         icon = Icons.warning;
         break;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color, width: 1),
       ),

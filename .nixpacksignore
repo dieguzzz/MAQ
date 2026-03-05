@@ -1,0 +1,46 @@
+# Flutter files - no queremos que Nixpacks los procese
+lib/
+test/
+android/
+ios/
+linux/
+macos/
+windows/
+.dart_tool/
+.metadata
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+analysis_options.yaml
+*.iml
+*.ps1
+*.bat
+docs/
+README.md
+TESTING_CHECKLIST.md
+.cursorrules
+.cerrar_procesos_dart.ps1
+.diagnostico_vm_service.ps1
+.setup_firebase.ps1
+.temp_train_time_widget.txt
+.verificar_firebase.ps1
+COMANDOS_FIREBASE_RAPIDOS.txt
+COMANDOS_RAPIDOS_FIREBASE.txt
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# Git
+.git/
+.gitignore
+
+# Build artifacts
+node_modules/
+dist/
+
+# Firebase
+firebase.json
+firestore.indexes.json
+firestore.rules

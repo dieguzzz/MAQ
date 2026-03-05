@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/firebase_service.dart';
 import '../services/app_mode_service.dart';
 
 class ReportValidationService {
@@ -35,7 +34,8 @@ class ReportValidationService {
         print('📊 Reportes en la última hora: $recentCount');
 
         if (recentCount >= 10) {
-          print('❌ Límite de spam alcanzado: $recentCount reportes en la última hora');
+          print(
+              '❌ Límite de spam alcanzado: $recentCount reportes en la última hora');
           return false; // Límite de spam alcanzado
         }
       } catch (e) {
@@ -50,20 +50,24 @@ class ReportValidationService {
               .collection('reports')
               .where('usuario_id', isEqualTo: userId)
               .where('objetivo_id', isEqualTo: objetivoId)
-              .where('creado_en', isGreaterThan: Timestamp.fromDate(fiveMinutesAgo))
+              .where('creado_en',
+                  isGreaterThan: Timestamp.fromDate(fiveMinutesAgo))
               .get();
 
           if (recentSameTargetSnapshot.docs.isNotEmpty) {
-            print('❌ Ya reportó esta estación/tren recientemente (últimos 5 minutos)');
+            print(
+                '❌ Ya reportó esta estación/tren recientemente (últimos 5 minutos)');
             return false; // Ya reportó esta estación/tren recientemente
           }
           print('✅ No hay reportes recientes para este objetivo');
         } catch (e) {
-          print('⚠️ Error verificando reportes recientes del mismo objetivo: $e');
+          print(
+              '⚠️ Error verificando reportes recientes del mismo objetivo: $e');
           // Continuar permitiendo el reporte si hay error de red
         }
       } else {
-        print('⚠️ objetivoId es null o vacío, saltando validación de duplicados');
+        print(
+            '⚠️ objetivoId es null o vacío, saltando validación de duplicados');
       }
 
       print('✅ Validación anti-spam pasada');
@@ -112,7 +116,8 @@ class ReportValidationService {
     String objetivoId,
   ) async {
     try {
-      final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+      final fiveMinutesAgo =
+          DateTime.now().subtract(const Duration(minutes: 5));
 
       final recentReportsSnapshot = await _firestore
           .collection('reports')
@@ -150,14 +155,16 @@ class ReportValidationService {
               .get();
 
           final recentCount = recentReportsSnapshot.docs.length;
-          print('📊 getValidationErrorMessage - Reportes en última hora: $recentCount');
+          print(
+              '📊 getValidationErrorMessage - Reportes en última hora: $recentCount');
 
           if (recentCount >= 10) {
             return 'Has alcanzado el límite de reportes por hora (10). Intenta más tarde.';
           }
 
           if (objetivoId != null && objetivoId.isNotEmpty) {
-            final hasRecent = await hasRecentReportForStation(userId, objetivoId);
+            final hasRecent =
+                await hasRecentReportForStation(userId, objetivoId);
             if (hasRecent) {
               return 'Ya reportaste esta estación/tren recientemente. Espera 5 minutos.';
             }
@@ -177,7 +184,8 @@ class ReportValidationService {
       }
 
       if (userLocation != null && targetLocation != null) {
-        final isValid = isValidReportLocation(userLocation, targetLocation, appMode: appMode);
+        final isValid = isValidReportLocation(userLocation, targetLocation,
+            appMode: appMode);
         if (!isValid) {
           return 'Debes estar a menos de 1 km de la estación/tren para reportar.';
         }
@@ -190,4 +198,3 @@ class ReportValidationService {
     }
   }
 }
-

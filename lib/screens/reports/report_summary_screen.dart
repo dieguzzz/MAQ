@@ -5,11 +5,13 @@ import '../../providers/auth_provider.dart';
 
 /// Pantalla de resumen que se muestra al volver a la app después de confirmar reportes
 class ReportSummaryScreen extends StatefulWidget {
-  final String? reportId; // ID del reporte que se confirmó (opcional)
+  final String? reportId;
+  final VoidCallback? onContinue;
 
   const ReportSummaryScreen({
     super.key,
     this.reportId,
+    this.onContinue,
   });
 
   @override
@@ -20,6 +22,7 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
   int _reportsToday = 0;
   int _totalPoints = 0;
   int _level = 1;
+  int _streak = 0;
   bool _isLoading = true;
 
   @override
@@ -32,7 +35,7 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final userId = authProvider.currentUser?.uid;
-      
+
       if (userId == null) {
         setState(() => _isLoading = false);
         return;
@@ -43,23 +46,24 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
           .collection('users')
           .doc(userId)
           .get();
-      
+
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final gamification = userData['gamification'] ?? {};
-        
+
         setState(() {
           _totalPoints = gamification['puntos'] ?? 0;
           _level = gamification['nivel'] ?? 1;
+          _streak = gamification['streak'] ?? 0;
         });
       }
 
       // Contar reportes de hoy
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
-      
+
       final reportsSnapshot = await FirebaseFirestore.instance
-          .collection('reports')
+          .collection('station_reports')
           .where('userId', isEqualTo: userId)
           .where('createdAt', isGreaterThan: Timestamp.fromDate(todayStart))
           .get();
@@ -109,9 +113,9 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                   color: Colors.grey,
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Resumen de reportes
               Card(
                 child: Padding(
@@ -134,9 +138,9 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Experiencia ganada
               Card(
                 color: Colors.green[50],
@@ -144,7 +148,8 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      const Icon(Icons.trending_up, size: 48, color: Colors.green),
+                      const Icon(Icons.trending_up,
+                          size: 48, color: Colors.green),
                       const SizedBox(height: 8),
                       const Text(
                         'Experiencia Ganada',
@@ -163,9 +168,9 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Próximos objetivos
               Card(
                 child: Padding(
@@ -181,20 +186,27 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildObjective('Reportar 5 estaciones', _reportsToday >= 5),
+                      _buildObjective(
+                          'Reportar 5 estaciones', _reportsToday >= 5),
                       _buildObjective('Alcanzar nivel 5', _level >= 5),
-                      _buildObjective('Racha de 7 días', false), // TODO: Implementar
+                      _buildObjective('Racha de 7 días', _streak >= 7),
                     ],
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  onPressed: () {
+                    if (widget.onContinue != null) {
+                      widget.onContinue!();
+                    } else {
+                      Navigator.popUntil(context, (route) => route.isFirst);
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),

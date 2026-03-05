@@ -3,13 +3,15 @@ import 'package:geolocator/geolocator.dart';
 import '../../models/station_model.dart';
 import '../../models/simplified_report_model.dart';
 import '../../services/simplified_report_service.dart';
+import '../../services/eta_arrival_service.dart';
 import '../../services/location_service.dart';
 import '../../widgets/train_arrival_animation.dart';
 
 /// Pantalla para completar reporte de llegada del tren
 class TrainArrivalScreen extends StatefulWidget {
   final StationModel station;
-  final SimplifiedReportModel? pendingReport; // Si hay reporte pendiente con ETA
+  final SimplifiedReportModel?
+      pendingReport; // Si hay reporte pendiente con ETA
 
   const TrainArrivalScreen({
     super.key,
@@ -24,10 +26,10 @@ class TrainArrivalScreen extends StatefulWidget {
 class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
   // Ocupación (obligatorio)
   int? _crowdLevel; // 1-5
-  
+
   // Estado (opcional)
   String? _trainStatus; // 'normal' | 'slow' | 'stopped' | null
-  
+
   final SimplifiedReportService _reportService = SimplifiedReportService();
   bool _isSubmitting = false;
 
@@ -94,9 +96,7 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
                   ],
                 ),
               ),
-            
             const SizedBox(height: 24),
-            
             const Text(
               '¿Cómo venía el tren?',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -109,9 +109,7 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
             _buildCrowdOption(3, '🔴 LLENO', 'Apretado', Colors.red),
             const SizedBox(height: 12),
             _buildCrowdOption(4, '💀 SARDINA', 'Extremo', Colors.purple),
-            
             const SizedBox(height: 32),
-            
             const Text(
               'Estado del tren (opcional)',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -122,14 +120,15 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 16),
-            _buildStatusOption('normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
+            _buildStatusOption(
+                'normal', '🚇 NORMAL', 'Velocidad usual', Colors.blue),
             const SizedBox(height: 12),
-            _buildStatusOption('slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
+            _buildStatusOption(
+                'slow', '🐌 LENTO', 'Menos de 20 km/h', Colors.orange),
             const SizedBox(height: 12),
-            _buildStatusOption('stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
-            
+            _buildStatusOption(
+                'stopped', '🛑 DETENIDO', 'Parado en vía', Colors.red),
             const SizedBox(height: 32),
-            
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -142,11 +141,13 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
                         'CONFIRMAR LLEGADA (+$points puntos)',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
               ),
             ),
@@ -155,16 +156,17 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
       ),
     );
   }
-  
+
   bool _canSubmit() {
     return _crowdLevel != null && !_isSubmitting;
   }
 
-  Widget _buildCrowdOption(int level, String emoji, String subtitle, Color color) {
+  Widget _buildCrowdOption(
+      int level, String emoji, String subtitle, Color color) {
     final isSelected = _crowdLevel == level;
     return Card(
       elevation: isSelected ? 4 : 1,
-      color: isSelected ? color.withOpacity(0.1) : null,
+      color: isSelected ? color.withValues(alpha: 0.1) : null,
       child: InkWell(
         onTap: () => setState(() => _crowdLevel = level),
         child: Padding(
@@ -174,7 +176,8 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
               Text(emoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 16),
               Expanded(child: Text('$emoji $subtitle')),
-              if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
             ],
           ),
         ),
@@ -182,11 +185,12 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
     );
   }
 
-  Widget _buildStatusOption(String status, String emoji, String subtitle, Color color) {
+  Widget _buildStatusOption(
+      String status, String emoji, String subtitle, Color color) {
     final isSelected = _trainStatus == status;
     return Card(
       elevation: isSelected ? 4 : 1,
-      color: isSelected ? color.withOpacity(0.1) : null,
+      color: isSelected ? color.withValues(alpha: 0.1) : null,
       child: InkWell(
         onTap: () => setState(() => _trainStatus = status),
         child: Padding(
@@ -199,12 +203,17 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(emoji, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    Text(emoji,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(subtitle,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
-              if (isSelected) const Icon(Icons.check_circle, color: Colors.blue),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.blue),
             ],
           ),
         ),
@@ -244,15 +253,16 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
           trainStatus: _trainStatus,
         );
       } else {
-        // Crear reporte directo de llegada
-        await _reportService.createDirectArrivalReport(
+        // Nuevo sistema: arrival tap agrega señal fuerte al ETA Group (sin reporte suelto).
+        final arrivalService = EtaArrivalService();
+        final result = await arrivalService.submitArrivalTap(
           stationId: widget.station.id,
-          arrivalTime: arrivalTime,
-          crowdLevel: _crowdLevel,
-          trainStatus: _trainStatus,
-          trainLine: widget.station.linea,
           userPosition: position,
         );
+
+        if (!result.success) {
+          throw Exception('No se pudo confirmar: ${result.reason}');
+        }
       }
 
       if (!mounted) return;
@@ -277,4 +287,3 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
     }
   }
 }
-

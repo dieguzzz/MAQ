@@ -2,40 +2,46 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/simplified_report_model.dart';
 import '../models/train_model.dart';
 import '../utils/train_status_mapper.dart';
-import 'simplified_report_service.dart';
+import 'simplified_report_confidence_service.dart';
 
 /// Servicio para agregar múltiples reportes y calcular el estado de un tren
 class TrainStatusAggregator {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final SimplifiedReportService _reportService = SimplifiedReportService();
+  // Note: SimplifiedReportService removed as using direct Firestore queries
 
-  /// Actualiza el estado de un tren basado en reportes activos recientes
-  /// 
-  /// Obtiene reportes de los últimos 30 minutos y calcula:
+  /// Actualiza el estado de un tren basado en reportes activos recientes.
+  ///
+  /// Filtra reportes por [trainLine] (ej: 'linea1') y opcionalmente por
+  /// [direction] ('A'|'B') para evitar mezclar datos de distintas direcciones.
+  ///
+  /// Calcula:
   /// - estado: consenso de múltiples reportes (normal/retrasado/detenido)
   /// - aglomeracion: promedio de trainCrowd
   /// - confidence: basado en cantidad de reportes y confirmaciones
-  Future<void> updateTrainFromReports(String trainId) async {
+  Future<void> updateTrainFromReports(
+    String trainId, {
+    String? trainLine,
+    String? direction,
+  }) async {
     try {
-      // Obtener reportes activos de los últimos 30 minutos
-      // Nota: Los reportes de trenes están asociados a stationId, no trainId directamente
-      // Necesitamos buscar reportes que mencionen este tren específico
-      // Por ahora, usaremos una estrategia diferente: buscar por trainLine y direction
-      // TODO: Mejorar cuando tengamos trainId en los reportes
-      
-      final thirtyMinutesAgo = DateTime.now().subtract(const Duration(minutes: 30));
-      
-      // Obtener todos los reportes de trenes activos recientes
-      final allTrainReports = await _getRecentTrainReports(thirtyMinutesAgo);
-      
-      // Filtrar reportes que correspondan a este tren
-      // Por ahora, asumimos que trainId puede estar en trainLine o necesitamos otra estrategia
-      // Por simplicidad, usaremos todos los reportes de trenes recientes
-      // En producción, esto debería filtrarse mejor
+      final thirtyMinutesAgo =
+          DateTime.now().subtract(const Duration(minutes: 30));
+
+      // Obtener reportes activos recientes, filtrados por línea si se provee
+      final allTrainReports =
+          await _getRecentTrainReports(thirtyMinutesAgo, trainLine: trainLine);
+
+      // Filtrar por dirección y campos válidos
       final trainReports = allTrainReports
           .where((r) => r.scope == 'train' && r.status == 'active')
           .where((r) => r.trainStatus != null || r.trainCrowd != null)
-          .toList();
+          .where((r) {
+        // Si se especifica dirección, filtrar por ella
+        if (direction != null && r.direction != null) {
+          return r.direction == direction;
+        }
+        return true;
+      }).toList();
 
       if (trainReports.isEmpty) {
         // No hay reportes recientes, no actualizar
@@ -60,20 +66,30 @@ class TrainStatusAggregator {
     }
   }
 
-  /// Obtiene reportes recientes de trenes (helper)
-  Future<List<SimplifiedReportModel>> _getRecentTrainReports(DateTime since) async {
+  /// Obtiene reportes recientes de trenes, opcionalmente filtrados por línea.
+  Future<List<SimplifiedReportModel>> _getRecentTrainReports(
+    DateTime since, {
+    String? trainLine,
+  }) async {
     try {
-      final snapshot = await _firestore
+      Query query = _firestore
           .collection('reports')
           .where('scope', isEqualTo: 'train')
-          .where('status', isEqualTo: 'active')
-          .get();
+          .where('status', isEqualTo: 'active');
+
+      // Filtrar por línea en Firestore si se provee (reduce datos transferidos)
+      if (trainLine != null) {
+        query = query.where('trainLine', isEqualTo: trainLine);
+      }
+
+      final snapshot = await query.get();
 
       final reports = snapshot.docs
-          .map((doc) => SimplifiedReportModel.fromFirestore(doc))
+          .map((doc) =>
+              SimplifiedReportModel.fromFirestore(doc as DocumentSnapshot))
           .where((report) => report.createdAt.isAfter(since))
           .toList();
-      
+
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
     } catch (e) {
@@ -83,7 +99,7 @@ class TrainStatusAggregator {
   }
 
   /// Calcula el estado agregado basado en múltiples reportes
-  /// 
+  ///
   /// Lógica:
   /// - 1 reporte: usar ese estado
   /// - 2-4 reportes: usar moda (más común)
@@ -175,35 +191,11 @@ class TrainStatusAggregator {
     return average.round().clamp(1, 5);
   }
 
-  /// Calcula confidence basado en:
-  /// - Cantidad de reportes (más reportes = más confianza)
-  /// - Confirmaciones totales (más confirmaciones = más confianza)
-  /// - Antigüedad de reportes (reportes más recientes pesan más)
+  /// Delega al servicio central de confianza para consistencia con
+  /// StationStatusAggregator y la UI.
   double _calculateConfidence(List<SimplifiedReportModel> reports) {
-    if (reports.isEmpty) return 0.0;
-
-    // Base: cantidad de reportes (máximo 0.4)
-    final reportCountScore = (reports.length / 10.0).clamp(0.0, 0.4);
-
-    // Confirmaciones totales (máximo 0.3)
-    final totalConfirmations = reports.fold<int>(
-      0,
-      (sum, r) => sum + r.confirmations,
-    );
-    final confirmationScore = (totalConfirmations / 20.0).clamp(0.0, 0.3);
-
-    // Antigüedad: reportes más recientes pesan más (máximo 0.3)
-    final now = DateTime.now();
-    double recencyScore = 0.0;
-    for (final report in reports) {
-      final ageMinutes = now.difference(report.createdAt).inMinutes;
-      // Reportes más recientes (menos minutos) tienen más peso
-      final weight = (30 - ageMinutes.clamp(0, 30)) / 30.0;
-      recencyScore += weight;
-    }
-    recencyScore = (recencyScore / reports.length).clamp(0.0, 0.3);
-
-    return (reportCountScore + confirmationScore + recencyScore).clamp(0.0, 1.0);
+    return SimplifiedReportConfidenceService.calculateAggregatedConfidence(
+        reports);
   }
 
   /// Actualiza el tren en Firestore con los valores calculados
@@ -226,4 +218,3 @@ class TrainStatusAggregator {
     await _firestore.collection('trains').doc(trainId).update(updateData);
   }
 }
-

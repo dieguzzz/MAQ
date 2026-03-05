@@ -1,6 +1,60 @@
 {
   "indexes": [
     {
+      "collectionGroup": "eta_groups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "bucketStart",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "eta_groups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "directionCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "bucketStart",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "eta_groups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
@@ -47,46 +101,115 @@
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "simplified_reports",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "gamification.puntos",
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scope",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "simplified_reports",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "precision",
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isSpecificIssue",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "simplified_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "simplified_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "train_time_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "reportedAt",
           "order": "DESCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "train_time_reports",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "gamification.streak",
-          "order": "DESCENDING"
+          "fieldPath": "testBatch",
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "simplified_reports",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "gamification.verificaciones_hechas",
-          "order": "DESCENDING"
+          "fieldPath": "testBatch",
+          "order": "ASCENDING"
         }
       ]
     }
   ],
   "fieldOverrides": []
 }
-

@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
 import '../services/error_handler_service.dart';
+import '../services/app_mode_service.dart';
+import '../services/debug_log_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -11,12 +15,13 @@ class AuthProvider with ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _streamInitialized = false;
+  StreamSubscription<UserModel?>? _userStreamSubscription;
 
   UserModel? get currentUser {
     _ensureStreamInitialized();
     return _currentUser;
   }
-  
+
   bool get isLoading => _isLoading;
   bool get isAuthenticated {
     _ensureStreamInitialized();
@@ -31,7 +36,17 @@ class AuthProvider with ChangeNotifier {
   void ensureStreamInitialized() {
     if (_streamInitialized) return;
     _streamInitialized = true;
-    _init();
+
+    // Si ya hay un usuario en Firebase Auth, marcamos loading=true de forma
+    // síncrona para evitar el flash de "no autenticado" en el primer frame.
+    if (_firebaseService.getCurrentUser() != null) {
+      _isLoading = true;
+    }
+
+    // Defer la inicialización completa para no llamar notifyListeners durante build
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _init();
+    });
   }
 
   // Método privado para uso interno
@@ -42,15 +57,19 @@ class AuthProvider with ChangeNotifier {
       // Verificar el estado actual de autenticación primero
       final currentUser = _firebaseService.getCurrentUser();
       if (currentUser != null) {
-        loadUser(currentUser.uid);
+        _startListeningToUser(currentUser.uid);
       }
-      
-      // Luego escuchar cambios
+
+      // Luego escuchar cambios de autenticación
       _firebaseService.getAuthStateChanges().listen((User? user) async {
+        // Cancelar suscripción anterior si existe
+        await _userStreamSubscription?.cancel();
+
         if (user != null) {
-          await loadUser(user.uid);
+          _startListeningToUser(user.uid);
         } else {
           _currentUser = null;
+          _isLoading = false;
           notifyListeners();
         }
       }, onError: (error) {
@@ -63,34 +82,75 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadUser(String uid) async {
+  /// Inicia la escucha de cambios en tiempo real del usuario
+  void _startListeningToUser(String uid) {
     _isLoading = true;
     notifyListeners();
 
-    try {
-      _currentUser = await _loadOrCreateUser(uid);
-    } catch (e) {
-      print('Error loading user: $e');
-    } finally {
+    // Cancelar suscripción anterior si existe
+    _userStreamSubscription?.cancel();
+
+    // Verificar si está en modo test y habilitar logs en Firestore
+    _checkAndEnableDebugLogs(uid);
+
+    // Primero verificar si el usuario existe, si no, crearlo
+    _ensureUserExists(uid).then((_) {
+      // Una vez que el usuario existe (o si ya existía), empezar a escuchar
+      _userStreamSubscription = _firebaseService.getUserStream(uid).listen(
+        (UserModel? user) {
+          _currentUser = user;
+          _isLoading = false;
+          notifyListeners();
+        },
+        onError: (error) {
+          print('Error en user stream: $error');
+          _isLoading = false;
+          notifyListeners();
+        },
+      );
+    }).catchError((error) {
+      print('Error ensuring user exists: $error');
       _isLoading = false;
       notifyListeners();
+    });
+  }
+
+  /// Verifica si el usuario está en modo test y habilita logs en Firestore
+  Future<void> _checkAndEnableDebugLogs(String uid) async {
+    try {
+      final appModeService = AppModeService();
+      final isTestMode = await appModeService.isTestMode(uid);
+      if (isTestMode) {
+        DebugLogService().enableFirestore();
+        print('✅ Modo test detectado - Logs de Firestore habilitados');
+      } else {
+        DebugLogService().disableFirestore();
+      }
+    } catch (e) {
+      print('Error verificando modo test: $e');
     }
   }
 
-  Future<UserModel?> _loadOrCreateUser(String uid) async {
-    var userModel = await _firebaseService.getUser(uid);
+  /// Asegura que el usuario existe en Firestore antes de escuchar cambios
+  Future<void> _ensureUserExists(String uid) async {
+    final userModel = await _firebaseService.getUser(uid);
     if (userModel != null) {
-      return userModel;
+      return; // Usuario ya existe
     }
 
+    // Si no existe, crearlo
     final firebaseUser = _firebaseService.getCurrentUser();
     if (firebaseUser == null) {
-      return null;
+      throw Exception('Usuario de Firebase no autenticado');
     }
 
     final newUser = _buildUserModelFromFirebaseUser(firebaseUser);
     await _firebaseService.createUser(newUser);
-    return newUser;
+  }
+
+  Future<void> loadUser(String uid) async {
+    // Este método ahora usa streams para actualización en tiempo real
+    _startListeningToUser(uid);
   }
 
   UserModel _buildUserModelFromFirebaseUser(User firebaseUser) {
@@ -126,11 +186,10 @@ class AuthProvider with ChangeNotifier {
         throw Exception('La contraseña es requerida');
       }
 
-      final userCredential = await _firebaseService.signInWithEmailAndPassword(
-          email, password);
-      await loadUser(userCredential.user!.uid);
-      _isLoading = false;
-      notifyListeners();
+      final userCredential =
+          await _firebaseService.signInWithEmailAndPassword(email, password);
+      loadUser(userCredential.user!.uid);
+      // El stream se encargará de actualizar _isLoading y _currentUser automáticamente
       return null; // Éxito
     } catch (e) {
       _isLoading = false;
@@ -158,9 +217,9 @@ class AuthProvider with ChangeNotifier {
         throw Exception('El nombre es requerido');
       }
 
-      final userCredential =
-          await _firebaseService.createUserWithEmailAndPassword(email, password);
-      
+      final userCredential = await _firebaseService
+          .createUserWithEmailAndPassword(email, password);
+
       final newUser = UserModel(
         uid: userCredential.user!.uid,
         email: email,
@@ -171,9 +230,8 @@ class AuthProvider with ChangeNotifier {
       );
 
       await _firebaseService.createUser(newUser);
-      await loadUser(userCredential.user!.uid);
-      _isLoading = false;
-      notifyListeners();
+      loadUser(userCredential.user!.uid);
+      // El stream se encargará de actualizar _isLoading y _currentUser
       return null; // Éxito
     } catch (e) {
       _isLoading = false;
@@ -195,10 +253,9 @@ class AuthProvider with ChangeNotifier {
         return 'Se canceló el inicio de sesión con Google';
       }
 
-      await loadUser(user.uid);
-      _isLoading = false;
-      notifyListeners();
-      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+      loadUser(user.uid);
+      // El stream se encargará de actualizar _isLoading y _currentUser automáticamente
+      return null; // Éxito
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -219,10 +276,9 @@ class AuthProvider with ChangeNotifier {
         return 'Error al crear sesión de invitado';
       }
 
-      await loadUser(user.uid);
-      _isLoading = false;
-      notifyListeners();
-      return _currentUser != null ? null : 'Error al cargar el perfil del usuario';
+      loadUser(user.uid);
+      // El stream se encargará de actualizar _isLoading y _currentUser automáticamente
+      return null; // Éxito
     } catch (e) {
       _isLoading = false;
       notifyListeners();
@@ -231,8 +287,10 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await _userStreamSubscription?.cancel();
     await _firebaseService.signOut();
     _currentUser = null;
+    _isLoading = false;
     notifyListeners();
   }
 
@@ -240,13 +298,13 @@ class AuthProvider with ChangeNotifier {
   /// Retorna true si la eliminación fue exitosa
   Future<bool> deleteAccount() async {
     if (_currentUser == null) return false;
-    
+
     _isLoading = true;
     notifyListeners();
 
     try {
       final userId = _currentUser!.uid;
-      
+
       // 1. Eliminar imagen de perfil de Storage si existe
       if (_currentUser!.fotoUrl != null) {
         try {
@@ -286,8 +344,8 @@ class AuthProvider with ChangeNotifier {
         _currentUser!.uid,
         {'reputacion': newReputacion},
       );
-      _currentUser = _currentUser!.copyWith(reputacion: newReputacion);
-      notifyListeners();
+      // No necesitamos actualizar _currentUser manualmente
+      // El stream se encargará de actualizarlo automáticamente
     } catch (e) {
       print('Error updating reputation: $e');
     }
@@ -303,11 +361,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final updateData = <String, dynamic>{};
-      
+
       if (nombre != null && nombre.trim().isNotEmpty) {
         updateData['nombre'] = nombre.trim();
       }
-      
+
       if (fotoUrl != null) {
         updateData['foto_url'] = fotoUrl;
       }
@@ -317,19 +375,21 @@ class AuthProvider with ChangeNotifier {
       }
 
       await _firebaseService.updateUser(_currentUser!.uid, updateData);
-      
-      // Actualizar el modelo local
-      _currentUser = _currentUser!.copyWith(
-        nombre: nombre ?? _currentUser!.nombre,
-        fotoUrl: fotoUrl ?? _currentUser!.fotoUrl,
-      );
-      
-      notifyListeners();
+
+      // No necesitamos actualizar _currentUser manualmente
+      // El stream se encargará de actualizarlo automáticamente
+
       return true;
     } catch (e) {
       print('Error updating profile: $e');
       return false;
     }
   }
-}
 
+  /// Dispose: cancelar suscripción cuando se destruye el provider
+  @override
+  void dispose() {
+    _userStreamSubscription?.cancel();
+    super.dispose();
+  }
+}

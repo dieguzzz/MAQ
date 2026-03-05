@@ -122,6 +122,50 @@ service cloud.firestore {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
       allow write: if false; // Solo Cloud Functions pueden escribir
     }
+    
+    // Train Time Reports collection (para reportes de tiempo de tren desde paneles)
+    // La colección se crea automáticamente cuando se escribe el primer documento
+    match /train_time_reports/{reportId} {
+      allow read: if request.auth != null; // Usuarios autenticados pueden leer
+      // Permitir crear si el usuario está autenticado y el userId coincide
+      allow create: if request.auth != null 
+        && request.resource.data.userId == request.auth.uid;
+      // Permitir actualizar solo el campo 'id' después de crear
+      // resource existe porque estamos actualizando un documento que ya fue creado
+      allow update: if request.auth != null 
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['id']);
+      // Permitir eliminar solo si el usuario es el dueño
+      allow delete: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // ETA Groups (agregados del panel de tiempos) - SOLO backend (Cloud Functions)
+    match /eta_groups/{groupId} {
+      allow read: if request.auth != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+
+      match /arrivals/{userId} {
+        allow read: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /presence/{userId} {
+        allow read: if request.auth != null;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+    
+    // Debug Logs collection (para logs de depuración en modo test)
+    match /debug_logs/{logId} {
+      allow read: if request.auth != null; // Solo usuarios autenticados
+      allow write: if request.auth != null;
+    }
   }
 }
-

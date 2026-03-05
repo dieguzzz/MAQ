@@ -18,7 +18,10 @@ class PointsRewardAnimation extends StatefulWidget {
     this.onComplete,
   });
 
-  /// Muestra una animación de puntos ganados de forma global
+  static OverlayEntry? _activeOverlay;
+
+  /// Muestra una animación de puntos ganados de forma global.
+  /// Si ya hay una activa, la reemplaza para evitar overlays apilados.
   static OverlayEntry? show(
     BuildContext context, {
     required int points,
@@ -27,6 +30,11 @@ class PointsRewardAnimation extends StatefulWidget {
     Color? color,
     Duration duration = const Duration(seconds: 3),
   }) {
+    // Remover overlay anterior si sigue activo
+    if (_activeOverlay != null && _activeOverlay!.mounted) {
+      _activeOverlay!.remove();
+    }
+
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
 
@@ -42,19 +50,21 @@ class PointsRewardAnimation extends StatefulWidget {
             icon: icon,
             color: color,
             onComplete: () {
-              overlayEntry.remove();
+              if (overlayEntry.mounted) overlayEntry.remove();
+              if (_activeOverlay == overlayEntry) _activeOverlay = null;
             },
           ),
         ),
       ),
     );
 
+    _activeOverlay = overlayEntry;
     overlay.insert(overlayEntry);
 
-    // Remover automáticamente después de la duración
     Future.delayed(duration, () {
       if (overlayEntry.mounted) {
         overlayEntry.remove();
+        if (_activeOverlay == overlayEntry) _activeOverlay = null;
       }
     });
 
@@ -76,7 +86,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
   @override
   void initState() {
     super.initState();
-    
+
     // Vibración sutil
     HapticFeedback.lightImpact();
 
@@ -174,7 +184,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
                       gradient: LinearGradient(
                         colors: [
                           color,
-                          color.withOpacity(0.8),
+                          color.withValues(alpha: 0.8),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -182,7 +192,7 @@ class _PointsRewardAnimationState extends State<PointsRewardAnimation>
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withValues(alpha: 0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                           spreadRadius: 2,
@@ -252,7 +262,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por reporte verificado
-  static void showVerifiedReportPoints(BuildContext context, {int points = 10}) {
+  static void showVerifiedReportPoints(BuildContext context,
+      {int points = 10}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -263,7 +274,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por reporte confirmado (autor)
-  static void showReportConfirmedPoints(BuildContext context, {int points = 5}) {
+  static void showReportConfirmedPoints(BuildContext context,
+      {int points = 5}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -285,7 +297,8 @@ class PointsRewardHelper {
   }
 
   /// Muestra puntos ganados por racha
-  static void showStreakPoints(BuildContext context, {int points = 2, int streak = 1}) {
+  static void showStreakPoints(BuildContext context,
+      {int points = 2, int streak = 1}) {
     PointsRewardAnimation.show(
       context,
       points: points,
@@ -323,4 +336,3 @@ class PointsRewardHelper {
     );
   }
 }
-

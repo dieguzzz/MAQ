@@ -1,1598 +1,1222 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MetroPTY - Dashboard de Administración</title>
+    <title>🚇 MetroPTY - Dashboard Admin</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .header h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-left: 4px solid #667eea;
-        }
-        
-        .stat-card h3 {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .stat-card .value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .stat-card .change {
-            font-size: 0.85rem;
-            color: #28a745;
-            margin-top: 0.5rem;
-        }
-        
-        .section {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .section h2 {
-            margin-bottom: 1rem;
-            color: #333;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 0.5rem;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #666;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-        
-        tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        .badge-high {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .badge-medium {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-low {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .badge-estimated {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
-        }
-        
-        .refresh-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            transition: background 0.3s;
-        }
-        
-        .refresh-btn:hover {
-            background: #5568d3;
-        }
-        
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid #eee;
-        }
-        
-        .tab {
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 1rem;
-            color: #666;
-            transition: all 0.3s;
-        }
-        
-        .tab.active {
-            color: #667eea;
-            border-bottom: 2px solid #667eea;
-            font-weight: 600;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        /* Filtros */
-        .filter-container {
-            margin-bottom: 1rem;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .filter-input {
-            flex: 1;
-            min-width: 200px;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-        
-        .filter-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .filter-count {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        /* Grupos expandibles */
-        .line-group {
-            margin-bottom: 0.5rem;
-        }
-        
-        .line-header {
-            background: #f8f9fa;
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-            border-left: 4px solid #667eea;
-        }
-        
-        .line-header:hover {
-            background: #e9ecef;
-        }
-        
-        .line-header.expanded {
-            background: #e7f3ff;
-            border-left-color: #2196F3;
-        }
-        
-        .line-title {
-            font-weight: 600;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .line-count {
-            background: #667eea;
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.85rem;
-        }
-        
-        .line-toggle {
-            font-size: 1.2rem;
-            transition: transform 0.2s;
-        }
-        
-        .line-header.expanded .line-toggle {
-            transform: rotate(90deg);
-        }
-        
-        .line-stations {
-            display: none;
-            margin-top: 0.5rem;
-            padding-left: 1rem;
-        }
-        
-        .line-group.expanded .line-stations {
-            display: block;
-        }
-        
-        .line-stations table {
-            margin: 0;
-        }
-        
-        .line-stations tbody tr {
-            background: white;
-        }
-        
-        .line-stations tbody tr:hover {
-            background: #f8f9fa;
-        }
-        
-        /* Botones de prueba */
-        .test-tools {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .test-tools h3 {
-            margin-bottom: 1rem;
-            color: #856404;
-            font-size: 1.1rem;
-        }
-        
-        .test-buttons {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-        
-        .test-btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        
-        .test-btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .test-btn-danger:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-        }
-        
-        .test-btn-primary {
-            background: #007bff;
-            color: white;
-        }
-        
-        .test-btn-primary:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
-        }
-        
-        .test-btn-success {
-            background: #28a745;
-            color: white;
-        }
-        
-        .test-btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
-        }
-        
-        .test-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-    </style>
+    <!-- Iconos modernos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <div class="header">
-        <h1>🚇 MetroPTY - Dashboard de Administración</h1>
-        <p>Monitoreo en tiempo real de la aplicación</p>
-        <div id="authInfo" style="margin-top: 10px; font-size: 14px;">
-            <span style="color: #ff9800;">Cargando...</span>
-        </div>
+    <!-- Banner de Testing -->
+    <div class="testing-banner">
+        <i class="fas fa-flask"></i>
+        MODO TESTING - Sin restricciones de autenticación
+        <button class="close-banner" onclick="this.parentElement.style.display='none'">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
-    
-    <div class="container">
-        <button class="refresh-btn" onclick="refreshAll()">🔄 Actualizar Datos</button>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Usuarios</h3>
-                <div class="value" id="totalUsers">-</div>
-                <div class="change" id="usersChange">Cargando...</div>
+
+    <!-- Sidebar Moderno -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-subway"></i>
+                <span>MetroPTY</span>
             </div>
-            <div class="stat-card">
-                <h3>Reportes Hoy</h3>
-                <div class="value" id="reportsToday">-</div>
-                <div class="change" id="reportsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Estaciones Activas</h3>
-                <div class="value" id="activeStations">-</div>
-                <div class="change" id="stationsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Trenes Virtuales</h3>
-                <div class="value" id="activeTrains">-</div>
-                <div class="change" id="trainsChange">Cargando...</div>
-            </div>
-            <div class="stat-card">
-                <h3>Confianza Promedio</h3>
-                <div class="value" id="avgConfidence">-</div>
-                <div class="change" id="confidenceChange">Cargando...</div>
-            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('stations')">Estaciones</button>
-            <button class="tab" onclick="showTab('trains')">Trenes</button>
-            <button class="tab" onclick="showTab('reports')">Reportes Recientes</button>
-            <button class="tab" onclick="showTab('users')">Usuarios Top</button>
-            <button class="tab" onclick="showTab('community')">Estadísticas Comunitarias</button>
-        </div>
-        
-        <div id="stations" class="tab-content active section">
-            <h2>📍 Estaciones</h2>
-            <div class="filter-container">
-                <input type="text" id="filterStations" class="filter-input" placeholder="🔍 Buscar por nombre, línea, estado..." onkeyup="filterTable('stations')">
-                <span class="filter-count" id="stationsCount">-</span>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item active" data-tab="overview">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Overview</span>
+            </li>
+            <li class="menu-item" data-tab="stations">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Estaciones</span>
+            </li>
+            <li class="menu-item" data-tab="trains">
+                <i class="fas fa-train"></i>
+                <span>Trenes</span>
+            </li>
+            <li class="menu-item" data-tab="reports">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Reportes</span>
+            </li>
+            <li class="menu-item" data-tab="users">
+                <i class="fas fa-users"></i>
+                <span>Usuarios</span>
+            </li>
+            <li class="menu-item" data-tab="analytics">
+                <i class="fas fa-chart-bar"></i>
+                <span>Análisis</span>
+            </li>
+            <li class="menu-item" data-tab="testing">
+                <i class="fas fa-flask"></i>
+                <span>Testing</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="theme-toggle">
+                <button id="themeToggle" class="theme-btn">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
-            <div class="loading">Cargando estaciones...</div>
-        </div>
-        
-        <div id="trains" class="tab-content section">
-            <h2>🚇 Trenes Virtuales</h2>
-            <div class="filter-container">
-                <input type="text" id="filterTrains" class="filter-input" placeholder="🔍 Buscar por ID, línea, dirección, estado..." onkeyup="filterTable('trains')">
-                <span class="filter-count" id="trainsCount">-</span>
-            </div>
-            <div class="loading">Cargando trenes...</div>
-        </div>
-        
-        <div id="reports" class="tab-content section">
-            <h2>📊 Reportes Recientes</h2>
-            
-            <!-- Herramientas de Prueba -->
-            <div class="test-tools">
-                <h3>🧪 Herramientas de Prueba</h3>
-                <div class="test-buttons">
-                    <button class="test-btn test-btn-danger" onclick="clearAllReports()" id="clearReportsBtn">
-                        🗑️ Limpiar Todos los Reportes
-                    </button>
-                    <button class="test-btn test-btn-primary" onclick="createTestStationReport()" id="createStationBtn">
-                        ➕ Crear Reporte de Estación (Prueba)
-                    </button>
-                    <button class="test-btn test-btn-primary" onclick="createTestTrainReport()" id="createTrainBtn">
-                        ➕ Crear Reporte de Tren (Prueba)
-                    </button>
-                    <button class="test-btn test-btn-success" onclick="showReportStats()" id="statsBtn">
-                        📈 Ver Estadísticas
-                    </button>
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
                 </div>
+                <div class="user-details">
+                    <span class="user-name" id="userName">Admin</span>
+                    <span class="user-role">Administrador</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <!-- Header Superior -->
+        <header class="top-header">
+            <div class="header-left">
+                <h1 id="pageTitle">Dashboard Overview</h1>
+                <p id="pageSubtitle">Monitoreo en tiempo real de MetroPTY</p>
+            </div>
+            <div class="header-right">
+                <div class="realtime-status">
+                    <div class="status-dot" id="realtimeDot"></div>
+                    <span>En vivo</span>
+                </div>
+                <button class="refresh-btn" onclick="refreshAll()">
+                    <i class="fas fa-sync-alt"></i>
+                    Actualizar
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenedor de Contenido -->
+        <div class="content-container">
+    
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <!-- KPIs Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card primary">
+                        <div class="kpi-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="totalUsers">-</h3>
+                            <p>Total Usuarios</p>
+                            <div class="kpi-change" id="usersChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card success">
+                        <div class="kpi-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="reportsToday">-</h3>
+                            <p>Reportes Hoy</p>
+                            <div class="kpi-change" id="reportsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card info">
+                        <div class="kpi-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="activeStations">-</h3>
+                            <p>Estaciones Activas</p>
+                            <div class="kpi-change" id="stationsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card warning">
+                        <div class="kpi-icon">
+                            <i class="fas fa-train"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="activeTrains">-</h3>
+                            <p>Trenes Virtuales</p>
+                            <div class="kpi-change" id="trainsChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card secondary">
+                        <div class="kpi-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="avgConfidence">-</h3>
+                            <p>Confianza Promedio</p>
+                            <div class="kpi-change" id="confidenceChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card danger">
+                        <div class="kpi-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="priorityReports">-</h3>
+                            <p>Reportes Prioritarios</p>
+                            <div class="kpi-change" id="priorityChange">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card info">
+                        <div class="kpi-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <h3 id="verificationRate">-</h3>
+                            <p>Tasa de Verificación</p>
+                            <div class="kpi-change" id="verificationChange">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-chart-line"></i> Actividad Reciente</h4>
+                            <select class="chart-period">
+                                <option value="24h">Últimas 24h</option>
+                                <option value="7d">Última semana</option>
+                                <option value="30d">Último mes</option>
+                            </select>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-area"></i>
+                            <p>Gráfico de actividad por hora</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-chart-pie"></i> Distribución de Estados</h4>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-pie"></i>
+                            <p>Estados de estaciones</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <h4><i class="fas fa-history"></i> Actividad Reciente</h4>
+                        <button class="view-all-btn">Ver todo</button>
+                    </div>
+                    <div class="activity-list" id="recentActivity">
+                        <div class="activity-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Cargando actividad...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Stations Tab -->
+            <div id="stations" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <h2>Estaciones <span id="stationsCount" class="count-badge">0</span></h2>
+                            <p>Monitoreo de estaciones del metro</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterStations" placeholder="Buscar estaciones...">
+                        </div>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">Todos los estados</option>
+                            <option value="normal">Normal</option>
+                            <option value="moderado">Moderado</option>
+                            <option value="lleno">Lleno</option>
+                            <option value="retraso">Retraso</option>
+                            <option value="cerrado">Cerrado</option>
+                        </select>
+                        <select id="confidenceFilter" class="filter-select">
+                            <option value="">Toda confianza</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Media</option>
+                            <option value="low">Baja</option>
+                            <option value="estimated">Estimada</option>
+                        </select>
+                    </div>
+
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="setStationsView('cards')">📋 Tarjetas</button>
+                        <button class="view-btn" onclick="setStationsView('lines')">📊 Por Líneas</button>
+                    </div>
+                </div>
+
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando estaciones...</p>
+                </div>
+            </div>
+
+            <!-- Trains Tab -->
+            <div id="trains" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-train"></i>
+                        <div>
+                            <h2>Trenes Virtuales</h2>
+                            <p>Estado de trenes en tiempo real</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterTrains" placeholder="Buscar trenes...">
+                        </div>
+                        <button class="filter-btn">
+                            <i class="fas fa-filter"></i>
+                            Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando trenes...</p>
+                </div>
+            </div>
+        
+            <!-- Reports Tab -->
+            <div id="reports" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        <div>
+                            <h2>Reportes</h2>
+                            <p>Gestión de reportes de usuarios</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterReportsList" placeholder="Buscar reportes...">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filterCategory" class="filter-select">
+                                <option value="">Todas las categorías</option>
+                                <option value="aglomeracion">Aglomeración</option>
+                                <option value="retraso">Retraso</option>
+                                <option value="servicio_normal">Servicio Normal</option>
+                                <option value="falla_tecnica">Falla Técnica</option>
+                            </select>
+                            <select id="filterEstadoPrincipal" class="filter-select">
+                                <option value="">Todos los estados</option>
+                                <option value="normal">Normal</option>
+                                <option value="moderado">Moderado</option>
+                                <option value="lleno">Lleno</option>
+                                <option value="retraso">Retraso</option>
+                                <option value="cerrado">Cerrado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testing Tools (Collapsed by default) -->
+                <details class="testing-tools">
+                    <summary>
+                        <i class="fas fa-flask"></i>
+                        Herramientas de Testing
+                    </summary>
+                    <div class="testing-content">
+                        <div class="test-buttons">
+                            <button class="test-btn test-btn-danger" onclick="clearAllReports()" id="clearReportsBtn">
+                                🗑️ Limpiar Todos los Reportes
+                            </button>
+                            <button class="test-btn test-btn-primary" onclick="createTestStationReport()" id="createStationBtn">
+                                ➕ Crear Reporte de Estación (Prueba)
+                            </button>
+                            <button class="test-btn test-btn-primary" onclick="createTestTrainReport()" id="createTrainBtn">
+                                ➕ Crear Reporte de Tren (Prueba)
+                            </button>
+                            <button class="test-btn test-btn-success" onclick="showReportStats()" id="statsBtn">
+                                📈 Ver Estadísticas
+                            </button>
+                        </div>
+                
+                <!-- Configuración de reporte de prueba -->
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; color: #856404;">
+                        ⚙️ Configurar parámetros del reporte de prueba
+                    </summary>
+                    <div style="margin-top: 1rem;">
+                        <div class="filter-container" style="margin-bottom: 0.75rem;">
+                            <select id="testReportTipo" class="filter-input" onchange="onTestReportTipoChanged()">
+                                <option value="estacion">🏢 Estación</option>
+                                <option value="tren">🚇 Tren</option>
+                            </select>
+                            <select id="testReportObjetivo" class="filter-input">
+                                <option value="">Cargando estaciones...</option>
+                            </select>
+                            <select id="testReportCategoria" class="filter-input">
+                                <option value="aglomeracion">Aglomeración</option>
+                                <option value="retraso">Retraso</option>
+                                <option value="servicio_normal">Servicio Normal</option>
+                                <option value="falla_tecnica">Falla Técnica</option>
+                            </select>
+                            <select id="testReportEstadoPrincipal" class="filter-input"></select>
+                        </div>
+
+                        <div class="filter-container" style="margin-bottom: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="testReportPrioridad">
+                                Prioridad
+                            </label>
+                            <select id="testReportVerificationStatus" class="filter-input">
+                                <option value="pending">⏳ Pendiente</option>
+                                <option value="verified">✓ Verificado</option>
+                                <option value="community_verified">✓ Verificado por Comunidad</option>
+                            </select>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                Confianza
+                                <input type="number" id="testReportConfidence" min="0" max="1" step="0.1" value="0.5" style="width: 90px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px;">
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                Confirmaciones
+                                <input type="number" id="testReportConfirmations" min="0" max="999" step="1" value="0" style="width: 90px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px;">
+                            </label>
+                        </div>
+
+                        <div class="filter-container" style="margin-bottom: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                Tiempo estimado (min)
+                                <input type="number" id="testReportTiempoEstimado" min="0" max="180" step="1" placeholder="Opcional" style="width: 140px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px;">
+                            </label>
+                            <select id="testReportTiempoValidado" class="filter-input">
+                                <option value="">Sin validar</option>
+                                <option value="true">✓ Válido</option>
+                                <option value="false">✗ Inválido</option>
+                            </select>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                Status (rules)
+                                <select id="testReportStatus" class="filter-input">
+                                    <option value="active">active</option>
+                                    <option value="resolved">resolved</option>
+                                    <option value="deleted">deleted</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <div style="margin-bottom: 0.75rem;">
+                            <div style="font-weight: 600; color: #856404; margin-bottom: 0.5rem;">Problemas específicos</div>
+                            <div id="testReportProblemas" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+                        </div>
+
+                        <div style="margin-bottom: 0.75rem;">
+                            <div style="font-weight: 600; color: #856404; margin-bottom: 0.5rem;">Descripción</div>
+                            <textarea id="testReportDescripcion" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; resize: vertical;" placeholder="Opcional"></textarea>
+                        </div>
+
+                        <div class="test-buttons">
+                            <button class="test-btn test-btn-success" onclick="createTestReportFromForm()" id="createCustomReportBtn">
+                                ✅ Crear Reporte Configurable
+                            </button>
+                        </div>
+                    </div>
+                </details>
+
                 <div id="testToolsStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
             </div>
             
             <div class="filter-container">
-                <input type="text" id="filterReports" class="filter-input" placeholder="🔍 Buscar por usuario, estación, tipo..." onkeyup="filterTable('reports')">
+                <input type="text" id="filterReportsSearch" class="filter-input" placeholder="🔍 Buscar por usuario, objetivo, tipo..." onkeyup="filterReportsAdvanced()">
+                <select id="filterCategory" class="filter-input" onchange="filterReportsAdvanced()">
+                    <option value="">Todas las categorías</option>
+                    <option value="aglomeracion">Aglomeración</option>
+                    <option value="retraso">Retraso</option>
+                    <option value="servicio_normal">Servicio Normal</option>
+                    <option value="falla_tecnica">Falla Técnica</option>
+                </select>
+                <select id="filterEstadoPrincipal" class="filter-input" onchange="filterReportsAdvanced()">
+                    <option value="">Todos los estados</option>
+                    <option value="normal">Normal</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="lleno">Lleno</option>
+                    <option value="retraso">Retraso</option>
+                    <option value="cerrado">Cerrado</option>
+                </select>
+                <select id="filterVerification" class="filter-input" onchange="filterReportsAdvanced()">
+                    <option value="">Todos los estados de verificación</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="verified">Verificado</option>
+                    <option value="community_verified">Verificado por Comunidad</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="filterPriority" onchange="filterReportsAdvanced()">
+                    Solo prioritarios
+                </label>
                 <span class="filter-count" id="reportsCount">-</span>
             </div>
             <div class="loading">Cargando reportes...</div>
         </div>
         
-        <div id="users" class="tab-content section">
-            <h2>👥 Usuarios Top</h2>
-            <div class="filter-container">
-                <input type="text" id="filterUsers" class="filter-input" placeholder="🔍 Buscar por nombre, email..." onkeyup="filterTable('users')">
-                <span class="filter-count" id="usersCount">-</span>
+            <!-- Users Tab -->
+            <div id="users" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <h2>Usuarios</h2>
+                            <p>Gestión de usuarios y rankings</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filterUsers" placeholder="Buscar usuarios...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando usuarios...</p>
+                </div>
             </div>
-            <div class="loading">Cargando usuarios...</div>
-        </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-chart-bar"></i>
+                        <div>
+                            <h2>Análisis</h2>
+                            <p>Estadísticas y métricas detalladas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando análisis...</p>
+                </div>
+
+                <!-- Contenedor donde se cargarán las estadísticas y gráficos -->
+                <div class="analytics-container" style="display: none;"></div>
+            </div>
+
+            <!-- Debug Logs Tab -->
+            <div id="debugLogs" class="tab-content testing-subtab" style="display: none;">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-bug"></i>
+                        <div>
+                            <h2>Debug Logs</h2>
+                            <p>Logs de depuración del sistema</p>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <select id="logCategoryFilter" class="filter-select" onchange="filterLogs()">
+                            <option value="">Todas las categorías</option>
+                            <option value="ReportsStream">ReportsStream</option>
+                            <option value="ConfirmReports">ConfirmReports</option>
+                        </select>
+                        <select id="logLevelFilter" class="filter-select" onchange="filterLogs()">
+                            <option value="">Todos los niveles</option>
+                            <option value="info">Info</option>
+                            <option value="success">Success</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                        </select>
+                        <button class="refresh-btn" onclick="clearLogsDisplay()">
+                            <i class="fas fa-trash"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="logsContainer" class="logs-container">
+                    <div class="loading" style="color: #d4d4d4;">Cargando logs...</div>
+                </div>
+            </div>
         
-        <div id="community" class="tab-content section">
-            <h2>🏗️ Estadísticas Comunitarias</h2>
-            <div class="loading">Cargando estadísticas...</div>
+            <!-- Testing Tab -->
+            <div id="testing" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-flask"></i>
+                        <div>
+                            <h2>Testing</h2>
+                            <p>Herramientas de desarrollo y testing</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testing-grid">
+                    <div class="testing-card" onclick="showTestingSubTab('trainTimeReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4>Testing Tiempos de Tren</h4>
+                        <p>Genera reportes de tiempos de llegada</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTestingSubTab('stationReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <h4>Testing Estaciones</h4>
+                        <p>Reportes de estado de estaciones</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTestingSubTab('multiReportsTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <h4>Múltiples Reportes</h4>
+                        <p>Generación masiva de datos</p>
+                    </div>
+
+                    <div class="testing-card" onclick="showTestingSubTab('debugLogs')">
+                        <div class="testing-icon">
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <h4>Debug Logs</h4>
+                        <p>Logs de depuración</p>
+                    </div>
+
+                    <div class="testing-card highlight" onclick="showTestingSubTab('loadTesting')">
+                        <div class="testing-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h4>Pruebas de Carga</h4>
+                        <p>Miles de reportes en paralelo</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Train Time Reports Testing Tab -->
+            <div id="trainTimeReportsTesting" class="tab-content testing-subtab" style="display: none;">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h2>Testing Tiempos de Tren</h2>
+                            <p>Genera reportes de tiempos de llegada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de reportes de tiempos -->
+                <div class="testing-content">
+                    <div class="config-section">
+                        <h4><i class="fas fa-map-marker-alt"></i> Estación y Dirección</h4>
+                    <div class="station-direction-selector">
+                        <label>
+                            Estación:
+                            <select id="trainTimeStationSelect" onchange="onTrainTimeStationChanged()">
+                                <option value="">Selecciona estación...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                        <label>
+                            Dirección:
+                            <select id="trainTimeDirectionSelect">
+                                <option value="">Selecciona dirección...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                    <div class="config-section">
+                        <h4><i class="fas fa-clock"></i> Tiempos de Llegada</h4>
+                    <div class="time-inputs">
+                        <label>
+                            Próximo tren:
+                            <select id="nextTrainTimeSelect">
+                                <option value="">No sé</option>
+                                <option value="1">1 minuto</option>
+                                <option value="2">2 minutos</option>
+                                <option value="3">3 minutos</option>
+                                <option value="4">4 minutos</option>
+                                <option value="5">5 minutos</option>
+                                <option value="6">6 minutos</option>
+                                <option value="7">7 minutos</option>
+                                <option value="8">8 minutos</option>
+                                <option value="9">9 minutos</option>
+                                <option value="10">10 minutos</option>
+                                <option value="11">11 minutos</option>
+                                <option value="12">12+ minutos</option>
+                            </select>
+                        </label>
+                        <label>
+                            Siguiente tren (opcional):
+                            <select id="followingTrainTimeSelect">
+                                <option value="">No reportar</option>
+                                <option value="1">1 min</option>
+                                <option value="2">2 min</option>
+                                <option value="3">3 min</option>
+                                <option value="4">4 min</option>
+                                <option value="5">5 min</option>
+                                <option value="6">6 min</option>
+                                <option value="7">7 min</option>
+                                <option value="8">8 min</option>
+                                <option value="9">9 min</option>
+                                <option value="10">10 min</option>
+                                <option value="11">11 min</option>
+                                <option value="12">12+ min</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                    <div class="config-section">
+                        <h4><i class="fas fa-layer-group"></i> Generación Múltiple (ETAs)</h4>
+                    <div class="multi-time-config">
+                        <label>
+                            Número de reportes:
+                            <input type="number" id="trainTimeReportCount" min="1" max="20" value="5">
+                        </label>
+                        <label>
+                            Intervalo entre reportes (seg):
+                            <input type="number" id="trainTimeInterval" min="1" max="300" value="30">
+                        </label>
+                        <div class="time-variation">
+                            <label><input type="checkbox" id="addTimeVariation" checked> Agregar variación (±2 min)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section" style="border-top: 2px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
+                    <h4>🚇 Reportes de "Llegó el Metro"</h4>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">
+                        Genera reportes de llegadas confirmadas para probar el panel de la app
+                    </p>
+                    <div class="multi-time-config">
+                        <label>
+                            Número de llegadas:
+                            <input type="number" id="arrivalReportCount" min="1" max="10" value="3">
+                        </label>
+                        <label>
+                            Intervalo entre llegadas (seg):
+                            <input type="number" id="arrivalInterval" min="10" max="300" value="60">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+                    <!-- Acciones -->
+                    <div class="train-time-actions">
+                        <button class="test-btn test-btn-primary" onclick="previewTrainTimeReports()" id="previewTrainTimeBtn">
+                            <i class="fas fa-eye"></i> Vista Previa ETAs
+                        </button>
+                        <button class="test-btn test-btn-success" onclick="generateTrainTimeReports()" id="generateTrainTimeBtn">
+                            <i class="fas fa-rocket"></i> Generar ETAs
+                        </button>
+                        <button class="test-btn test-btn-warning" onclick="clearTrainTimeReports()" id="clearTrainTimeBtn">
+                            <i class="fas fa-trash"></i> Limpiar Reportes
+                        </button>
+                    </div>
+
+            <!-- Vista previa -->
+            <div id="trainTimePreview" class="train-time-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes</h4>
+                <div id="trainTimePreviewContent"></div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="trainTimeResults" class="train-time-results" style="display: none;">
+                <h4>📊 Resultados de Generación</h4>
+                <div id="trainTimeResultsContent"></div>
+            </div>
+
+            <!-- Analytics -->
+            <div id="trainTimeAnalytics" class="train-time-analytics" style="display: none;">
+                <h4>📈 Analytics de Tiempos de Tren</h4>
+                <div id="trainTimeAnalyticsContent"></div>
+            </div>
+
+            <!-- Status -->
+            <div id="trainTimeStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
+
+        <div id="stationReportsTesting" class="tab-content testing-subtab section" style="display: none;">
+            <h2>🏢 Testing de Reportes de Estación</h2>
+            <p>Genera reportes de estado de estación para probar el sistema</p>
+
+            <!-- Configuración de reportes de estación -->
+            <div class="station-testing-config">
+                <div class="config-section">
+                    <h4>🎯 Estación</h4>
+                    <div class="station-selector">
+                        <label>
+                            Estación:
+                            <select id="stationTestingStationSelect">
+                                <option value="">Selecciona estación...</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>🚦 Estado Operacional</h4>
+                    <div class="operational-inputs">
+                        <label>
+                            Estado:
+                            <select id="stationOperationalSelect">
+                                <option value="">Selecciona...</option>
+                                <option value="yes">🟢 Operando Normal</option>
+                                <option value="partial">🟡 Parcialmente Operando</option>
+                                <option value="no">🔴 No Operando</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>👥 Nivel de Aglomeración</h4>
+                    <div class="crowd-inputs">
+                        <label>
+                            Aglomeración (1-5):
+                            <select id="stationCrowdSelect">
+                                <option value="">Selecciona...</option>
+                                <option value="1">⭐ 1 - Vacía</option>
+                                <option value="2">⭐⭐ 2 - Baja</option>
+                                <option value="3">⭐⭐⭐ 3 - Media</option>
+                                <option value="4">⭐⭐⭐⭐ 4 - Alta</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 - Muy Alta</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>⚠️ Problemas Específicos de Infraestructura</h4>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">
+                        Agrega problemas específicos con ubicación y estado. Cada problema suma +10 puntos.
+                    </p>
+                    
+                    <!-- Formulario para agregar problema -->
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: grid; gap: 0.5rem;">
+                            <label style="display: flex; flex-direction: column;">
+                                Tipo de Problema:
+                                <select id="issueTypeSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="">Selecciona...</option>
+                                    <option value="ac">❄️ Aire Acondicionado</option>
+                                    <option value="escalator">🎢 Escalera Eléctrica</option>
+                                    <option value="elevator">🛗 Elevador</option>
+                                    <option value="atm">🏧 Cajero/ATM</option>
+                                    <option value="recharge">💳 Máquina de Recarga</option>
+                                    <option value="bathroom">🚻 Baño</option>
+                                    <option value="lights">💡 Iluminación</option>
+                                </select>
+                            </label>
+                            
+                            <label style="display: flex; flex-direction: column;">
+                                Ubicación / Descripción:
+                                <input type="text" id="issueLocationInput" 
+                                       placeholder="Ej: Escalera principal entrada norte" 
+                                       style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;" 
+                                       maxlength="100">
+                            </label>
+                            
+                            <label style="display: flex; flex-direction: column;">
+                                Estado:
+                                <select id="issueStatusSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="">Selecciona...</option>
+                                    <option value="not_working">🔴 No Funciona</option>
+                                    <option value="working_poorly">🟡 Funciona Mal</option>
+                                    <option value="out_of_service">⚫ Fuera de Servicio</option>
+                                </select>
+                            </label>
+                            
+                            <button onclick="addSpecificIssue()" 
+                                    style="background: #007bff; color: white; padding: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                ➕ Agregar Problema
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de problemas agregados -->
+                    <div id="specificIssuesList" style="margin-top: 1rem;">
+                        <p style="color: #999;">No hay problemas específicos agregados</p>
+                    </div>
+                    
+                    <button onclick="clearSpecificIssues()" 
+                            style="background: #6c757d; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; margin-top: 0.5rem;">
+                        🗑️ Limpiar Todos
+                    </button>
+                </div>
+
+                <div class="config-section">
+                    <h4>📊 Generación Múltiple</h4>
+                    <div class="multi-config">
+                        <label>
+                            Número de reportes:
+                            <input type="number" id="stationReportCount" min="1" max="20" value="5">
+                        </label>
+                        <label>
+                            Intervalo entre reportes (seg):
+                            <input type="number" id="stationInterval" min="1" max="300" value="30">
+                        </label>
+                        <div class="variation-option">
+                            <label><input type="checkbox" id="addStationVariation" checked> Agregar variación de estado</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="station-testing-actions">
+                <button class="test-btn test-btn-primary" onclick="previewStationReports()" id="previewStationBtn">
+                    👁️ Vista Previa
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateStationReports()" id="generateStationBtn">
+                    🚀 Generar Reportes
+                </button>
+                <button class="test-btn test-btn-warning" onclick="clearStationReports()" id="clearStationBtn">
+                    🗑️ Limpiar Reportes
+                </button>
+            </div>
+
+            <!-- Vista previa -->
+            <div id="stationTestingPreview" class="station-testing-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes</h4>
+                <div id="stationTestingPreviewContent"></div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="stationTestingResults" class="station-testing-results" style="display: none;">
+                <h4>✅ Reportes Generados</h4>
+                <div id="stationTestingResultsContent"></div>
+            </div>
+
+            <div id="stationTestingStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
+
+        <div id="multiReportsTesting" class="tab-content testing-subtab section" style="display: none;">
+            <h2>📊 Testing Múltiples Reportes</h2>
+            <p>Genera varios reportes con diferentes tiempos para probar la lógica de agregación de estados</p>
+
+            <!-- Configuración general -->
+            <div class="multi-config">
+                <div class="config-section">
+                    <h4>🎯 Estaciones Objetivo</h4>
+                    <div class="station-selector">
+                        <label>
+                            <input type="checkbox" id="selectAllStations" onchange="toggleAllStations()">
+                            Seleccionar todas las estaciones
+                        </label>
+                        <div id="stationsMultiSelect" class="stations-grid">
+                            <!-- Las estaciones se cargarán aquí -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>⏰ Distribución de Tiempos</h4>
+                    <div class="time-distribution">
+                        <label>
+                            Número de reportes por estación:
+                            <input type="number" id="reportsPerStation" min="1" max="10" value="3" style="width: 80px;">
+                        </label>
+                        <label>
+                            Rango de tiempo (minutos):
+                            <input type="number" id="timeRange" min="1" max="60" value="15" style="width: 80px;">
+                        </label>
+                        <div style="margin-top: 0.5rem;">
+                            <label><input type="radio" name="timeDistribution" value="sequential" checked> Secuencial (1, 5, 10 min)</label>
+                            <label><input type="radio" name="timeDistribution" value="random"> Aleatorio</label>
+                            <label><input type="radio" name="timeDistribution" value="clustered"> Agrupado (varios cercanos)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>📋 Variedad de Estados</h4>
+                    <div class="state-variety">
+                        <label>
+                            <input type="checkbox" id="useVariedStates" checked onchange="toggleStateVariety()">
+                            Usar estados variados
+                        </label>
+                        <div id="stateOptions" class="state-options">
+                            <label><input type="checkbox" name="states" value="normal" checked> 🟢 Normal</label>
+                            <label><input type="checkbox" name="states" value="moderado"> 🟡 Moderado</label>
+                            <label><input type="checkbox" name="states" value="lleno"> 🔴 Lleno</label>
+                            <label><input type="checkbox" name="states" value="retraso"> ⚠️ Retraso</label>
+                            <label><input type="checkbox" name="states" value="cerrado"> 🚫 Cerrado</label>
+                        </div>
+                        <div id="fixedState" style="display: none;">
+                            <label>
+                                Estado fijo:
+                                <select id="fixedStateSelect">
+                                    <option value="normal">🟢 Normal</option>
+                                    <option value="moderado">🟡 Moderado</option>
+                                    <option value="lleno">🔴 Lleno</option>
+                                    <option value="retraso">⚠️ Retraso</option>
+                                    <option value="cerrado">🚫 Cerrado</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>👥 Sistema de Confirmaciones</h4>
+                    <div class="confirmation-system">
+                        <label>
+                            <input type="checkbox" id="simulateConfirmations" checked>
+                            Simular confirmaciones automáticas
+                        </label>
+                        <label style="margin-left: 1rem;">
+                            Máximo confirmaciones por reporte:
+                            <input type="number" id="maxConfirmations" min="0" max="5" value="2" style="width: 60px;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista previa y acciones -->
+            <div class="multi-actions">
+                <button class="test-btn test-btn-primary" onclick="previewMultiReports()" id="previewBtn">
+                    👁️ Vista Previa
+                </button>
+                <button class="test-btn test-btn-success" onclick="generateMultiReports()" id="generateBtn">
+                    🚀 Generar Reportes
+                </button>
+                <button class="test-btn test-btn-warning" onclick="clearMultiTestReports()" id="clearMultiBtn">
+                    🗑️ Limpiar Reportes de Prueba
+                </button>
+            </div>
+
+            <!-- Vista previa de reportes -->
+            <div id="multiPreview" class="multi-preview" style="display: none;">
+                <h4>📋 Vista Previa de Reportes a Generar</h4>
+                <div id="previewTable"></div>
+            </div>
+
+            <!-- Resultados después de generación -->
+            <div id="multiResults" class="multi-results" style="display: none;">
+                <h4>📊 Resultados de Generación</h4>
+                <div id="resultsSummary"></div>
+                <div id="resultsStations" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Status de acciones -->
+            <div id="multiStatus" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+        </div>
+
+        <!-- Load Testing Tab -->
+        <div id="loadTesting" class="tab-content testing-subtab section" style="display: none;">
+            <div class="page-header">
+                <div class="page-title">
+                    <i class="fas fa-bolt"></i>
+                    <div>
+                        <h2>Pruebas de Carga Masiva</h2>
+                        <p>Genera miles de reportes en paralelo para probar el rendimiento del sistema</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="load-test-content">
+                <!-- Presets rapidos -->
+                <div class="config-section">
+                    <h4><i class="fas fa-magic"></i> Presets Rapidos</h4>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" onclick="applyLoadTestPreset('small')">
+                            <span class="preset-name">Pequeno</span>
+                            <span class="preset-desc">100 reportes</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyLoadTestPreset('medium')">
+                            <span class="preset-name">Mediano</span>
+                            <span class="preset-desc">500 reportes</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyLoadTestPreset('large')">
+                            <span class="preset-name">Grande</span>
+                            <span class="preset-desc">2,000 reportes</span>
+                        </button>
+                        <button class="preset-btn stress" onclick="applyLoadTestPreset('stress')">
+                            <span class="preset-name">Stress Test</span>
+                            <span class="preset-desc">5,000 reportes</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Configuracion personalizada -->
+                <div class="config-section">
+                    <h4><i class="fas fa-sliders-h"></i> Configuracion Personalizada</h4>
+                    <div class="load-test-config-grid">
+                        <label>
+                            <span>Total de Reportes:</span>
+                            <input type="number" id="loadTestTotal" min="10" max="50000" value="100" step="10">
+                        </label>
+                        <label>
+                            <span>Tamano de Batch:</span>
+                            <input type="number" id="loadTestBatchSize" min="10" max="500" value="400" step="10">
+                            <small>Max 500 (limite Firestore)</small>
+                        </label>
+                        <label>
+                            <span>Batches en Paralelo:</span>
+                            <input type="number" id="loadTestParallel" min="1" max="10" value="3">
+                            <small>Mas = mas rapido, mas carga</small>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tipos de reportes -->
+                <div class="config-section">
+                    <h4><i class="fas fa-list-alt"></i> Tipos de Reportes</h4>
+                    <div class="report-types-config">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="loadTestIncludeStation" checked>
+                            <span>Reportes de Estacion</span>
+                            <small>(estado operacional, aglomeracion)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="loadTestIncludeTrain" checked>
+                            <span>Reportes de Tiempo de Tren</span>
+                            <small>(ETAs, tiempos de llegada)</small>
+                        </label>
+                    </div>
+                    <p id="loadTestStationCount" class="station-count">Cargando estaciones...</p>
+                </div>
+
+                <!-- Barra de progreso -->
+                <div class="config-section">
+                    <h4><i class="fas fa-tasks"></i> Progreso</h4>
+                    <div class="progress-container">
+                        <div class="progress-bar-wrapper">
+                            <div id="loadTestProgress" class="progress-bar" role="progressbar"
+                                 style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <div id="loadTestProgressText" class="progress-text">0 / 0 reportes</div>
+                    </div>
+                    <div id="loadTestMetrics" class="metrics-display"></div>
+                </div>
+
+                <!-- Botones de accion -->
+                <div class="load-test-actions">
+                    <button class="test-btn test-btn-success" onclick="startLoadTest()" id="loadTestStartBtn">
+                        <i class="fas fa-rocket"></i> Iniciar Prueba
+                    </button>
+                    <button class="test-btn test-btn-warning" onclick="togglePauseLoadTest()" id="loadTestPauseBtn" disabled>
+                        <i class="fas fa-pause"></i> Pausar
+                    </button>
+                    <button class="test-btn test-btn-danger" onclick="stopLoadTest()" id="loadTestStopBtn" disabled>
+                        <i class="fas fa-stop"></i> Detener
+                    </button>
+                </div>
+
+                <!-- Resultados -->
+                <div id="loadTestResults" class="load-test-results" style="display: none;"></div>
+
+                <!-- Limpieza -->
+                <div class="config-section cleanup-section">
+                    <h4><i class="fas fa-broom"></i> Limpieza de Datos</h4>
+                    <p class="cleanup-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Los reportes de prueba se marcan con <code>testBatch: true</code> para facilitar su limpieza
+                    </p>
+                    <div class="cleanup-actions">
+                        <button class="test-btn test-btn-secondary" onclick="clearAllTestReports()">
+                            <i class="fas fa-database"></i> Limpiar TODOS los Reportes de Prueba
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div id="loadTestStatus" class="load-test-status"></div>
+            </div>
         </div>
     </div>
+
+    <!-- Modal de Detalles de Reporte -->
+    <div id="reportModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-clipboard-list"></i> Detalles del Reporte</h3>
+                <button class="modal-close" onclick="closeReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="reportModalBody" class="modal-body">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Cargando detalles...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
     
-    <script>
-        // Configuración de Firebase (REEMPLAZAR CON TUS CREDENCIALES)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBKqEztWsaiwmRE-GqhmPit0CJOjzDwpPk",
-            authDomain: "Metropty.firebaseapp.com",
-            projectId: "metropty-aa303",
-            storageBucket: "gs://metropty-aa303.firebasestorage.app",
-            messagingSenderId: "443011769374",
-            appId: "1:443011769374:android:fdd1f064d5429d4c93ba0f"
-        };
-        
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        
-        // Autenticación para el dashboard
-        let isAuthenticated = false;
-        let currentUser = null;
-        
-        // Función de login con Email/Password
-        async function loginDashboard() {
-            const email = prompt('Email de administrador:');
-            if (!email) return false;
-            
-            const password = prompt('Contraseña:');
-            if (!password) return false;
-            
-            try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                currentUser = userCredential.user;
-                isAuthenticated = true;
-                console.log('Login exitoso:', email);
-                
-                // Actualizar UI
-                updateAuthUI();
-                
-                // Cargar datos
-                refreshAll();
-                
-                return true;
-            } catch (error) {
-                let errorMessage = 'Error de autenticación: ';
-                
-                // Mensajes de error más claros
-                if (error.code === 'auth/invalid-login-credentials') {
-                    errorMessage += 'Email o contraseña incorrectos.\n\n';
-                    errorMessage += 'Verifica que:\n';
-                    errorMessage += '1. El usuario existe en Firebase Authentication\n';
-                    errorMessage += '2. Email/Password esté habilitado en Firebase Console\n';
-                    errorMessage += '3. La contraseña sea correcta';
-                } else if (error.code === 'auth/user-not-found') {
-                    errorMessage += 'Usuario no encontrado. Crea el usuario en Firebase Console → Authentication';
-                } else if (error.code === 'auth/wrong-password') {
-                    errorMessage += 'Contraseña incorrecta';
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMessage += 'Email inválido';
-                } else if (error.code === 'auth/operation-not-allowed') {
-                    errorMessage += 'Email/Password no está habilitado. Habilítalo en Firebase Console → Authentication';
-                } else {
-                    errorMessage += error.message;
-                }
-                
-                alert(errorMessage);
-                console.error('Error de login:', error.code, error.message);
-                return false;
-            }
-        }
-        
-        // Función para logout
-        async function logoutDashboard() {
-            try {
-                await auth.signOut();
-                currentUser = null;
-                isAuthenticated = false;
-                updateAuthUI();
-                console.log('Logout exitoso');
-                
-                // Intentar autenticación anónima de nuevo
-                authenticateDashboard();
-            } catch (error) {
-                console.error('Error de logout:', error);
-            }
-        }
-        
-        // Actualizar UI de autenticación
-        function updateAuthUI() {
-            const authInfo = document.getElementById('authInfo');
-            if (authInfo) {
-                if (currentUser && currentUser.email) {
-                    authInfo.innerHTML = `
-                        <span style="color: #4caf50;">✓ Autenticado como: ${currentUser.email}</span>
-                        <button onclick="logoutDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Salir</button>
-                    `;
-                } else if (isAuthenticated) {
-                    authInfo.innerHTML = `
-                        <span style="color: #4caf50;">✓ Autenticado (anónimo)</span>
-                        <button onclick="loginDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Login Admin</button>
-                    `;
-                } else {
-                    authInfo.innerHTML = `
-                        <span style="color: #ff9800;">⚠ No autenticado</span>
-                        <button onclick="loginDashboard()" style="margin-left: 10px; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Login</button>
-                    `;
-                }
-            }
-        }
-        
-        // Autenticación anónima para el dashboard
-        async function authenticateDashboard() {
-            try {
-                // Verificar si ya hay un usuario autenticado
-                const existingUser = auth.currentUser;
-                if (existingUser) {
-                    console.log('Ya hay un usuario autenticado:', existingUser.uid);
-                    isAuthenticated = true;
-                    currentUser = existingUser;
-                    updateAuthUI();
-                    return true;
-                }
-                
-                // Intentar autenticación anónima
-                console.log('Iniciando autenticación anónima...');
-                const userCredential = await auth.signInAnonymously();
-                isAuthenticated = true;
-                currentUser = userCredential.user;
-                console.log('Dashboard autenticado correctamente (anónimo)', userCredential.user.uid);
-                updateAuthUI();
-                return true;
-            } catch (error) {
-                console.error('Error de autenticación anónima:', error.code, error.message);
-                isAuthenticated = false;
-                currentUser = null;
-                updateAuthUI();
-                
-                // Mensaje más específico según el error
-                let errorMessage = '⚠️ Error de autenticación anónima. ';
-                if (error.code === 'auth/operation-not-allowed') {
-                    errorMessage += 'Anonymous no está habilitado. ';
-                    errorMessage += 'Habilítalo en Firebase Console → Authentication → Sign-in method → Anonymous';
-                } else {
-                    errorMessage += 'Algunas funciones pueden no estar disponibles. ';
-                }
-                errorMessage += ' Haz clic en "Login" para autenticarte con email/password.';
-                
-                document.body.insertAdjacentHTML('afterbegin', 
-                    '<div style="background: #ffc107; padding: 1rem; text-align: center; color: #856404; margin-bottom: 1rem;">' +
-                    errorMessage +
-                    '</div>'
-                );
-                return false;
-            }
-        }
-        
-        // NO autenticar automáticamente al cargar - esperar a onAuthStateChanged
-        // authenticateDashboard();
-        
-        let statsCache = {
-            users: 0,
-            reports: 0,
-            stations: 0,
-            trains: 0
-        };
-        
-        // Función para mostrar tab
-        function showTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-        }
-        
-        // Función para refrescar todo
-        function refreshAll() {
-            loadStats();
-            loadStations();
-            loadTrains();
-            loadRecentReports();
-            loadTopUsers();
-            loadCommunityStats();
-        }
-        
-        // Cargar estadísticas generales
-        async function loadStats() {
-            try {
-                // Usuarios
-                const usersSnapshot = await db.collection('users').get();
-                const totalUsers = usersSnapshot.size;
-                document.getElementById('totalUsers').textContent = totalUsers;
-                document.getElementById('usersChange').textContent = 
-                    `Anterior: ${statsCache.users} | Cambio: ${totalUsers - statsCache.users >= 0 ? '+' : ''}${totalUsers - statsCache.users}`;
-                statsCache.users = totalUsers;
-                
-                // Reportes de hoy (usando modelo simplificado, excluyendo eliminados)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                // Cargar todos los reportes de hoy y filtrar eliminados en memoria (no se pueden usar dos filtros de desigualdad)
-                const reportsTodaySnapshot = await db.collection('reports')
-                    .where('createdAt', '>=', firebase.firestore.Timestamp.fromDate(today))
-                    .get();
-                
-                // Filtrar eliminados en memoria
-                const activeReportsToday = reportsTodaySnapshot.docs.filter(doc => {
-                    const data = doc.data();
-                    return data.status !== 'deleted';
-                });
-                const reportsToday = activeReportsToday.length;
-                document.getElementById('reportsToday').textContent = reportsToday;
-                document.getElementById('reportsChange').textContent = 
-                    `Anterior: ${statsCache.reports} | Cambio: ${reportsToday - statsCache.reports >= 0 ? '+' : ''}${reportsToday - statsCache.reports}`;
-                statsCache.reports = reportsToday;
-                
-                // Estaciones activas (con al menos 1 reporte hoy)
-                const activeStationsSet = new Set();
-                activeReportsToday.forEach(doc => {
-                    const data = doc.data();
-                    if (data.scope === 'station' && data.stationId) {
-                        activeStationsSet.add(data.stationId);
-                    }
-                });
-                const activeStations = activeStationsSet.size;
-                document.getElementById('activeStations').textContent = activeStations;
-                document.getElementById('stationsChange').textContent = 
-                    `Anterior: ${statsCache.stations} | Cambio: ${activeStations - statsCache.stations >= 0 ? '+' : ''}${activeStations - statsCache.stations}`;
-                statsCache.stations = activeStations;
-                
-                // Trenes
-                const trainsSnapshot = await db.collection('trains').get();
-                const activeTrains = trainsSnapshot.size;
-                document.getElementById('activeTrains').textContent = activeTrains;
-                document.getElementById('trainsChange').textContent = 
-                    `Anterior: ${statsCache.trains} | Cambio: ${activeTrains - statsCache.trains >= 0 ? '+' : ''}${activeTrains - statsCache.trains}`;
-                statsCache.trains = activeTrains;
-                
-                // Confianza promedio
-                const stationsSnapshot = await db.collection('stations').get();
-                let totalConfidence = 0;
-                let stationsWithConfidence = 0;
-                stationsSnapshot.docs.forEach(doc => {
-                    const confidence = doc.data().confidence;
-                    if (confidence) {
-                        stationsWithConfidence++;
-                        if (confidence === 'high') totalConfidence += 3;
-                        else if (confidence === 'medium') totalConfidence += 2;
-                        else totalConfidence += 1;
-                    }
-                });
-                const avgConfidence = stationsWithConfidence > 0 
-                    ? (totalConfidence / stationsWithConfidence).toFixed(1) 
-                    : '0';
-                document.getElementById('avgConfidence').textContent = avgConfidence;
-                document.getElementById('confidenceChange').textContent = 
-                    `${stationsWithConfidence} estaciones con datos`;
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-        
-        // Cargar estaciones agrupadas por línea
-        async function loadStations() {
-            try {
-                const snapshot = await db.collection('stations')
-                    .orderBy('nombre')
-                    .get();
-                
-                // Agrupar por línea
-                const stationsByLine = {};
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-                    const linea = data.linea || 'L1'; // Default a L1 si no tiene línea
-                    if (!stationsByLine[linea]) {
-                        stationsByLine[linea] = [];
-                    }
-                    stationsByLine[linea].push({ id: doc.id, data });
-                });
-                
-                // Generar HTML con grupos expandibles
-                const groupsHtml = Object.keys(stationsByLine).sort().map(linea => {
-                    const stations = stationsByLine[linea];
-                    const stationsHtml = stations.map(({ id, data }) => {
-                        const confidence = data.confidence || 'low';
-                        const isEstimated = data.is_estimated || false;
-                        return `
-                            <tr data-station-name="${(data.nombre || id).toLowerCase()}" 
-                                data-station-line="${linea.toLowerCase()}" 
-                                data-station-state="${(data.estado_actual || 'normal').toLowerCase()}">
-                                <td><strong>${data.nombre || id}</strong></td>
-                                <td>${linea}</td>
-                                <td>${data.estado_actual || 'normal'}</td>
-                                <td>${data.aglomeracion || 1}/5</td>
-                                <td>
-                                    <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
-                                        ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
-                                    </span>
-                                </td>
-                                <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
-                            </tr>
-                        `;
-                    }).join('');
-                    
-                    return `
-                        <div class="line-group" data-line="${linea.toLowerCase()}">
-                            <div class="line-header" onclick="toggleLine('${linea}')">
-                                <div class="line-title">
-                                    <span class="line-toggle">▶</span>
-                                    <span>Línea ${linea}</span>
-                                    <span class="line-count">${stations.length}</span>
-                                </div>
-                            </div>
-                            <div class="line-stations">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>Línea</th>
-                                            <th>Estado</th>
-                                            <th>Aglomeración</th>
-                                            <th>Confianza</th>
-                                            <th>Última Actualización</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${stationsHtml}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                const html = `<div id="stationsContainer">${groupsHtml}</div>`;
-                
-                const loadingElement = document.querySelector('#stations .loading');
-                if (loadingElement) {
-                    loadingElement.outerHTML = html;
-                } else {
-                    const section = document.getElementById('stations');
-                    if (section) {
-                        const existingContainer = section.querySelector('#stationsContainer');
-                        if (existingContainer) {
-                            existingContainer.outerHTML = html;
-                        } else {
-                            section.insertAdjacentHTML('beforeend', html);
-                        }
-                    }
-                }
-                
-                // Actualizar contador
-                document.getElementById('stationsCount').textContent = `${snapshot.size} estaciones`;
-            } catch (error) {
-                console.error('Error loading stations:', error);
-                const loadingElement = document.querySelector('#stations .loading');
-                const errorMsg = error.message.includes('permissions') 
-                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore o autenticación.'
-                    : 'Error al cargar estaciones: ' + error.message;
-                if (loadingElement) {
-                    loadingElement.textContent = errorMsg;
-                } else {
-                    const section = document.getElementById('stations');
-                    if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
-                    }
-                }
-            }
-        }
-        
-        // Toggle expandir/colapsar línea
-        function toggleLine(linea) {
-            const group = document.querySelector(`.line-group[data-line="${linea.toLowerCase()}"]`);
-            if (group) {
-                const header = group.querySelector('.line-header');
-                group.classList.toggle('expanded');
-                header.classList.toggle('expanded');
-            }
-        }
-        
-        // Función de filtrado para todas las tablas
-        function filterTable(tableType) {
-            const filterInput = document.getElementById(`filter${tableType.charAt(0).toUpperCase() + tableType.slice(1)}`);
-            const filterValue = filterInput.value.toLowerCase();
-            let visibleCount = 0;
-            let totalCount = 0;
-            
-            if (tableType === 'stations') {
-                // Filtrar estaciones (dentro de grupos)
-                const allRows = document.querySelectorAll('#stationsContainer tr[data-station-name]');
-                totalCount = allRows.length;
-                
-                allRows.forEach(row => {
-                    const name = row.getAttribute('data-station-name') || '';
-                    const line = row.getAttribute('data-station-line') || '';
-                    const state = row.getAttribute('data-station-state') || '';
-                    const text = row.textContent.toLowerCase();
-                    
-                    const matches = name.includes(filterValue) || 
-                                   line.includes(filterValue) || 
-                                   state.includes(filterValue) ||
-                                   text.includes(filterValue);
-                    
-                    row.style.display = matches ? '' : 'none';
-                    if (matches) visibleCount++;
-                });
-                
-                // Mostrar/ocultar grupos según si tienen filas visibles
-                document.querySelectorAll('.line-group').forEach(group => {
-                    const visibleRows = group.querySelectorAll('tr[data-station-name]:not([style*="display: none"])');
-                    const header = group.querySelector('.line-header');
-                    if (visibleRows.length === 0 && filterValue) {
-                        group.style.display = 'none';
-                    } else {
-                        group.style.display = '';
-                        // Actualizar contador del grupo
-                        const countBadge = header.querySelector('.line-count');
-                        if (countBadge) {
-                            const totalInGroup = group.querySelectorAll('tr[data-station-name]').length;
-                            countBadge.textContent = filterValue ? `${visibleRows.length}/${totalInGroup}` : totalInGroup;
-                        }
-                    }
-                });
-                
-                document.getElementById('stationsCount').textContent = filterValue 
-                    ? `${visibleCount} de ${totalCount} estaciones` 
-                    : `${totalCount} estaciones`;
-                    
-            } else {
-                // Filtrar otras tablas (trenes, reportes, usuarios)
-                const table = document.querySelector(`#${tableType} table tbody`);
-                if (!table) return;
-                
-                const rows = table.querySelectorAll('tr');
-                totalCount = rows.length;
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    const matches = text.includes(filterValue);
-                    row.style.display = matches ? '' : 'none';
-                    if (matches) visibleCount++;
-                });
-                
-                const countElement = document.getElementById(`${tableType}Count`);
-                if (countElement) {
-                    countElement.textContent = filterValue 
-                        ? `${visibleCount} de ${totalCount}` 
-                        : `${totalCount}`;
-                }
-            }
-        }
-        
-        // Cargar trenes
-        async function loadTrains() {
-            try {
-                const snapshot = await db.collection('trains').get();
-                
-                const table = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Línea</th>
-                                <th>Dirección</th>
-                                <th>Velocidad</th>
-                                <th>Estado</th>
-                                <th>Confianza</th>
-                                <th>Última Actualización</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${snapshot.docs.map(doc => {
-                                const data = doc.data();
-                                const confidence = data.confidence || 'low';
-                                const isEstimated = data.is_estimated || false;
-                                const trainId = doc.id.toLowerCase();
-                                const linea = (data.linea || 'N/A').toLowerCase();
-                                const direccion = (data.direccion || 'N/A').toLowerCase();
-                                const estado = (data.estado || 'normal').toLowerCase();
-                                return `
-                                    <tr data-train-id="${trainId}" 
-                                        data-train-line="${linea}" 
-                                        data-train-direction="${direccion}" 
-                                        data-train-state="${estado}">
-                                        <td><strong>${doc.id}</strong></td>
-                                        <td>${data.linea || 'N/A'}</td>
-                                        <td>${data.direccion || 'N/A'}</td>
-                                        <td>${data.velocidad || 0} km/h</td>
-                                        <td>${data.estado || 'normal'}</td>
-                                        <td>
-                                            <span class="badge ${confidence === 'high' ? 'badge-high' : confidence === 'medium' ? 'badge-medium' : isEstimated ? 'badge-estimated' : 'badge-low'}">
-                                                ${isEstimated ? '📊 Estimado' : confidence === 'high' ? '🟢 Alta' : confidence === 'medium' ? '🟡 Media' : '🔴 Baja'}
-                                            </span>
-                                        </td>
-                                        <td>${data.ultima_actualizacion ? new Date(data.ultima_actualizacion.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                const loadingElement = document.querySelector('#trains .loading');
-                if (loadingElement) {
-                    loadingElement.outerHTML = table;
-                } else {
-                    // Si no existe .loading, insertar la tabla
-                    const section = document.getElementById('trains');
-                    if (section) {
-                        const existingTable = section.querySelector('table');
-                        if (existingTable) {
-                            existingTable.outerHTML = table;
-                        } else {
-                            section.insertAdjacentHTML('beforeend', table);
-                        }
-                    }
-                }
-                
-                // Actualizar contador
-                document.getElementById('trainsCount').textContent = `${snapshot.size} trenes`;
-            } catch (error) {
-                console.error('Error loading trains:', error);
-                const loadingElement = document.querySelector('#trains .loading');
-                const errorMsg = error.message.includes('permissions') 
-                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore o autenticación.'
-                    : 'Error al cargar trenes: ' + error.message;
-                if (loadingElement) {
-                    loadingElement.textContent = errorMsg;
-                } else {
-                    const section = document.getElementById('trains');
-                    if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
-                    }
-                }
-            }
-        }
-        
-        // Cargar reportes recientes (usando modelo simplificado)
-        async function loadRecentReports() {
-            try {
-                // Cargar reportes recientes (filtrar eliminados en memoria para evitar problemas de índice)
-                const allSnapshot = await db.collection('reports')
-                    .orderBy('createdAt', 'desc')
-                    .limit(100)
-                    .get();
-                
-                // Filtrar reportes eliminados en memoria
-                const filteredDocs = allSnapshot.docs.filter(doc => {
-                    const data = doc.data();
-                    return data.status !== 'deleted';
-                });
-                
-                // Crear un snapshot simulado con los docs filtrados (máximo 50)
-                const finalSnapshot = {
-                    docs: filteredDocs.slice(0, 50),
-                    empty: filteredDocs.length === 0,
-                    size: filteredDocs.length
-                };
-                
-                const table = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Tipo</th>
-                                <th>Estación</th>
-                                <th>Usuario</th>
-                                <th>Estado</th>
-                                <th>Confirmaciones</th>
-                                <th>Puntos</th>
-                                <th>Confianza</th>
-                                <th>Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${finalSnapshot.docs.map(doc => {
-                                const data = doc.data();
-                                const confidence = typeof data.confidence === 'number' ? data.confidence : (data.confidence === 'high' ? 0.9 : data.confidence === 'medium' ? 0.6 : 0.3);
-                                const scope = (data.scope || 'station').toLowerCase();
-                                const stationId = (data.stationId || 'N/A').toLowerCase();
-                                const userId = (data.userId || 'N/A').substring(0, 8);
-                                const status = (data.status || 'active').toLowerCase();
-                                return `
-                                    <tr data-report-scope="${scope}" 
-                                        data-report-station="${stationId}" 
-                                        data-report-status="${status}">
-                                        <td>${doc.id.substring(0, 8)}...</td>
-                                        <td>${scope === 'station' ? '🏢 Estación' : '🚇 Tren'}</td>
-                                        <td>${data.stationId || 'N/A'}</td>
-                                        <td>${userId}...</td>
-                                        <td>${status}</td>
-                                        <td>${data.confirmations || 0}</td>
-                                        <td>${data.totalPoints || 0}</td>
-                                        <td>
-                                            <span class="badge ${confidence >= 0.8 ? 'badge-high' : confidence >= 0.5 ? 'badge-medium' : 'badge-low'}">
-                                                ${typeof confidence === 'number' ? (confidence * 100).toFixed(0) + '%' : confidence}
-                                            </span>
-                                        </td>
-                                        <td>${data.createdAt ? new Date(data.createdAt.toMillis()).toLocaleString('es-PA') : 'N/A'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                const loadingElement = document.querySelector('#reports .loading');
-                if (loadingElement) {
-                    loadingElement.outerHTML = table;
-                } else {
-                    const section = document.getElementById('reports');
-                    if (section) {
-                        const existingTable = section.querySelector('table');
-                        if (existingTable) {
-                            existingTable.outerHTML = table;
-                        } else {
-                            section.insertAdjacentHTML('beforeend', table);
-                        }
-                    }
-                }
-                
-                // Actualizar contador
-                document.getElementById('reportsCount').textContent = `${finalSnapshot.size} reportes`;
-            } catch (error) {
-                console.error('Error loading reports:', error);
-                const loadingElement = document.querySelector('#reports .loading');
-                const errorMsg = error.message.includes('permissions') 
-                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore. Los reportes requieren autenticación.'
-                    : 'Error al cargar reportes: ' + error.message;
-                if (loadingElement) {
-                    loadingElement.textContent = errorMsg;
-                } else {
-                    const section = document.getElementById('reports');
-                    if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
-                    }
-                }
-            }
-        }
-        
-        // Limpiar todos los reportes (marcar como eliminados - soft delete)
-        async function clearAllReports() {
-            if (!confirm('⚠️ ¿Estás seguro de que quieres MARCAR TODOS los reportes como eliminados?\n\nLos reportes se marcarán como "deleted" pero no se eliminarán físicamente.')) {
-                return;
-            }
-            
-            const statusDiv = document.getElementById('testToolsStatus');
-            const btn = document.getElementById('clearReportsBtn');
-            
-            try {
-                btn.disabled = true;
-                statusDiv.textContent = '🗑️ Marcando reportes como eliminados...';
-                
-                const snapshot = await db.collection('reports')
-                    .where('status', '!=', 'deleted')
-                    .get();
-                
-                if (snapshot.empty) {
-                    statusDiv.innerHTML = `ℹ️ No hay reportes activos para marcar como eliminados`;
-                    statusDiv.style.color = '#666';
-                    btn.disabled = false;
-                    return;
-                }
-                
-                // Procesar en lotes de 500 (límite de Firestore)
-                const batchSize = 500;
-                let totalProcessed = 0;
-                
-                for (let i = 0; i < snapshot.docs.length; i += batchSize) {
-                    const batch = db.batch();
-                    const batchDocs = snapshot.docs.slice(i, i + batchSize);
-                    
-                    batchDocs.forEach(doc => {
-                        // Solo actualizar status (campo permitido en las reglas)
-                        // No agregar deletedAt para evitar problemas de permisos
-                        batch.update(doc.ref, {
-                            status: 'deleted'
-                        });
-                    });
-                    
-                    await batch.commit();
-                    totalProcessed += batchDocs.length;
-                    statusDiv.textContent = `🗑️ Procesando... ${totalProcessed}/${snapshot.size}`;
-                }
-                
-                statusDiv.innerHTML = `✅ <strong>${totalProcessed} reportes marcados como eliminados</strong>`;
-                statusDiv.style.color = '#28a745';
-                
-                // Recargar reportes
-                setTimeout(() => {
-                    loadRecentReports();
-                    loadStats();
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error clearing reports:', error);
-                statusDiv.innerHTML = `❌ Error: ${error.message}`;
-                statusDiv.style.color = '#dc3545';
-            } finally {
-                btn.disabled = false;
-            }
-        }
-        
-        // Crear reporte de prueba de estación
-        async function createTestStationReport() {
-            const statusDiv = document.getElementById('testToolsStatus');
-            const btn = document.getElementById('createStationBtn');
-            
-            try {
-                btn.disabled = true;
-                statusDiv.textContent = '➕ Creando reporte de prueba...';
-                
-                // Obtener primera estación disponible
-                const stationsSnapshot = await db.collection('stations').limit(1).get();
-                if (stationsSnapshot.empty) {
-                    throw new Error('No hay estaciones disponibles');
-                }
-                
-                const station = stationsSnapshot.docs[0];
-                const currentUser = auth.currentUser;
-                
-                if (!currentUser) {
-                    throw new Error('Debes estar autenticado para crear reportes');
-                }
-                
-                const testReport = {
-                    scope: 'station',
-                    stationId: station.id,
-                    userId: currentUser.uid,
-                    stationOperational: 'yes',
-                    stationCrowd: 2,
-                    stationIssues: [],
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'active',
-                    confirmations: 0,
-                    confidence: 'medium',
-                    basePoints: 15,
-                    bonusPoints: 0,
-                    totalPoints: 15
-                };
-                
-                await db.collection('reports').add(testReport);
-                
-                statusDiv.innerHTML = `✅ <strong>Reporte de estación creado</strong> (${station.id})`;
-                statusDiv.style.color = '#28a745';
-                
-                // Recargar reportes
-                setTimeout(() => {
-                    loadRecentReports();
-                    loadStats();
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error creating test report:', error);
-                statusDiv.innerHTML = `❌ Error: ${error.message}`;
-                statusDiv.style.color = '#dc3545';
-            } finally {
-                btn.disabled = false;
-            }
-        }
-        
-        // Crear reporte de prueba de tren
-        async function createTestTrainReport() {
-            const statusDiv = document.getElementById('testToolsStatus');
-            const btn = document.getElementById('createTrainBtn');
-            
-            try {
-                btn.disabled = true;
-                statusDiv.textContent = '➕ Creando reporte de tren...';
-                
-                // Obtener primera estación disponible
-                const stationsSnapshot = await db.collection('stations').limit(1).get();
-                if (stationsSnapshot.empty) {
-                    throw new Error('No hay estaciones disponibles');
-                }
-                
-                const station = stationsSnapshot.docs[0];
-                const currentUser = auth.currentUser;
-                
-                if (!currentUser) {
-                    throw new Error('Debes estar autenticado para crear reportes');
-                }
-                
-                const testReport = {
-                    scope: 'train',
-                    stationId: station.id,
-                    userId: currentUser.uid,
-                    trainLine: 'L1',
-                    direction: 'A',
-                    trainCrowd: 2,
-                    trainStatus: 'normal',
-                    etaBucket: '3-5',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'active',
-                    confirmations: 0,
-                    confidence: 'medium',
-                    basePoints: 20,
-                    bonusPoints: 10,
-                    totalPoints: 30
-                };
-                
-                await db.collection('reports').add(testReport);
-                
-                statusDiv.innerHTML = `✅ <strong>Reporte de tren creado</strong> (${station.id})`;
-                statusDiv.style.color = '#28a745';
-                
-                // Recargar reportes
-                setTimeout(() => {
-                    loadRecentReports();
-                    loadStats();
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error creating test report:', error);
-                statusDiv.innerHTML = `❌ Error: ${error.message}`;
-                statusDiv.style.color = '#dc3545';
-            } finally {
-                btn.disabled = false;
-            }
-        }
-        
-        // Mostrar estadísticas de reportes
-        async function showReportStats() {
-            const statusDiv = document.getElementById('testToolsStatus');
-            const btn = document.getElementById('statsBtn');
-            
-            try {
-                btn.disabled = true;
-                statusDiv.textContent = '📈 Calculando estadísticas...';
-                
-                const snapshot = await db.collection('reports').get();
-                
-                let stationReports = 0;
-                let trainReports = 0;
-                let totalPoints = 0;
-                let activeReports = 0;
-                let deletedReports = 0;
-                let resolvedReports = 0;
-                let totalConfirmations = 0;
-                
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-                    if (data.scope === 'station') stationReports++;
-                    if (data.scope === 'train') trainReports++;
-                    totalPoints += (data.totalPoints || 0);
-                    totalConfirmations += (data.confirmations || 0);
-                    
-                    const status = data.status || 'active';
-                    if (status === 'active') activeReports++;
-                    else if (status === 'deleted') deletedReports++;
-                    else if (status === 'resolved') resolvedReports++;
-                });
-                
-                const stats = `
-                    <strong>📊 Estadísticas de Reportes:</strong><br>
-                    • Total: ${snapshot.size} reportes<br>
-                    • Estaciones: ${stationReports} | Trenes: ${trainReports}<br>
-                    • Activos: ${activeReports} | Resueltos: ${resolvedReports} | Eliminados: ${deletedReports}<br>
-                    • Total puntos otorgados: ${totalPoints}<br>
-                    • Total confirmaciones: ${totalConfirmations}
-                `;
-                
-                statusDiv.innerHTML = stats;
-                statusDiv.style.color = '#333';
-                
-            } catch (error) {
-                console.error('Error getting stats:', error);
-                statusDiv.innerHTML = `❌ Error: ${error.message}`;
-                statusDiv.style.color = '#dc3545';
-            } finally {
-                btn.disabled = false;
-            }
-        }
-        
-        // Cargar usuarios top
-        async function loadTopUsers() {
-            try {
-                const snapshot = await db.collection('users')
-                    .orderBy('gamification.puntos', 'desc')
-                    .limit(20)
-                    .get();
-                
-                const table = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Usuario</th>
-                                <th>Puntos</th>
-                                <th>Nivel</th>
-                                <th>Reportes</th>
-                                <th>Verificaciones</th>
-                                <th>Racha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${snapshot.docs.map(doc => {
-                                const data = doc.data();
-                                const gamification = data.gamification || {};
-                                const nombre = (data.nombre || '').toLowerCase();
-                                const email = (data.email || '').toLowerCase();
-                                return `
-                                    <tr data-user-name="${nombre}" 
-                                        data-user-email="${email}">
-                                        <td><strong>${data.nombre || data.email || doc.id.substring(0, 8)}</strong></td>
-                                        <td>${gamification.puntos || 0}</td>
-                                        <td>${gamification.nivel || 1}</td>
-                                        <td>${data.reportes_count || 0}</td>
-                                        <td>${gamification.verificaciones_hechas || 0}</td>
-                                        <td>${gamification.streak || 0} días</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                const loadingElement = document.querySelector('#users .loading');
-                if (loadingElement) {
-                    loadingElement.outerHTML = table;
-                } else {
-                    const section = document.getElementById('users');
-                    if (section) {
-                        const existingTable = section.querySelector('table');
-                        if (existingTable) {
-                            existingTable.outerHTML = table;
-                        } else {
-                            section.insertAdjacentHTML('beforeend', table);
-                        }
-                    }
-                }
-                
-                // Actualizar contador
-                document.getElementById('usersCount').textContent = `${snapshot.size} usuarios`;
-            } catch (error) {
-                console.error('Error loading users:', error);
-                const loadingElement = document.querySelector('#users .loading');
-                const errorMsg = error.message.includes('permissions') 
-                    ? '⚠️ Error de permisos. Verifica las reglas de Firestore. Los usuarios requieren autenticación.'
-                    : 'Error al cargar usuarios: ' + error.message;
-                if (loadingElement) {
-                    loadingElement.textContent = errorMsg;
-                } else {
-                    const section = document.getElementById('users');
-                    if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg}</div>`);
-                    }
-                }
-            }
-        }
-        
-        // Cargar estadísticas comunitarias
-        async function loadCommunityStats() {
-            try {
-                // Verificar autenticación antes de intentar leer
-                const currentAuth = auth.currentUser;
-                if (!currentAuth) {
-                    console.warn('No hay usuario autenticado, intentando autenticación anónima...');
-                    // Intentar autenticación anónima si no hay usuario
-                    try {
-                        await auth.signInAnonymously();
-                        // Esperar un momento para que la autenticación se complete
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    } catch (authError) {
-                        throw new Error('No autenticado. Por favor, inicia sesión haciendo clic en "Login" en el header.');
-                    }
-                }
-                
-                // Verificar nuevamente después del intento de autenticación
-                const finalAuth = auth.currentUser;
-                if (!finalAuth) {
-                    throw new Error('No se pudo autenticar. Verifica que Anonymous esté habilitado en Firebase Authentication.');
-                }
-                
-                console.log('Leyendo community_stats con usuario:', finalAuth.uid, finalAuth.isAnonymous ? '(anónimo)' : finalAuth.email);
-                
-                const statsDoc = await db.collection('community_stats').doc('founder_week').get();
-                
-                if (statsDoc.exists) {
-                    const data = statsDoc.data();
-                    const progress = ((data.total_reports || 0) / 1000 * 100).toFixed(1);
-                    
-                    const html = `
-                        <div style="margin-bottom: 2rem;">
-                            <h3>Progreso Semana del Fundador</h3>
-                            <div style="background: #f0f0f0; border-radius: 8px; height: 30px; margin-top: 1rem; position: relative; overflow: hidden;">
-                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; color: #333;">
-                                    ${progress}%
-                                </div>
-                            </div>
-                            <p style="margin-top: 0.5rem; color: #666;">
-                                ${data.total_reports || 0} / 1,000 reportes objetivo
-                            </p>
-                        </div>
-                        
-                        <div class="stats-grid" style="margin-top: 2rem;">
-                            <div class="stat-card">
-                                <h3>Total Reportes (7 días)</h3>
-                                <div class="value">${data.total_reports || 0}</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Estaciones Activas</h3>
-                                <div class="value">${data.active_stations || 0}</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Participantes</h3>
-                                <div class="value">${data.participants || 0}</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Última Actualización</h3>
-                                <div class="value" style="font-size: 1rem;">
-                                    ${data.last_updated ? new Date(data.last_updated.toMillis()).toLocaleString('es-PA') : 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    const loadingElement = document.querySelector('#community .loading');
-                    if (loadingElement) {
-                        loadingElement.outerHTML = html;
-                    } else {
-                        const section = document.getElementById('community');
-                        if (section) {
-                            section.insertAdjacentHTML('beforeend', html);
-                        }
-                    }
-                } else {
-                    const loadingElement = document.querySelector('#community .loading');
-                    if (loadingElement) {
-                        loadingElement.textContent = 'No hay estadísticas comunitarias aún';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading community stats:', error);
-                const loadingElement = document.querySelector('#community .loading');
-                let errorMsg = '';
-                
-                if (error.message.includes('permissions') || error.code === 'permission-denied') {
-                    errorMsg = '⚠️ Error de permisos para community_stats.\n\n';
-                    const currentAuth = auth.currentUser;
-                    if (!currentAuth) {
-                        errorMsg += 'No estás autenticado.\n';
-                        errorMsg += 'Solución:\n';
-                        errorMsg += '1. Haz clic en "Login" en el header\n';
-                        errorMsg += '2. O habilita "Anonymous" en Firebase Authentication';
-                    } else {
-                        errorMsg += 'Estás autenticado pero las reglas de Firestore no permiten la lectura.\n';
-                        errorMsg += 'Solución:\n';
-                        errorMsg += '1. Verifica que las reglas incluyan: allow read: if request.auth != null\n';
-                        errorMsg += '2. Despliega las reglas: firebase deploy --only firestore:rules';
-                    }
-                } else if (error.message.includes('No autenticado') || error.message.includes('No se pudo autenticar')) {
-                    errorMsg = '⚠️ ' + error.message + '\n\n';
-                    errorMsg += 'Pasos para resolver:\n';
-                    errorMsg += '1. Firebase Console → Authentication → Sign-in method\n';
-                    errorMsg += '2. Habilita "Anonymous"\n';
-                    errorMsg += '3. O haz clic en "Login" en el header del dashboard';
-                } else {
-                    errorMsg = 'Error al cargar estadísticas: ' + error.message;
-                }
-                
-                if (loadingElement) {
-                    loadingElement.innerHTML = errorMsg.replace(/\n/g, '<br>');
-                } else {
-                    const section = document.getElementById('community');
-                    if (section) {
-                        section.insertAdjacentHTML('beforeend', `<div class="loading">${errorMsg.replace(/\n/g, '<br>')}</div>`);
-                    }
-                }
-            }
-        }
-        
-        // Esperar autenticación antes de cargar datos
-        let refreshInterval = null;
-        let authInitialized = false;
-        
-        auth.onAuthStateChanged(async (user) => {
-            console.log('Auth state changed:', user ? (user.email || 'anónimo (' + user.uid + ')') : 'null');
-            currentUser = user;
-            isAuthenticated = !!user;
-            updateAuthUI();
-            
-            if (user) {
-                console.log('Usuario autenticado, cargando datos...', user.email || 'anónimo', 'UID:', user.uid);
-                
-                // Limpiar intervalo anterior si existe
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                }
-                
-                // Esperar un momento para asegurar que el token esté listo
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Verificar nuevamente que el usuario sigue autenticado
-                const finalUser = auth.currentUser;
-                if (finalUser) {
-                    console.log('Token verificado, cargando datos...');
-                    // Cargar datos inmediatamente
-                    refreshAll();
-                    
-                    // Auto-refresh cada 30 segundos
-                    refreshInterval = setInterval(refreshAll, 30000);
-                } else {
-                    console.warn('Usuario perdió autenticación después del delay');
-                }
-            } else {
-                console.log('Esperando autenticación...');
-                // Limpiar intervalo si existe
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-                
-                // Si no hay usuario y no hemos intentado autenticación anónima aún
-                if (!authInitialized) {
-                    authInitialized = true;
-                    console.log('Intentando autenticación anónima inicial...');
-                    authenticateDashboard();
-                }
-            }
-        });
-    </script>
+    <script src="js/core.js"></script>
+    <script src="js/firebase.config.js" onerror="console.warn('firebase.config.js not found - using env vars or defaults')"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/stations.js"></script>
+    <script src="js/trains.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/time_analysis.js"></script>
+    <script src="js/community.js"></script>
+    <script src="js/logs.js"></script>
+    <script src="js/test_reports.js"></script>
+    <script src="js/multi_reports_testing.js"></script>
+    <script src="js/train_time_reports_testing.js"></script>
+    <script src="js/station_reports_testing.js"></script>
+    <script src="js/load_testing.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

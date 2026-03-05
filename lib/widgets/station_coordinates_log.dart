@@ -27,12 +27,12 @@ class StationCoordinatesLog extends StatelessWidget {
           height: 200,
           decoration: BoxDecoration(
             color: MetroColors.grayLight,
-            border: Border(
+            border: const Border(
               top: BorderSide(color: MetroColors.grayMedium, width: 2),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, -2),
               ),
@@ -42,8 +42,9 @@ class StationCoordinatesLog extends StatelessWidget {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: const BoxDecoration(
                   color: MetroColors.blue,
                 ),
                 child: Row(
@@ -65,12 +66,14 @@ class StationCoordinatesLog extends StatelessWidget {
                         Clipboard.setData(ClipboardData(text: text));
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Coordenadas copiadas al portapapeles'),
+                            content:
+                                Text('Coordenadas copiadas al portapapeles'),
                             duration: Duration(seconds: 2),
                           ),
                         );
                       },
-                      icon: const Icon(Icons.copy, size: 16, color: Colors.white70),
+                      icon: const Icon(Icons.copy,
+                          size: 16, color: Colors.white70),
                       label: const Text(
                         'Copiar',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
@@ -117,8 +120,8 @@ class StationCoordinatesLog extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (editedPositions.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
+                                const Padding(
+                                  padding: EdgeInsets.all(8.0),
                                   child: Text(
                                     'No hay coordenadas editadas',
                                     style: TextStyle(
@@ -130,7 +133,8 @@ class StationCoordinatesLog extends StatelessWidget {
                               else
                                 ...editedPositions.entries.map((entry) {
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 2),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 2),
                                     child: SelectableText(
                                       "'${entry.key}': [${entry.value.latitude.toStringAsFixed(6)}, ${entry.value.longitude.toStringAsFixed(6)}]",
                                       style: const TextStyle(
@@ -163,7 +167,7 @@ class StationCoordinatesLog extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Text(
                                 editor.logs[index],
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontFamily: 'monospace',
                                   color: MetroColors.grayDark,
@@ -184,4 +188,3 @@ class StationCoordinatesLog extends StatelessWidget {
     );
   }
 }
-

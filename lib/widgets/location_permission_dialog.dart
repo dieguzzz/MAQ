@@ -11,18 +11,22 @@ class LocationPermissionDialog extends StatelessWidget {
     required this.hasPermission,
   });
 
+  Future<void> _openLocationSettings() async {
+    await Geolocator.openLocationSettings();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Row(
+      title: const Row(
         children: [
           Icon(
             Icons.location_on,
             color: Colors.blue,
             size: 28,
           ),
-          const SizedBox(width: 8),
-          const Text('Permisos de Ubicación'),
+          SizedBox(width: 8),
+          Text('Permisos de Ubicación'),
         ],
       ),
       content: Column(
@@ -88,21 +92,45 @@ class LocationPermissionDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Rechazar'),
+          child: const Text('Cancelar'),
         ),
-        ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+        if (!isGpsEnabled)
+          ElevatedButton.icon(
+            onPressed: () async {
+              await _openLocationSettings();
+              Navigator.of(context).pop(true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.settings, size: 18),
+            label: const Text('Activar GPS'),
           ),
-          child: const Text('Aceptar'),
-        ),
+        if (isGpsEnabled && !hasPermission)
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Conceder Permisos'),
+          ),
+        if (isGpsEnabled && hasPermission)
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Continuar'),
+          ),
       ],
     );
   }
 
-  static Future<bool?> show(BuildContext context, {
+  static Future<bool?> show(
+    BuildContext context, {
     required bool isGpsEnabled,
     required bool hasPermission,
   }) {
@@ -116,17 +144,3 @@ class LocationPermissionDialog extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,16 +1,14 @@
-import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/learning_report_model.dart';
 import '../models/station_model.dart';
 import '../models/user_model.dart';
-import 'location_service.dart';
 import 'firebase_service.dart';
 import 'gamification_service.dart';
 
 /// Servicio para crear y gestionar reportes de aprendizaje
 class LearningReportService {
   final FirebaseService _firebaseService = FirebaseService();
-  final LocationService _locationService = LocationService();
+  // Note: LocationService removed as proximity validation is disabled
   final GamificationService _gamificationService = GamificationService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -26,12 +24,12 @@ class LearningReportService {
         throw Exception('Usuario no encontrado');
       }
 
-      // Validar que la estación existe
+      // Validate station exists
       final stations = await _firebaseService.getStations();
-      final station = stations.firstWhere(
-        (s) => s.id == report.estacionId,
-        orElse: () => throw Exception('Estación no encontrada'),
-      );
+      final stationExists = stations.any((s) => s.id == report.estacionId);
+      if (!stationExists) {
+        throw Exception('Estación no encontrada');
+      }
 
       // Validación de proximidad deshabilitada - se puede reportar desde cualquier ubicación
       // if (user.ultimaUbicacion != null) {
@@ -75,7 +73,7 @@ class LearningReportService {
     // La precisión en UserModel es 0.0-100.0, convertir a 0.0-1.0
     // Si no tiene precisión, usar 0.5 como valor por defecto
     final precisionRatio = user.precision / 100.0;
-    
+
     // Normalizar entre 0.0 y 1.0
     return precisionRatio.clamp(0.0, 1.0);
   }
@@ -85,11 +83,10 @@ class LearningReportService {
       {int days = 14}) async {
     try {
       final cutoffDate = DateTime.now().subtract(Duration(days: days));
-      
+
       final snapshot = await _firestore
           .collection('learning_reports')
-          .where('creado_en',
-              isGreaterThan: Timestamp.fromDate(cutoffDate))
+          .where('creado_en', isGreaterThan: Timestamp.fromDate(cutoffDate))
           .orderBy('creado_en', descending: true)
           .get();
 
@@ -108,25 +105,24 @@ class LearningReportService {
       {int days = 30}) async {
     try {
       final cutoffDate = DateTime.now().subtract(Duration(days: days));
-      
+
       final snapshot = await _firestore
           .collection('learning_reports')
           .where('estacion_id', isEqualTo: stationId)
-          .where('creado_en',
-              isGreaterThan: Timestamp.fromDate(cutoffDate))
+          .where('creado_en', isGreaterThan: Timestamp.fromDate(cutoffDate))
           .get();
 
       // Agrupar por hora del día
       final hourlyDelays = <int, List<int>>{};
-      
+
       for (var doc in snapshot.docs) {
         final report = LearningReportModel.fromFirestore(doc);
         final hour = report.horaLlegadaReal.hour;
-        
+
         if (!hourlyDelays.containsKey(hour)) {
           hourlyDelays[hour] = [];
         }
-        
+
         hourlyDelays[hour]!.add(report.retrasoMinutos);
       }
 
@@ -147,8 +143,7 @@ class LearningReportService {
   }
 
   /// Valida si el usuario está cerca de una estación
-  Future<bool> isUserNearStation(
-      String userId, StationModel station) async {
+  Future<bool> isUserNearStation(String userId, StationModel station) async {
     try {
       final user = await _firebaseService.getUser(userId);
       if (user == null || user.ultimaUbicacion == null) {
@@ -176,12 +171,11 @@ class LearningReportService {
       {int days = 30}) async {
     try {
       final cutoffDate = DateTime.now().subtract(Duration(days: days));
-      
+
       final snapshot = await _firestore
           .collection('learning_reports')
           .where('estacion_id', isEqualTo: stationId)
-          .where('creado_en',
-              isGreaterThan: Timestamp.fromDate(cutoffDate))
+          .where('creado_en', isGreaterThan: Timestamp.fromDate(cutoffDate))
           .orderBy('creado_en', descending: true)
           .get();
 
@@ -197,11 +191,10 @@ class LearningReportService {
   /// Obtiene un stream de análisis en tiempo real
   Stream<Map<String, dynamic>> getRealTimeAnalysisStream({int days = 14}) {
     final cutoffDate = DateTime.now().subtract(Duration(days: days));
-    
+
     return _firestore
         .collection('learning_reports')
-        .where('creado_en',
-            isGreaterThan: Timestamp.fromDate(cutoffDate))
+        .where('creado_en', isGreaterThan: Timestamp.fromDate(cutoffDate))
         .snapshots()
         .map((snapshot) => _analyzeRealTime(snapshot));
   }
@@ -234,7 +227,8 @@ class LearningReportService {
     }
 
     // Calcular retraso promedio
-    final totalDelay = reports.map((r) => r.retrasoMinutos).reduce((a, b) => a + b);
+    final totalDelay =
+        reports.map((r) => r.retrasoMinutos).reduce((a, b) => a + b);
     final averageDelay = totalDelay / reports.length;
 
     // Contar estaciones únicas
@@ -253,7 +247,7 @@ class LearningReportService {
   Future<void> forceModelUpdate() async {
     try {
       final stations = await getStationsWithReports();
-      
+
       for (final station in stations) {
         await _updateStationModel(station);
       }
@@ -266,13 +260,11 @@ class LearningReportService {
   /// Obtiene todas las estaciones que tienen reportes
   Future<List<String>> getStationsWithReports() async {
     try {
-      final snapshot = await _firestore
-          .collection('learning_reports')
-          .get();
+      final snapshot = await _firestore.collection('learning_reports').get();
 
       final stationIds = snapshot.docs
           .map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             return data['estacion_id'] as String?;
           })
           .whereType<String>()
@@ -291,11 +283,11 @@ class LearningReportService {
     try {
       // Analizar patrones horarios
       final patterns = await analyzeHourlyPatterns(stationId, days: 30);
-      
+
       // Aquí se pueden aplicar ajustes al modelo
       // Por ahora, solo guardamos los patrones para referencia futura
       // En fases futuras, esto se usará para ajustar las predicciones
-      
+
       print('Modelo actualizado para estación: $stationId');
       print('Patrones: $patterns');
     } catch (e) {
@@ -304,4 +296,3 @@ class LearningReportService {
     }
   }
 }
-

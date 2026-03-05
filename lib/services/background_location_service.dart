@@ -2,13 +2,12 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'firebase_service.dart';
 
 class BackgroundLocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseService _firebaseService = FirebaseService();
-  
+  // Note: FirebaseService removed as unused
+
   StreamSubscription<Position>? _positionSubscription;
   Timer? _updateTimer;
   bool _isTracking = false;
@@ -44,7 +43,9 @@ class BackgroundLocationService {
     _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
       try {
         final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
         );
         await _updateUserLocation(position);
       } catch (e) {
@@ -126,4 +127,3 @@ class BackgroundLocationService {
     stopTracking();
   }
 }
-

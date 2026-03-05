@@ -36,7 +36,7 @@ class _PulsingButtonState extends State<PulsingButton>
   @override
   void initState() {
     super.initState();
-    
+
     // Controlador de animación para el pulso
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -60,16 +60,15 @@ class _PulsingButtonState extends State<PulsingButton>
 
   void _listenToArrivals() {
     final firestore = FirebaseFirestore.instance;
-    
-    Query query = firestore
-        .collection('reports')
-        .where('scope', isEqualTo: 'train');
+
+    Query query =
+        firestore.collection('reports').where('scope', isEqualTo: 'train');
 
     // Si hay una estación específica, filtrar por ella
     if (widget.station != null) {
       query = query.where('stationId', isEqualTo: widget.station!.id);
     }
-    
+
     _subscription = query.snapshots().listen((snapshot) {
       if (snapshot.docs.isEmpty) return;
 
@@ -79,7 +78,7 @@ class _PulsingButtonState extends State<PulsingButton>
         final data = doc.data() as Map<String, dynamic>;
         if (data['arrivalTime'] != null) {
           final arrivalTime = (data['arrivalTime'] as Timestamp).toDate();
-          if (mostRecentArrival == null || 
+          if (mostRecentArrival == null ||
               arrivalTime.isAfter(mostRecentArrival)) {
             mostRecentArrival = arrivalTime;
           }
@@ -91,9 +90,9 @@ class _PulsingButtonState extends State<PulsingButton>
         final difference = now.difference(mostRecentArrival);
 
         // Si el reporte es de los últimos 10 segundos y es diferente al anterior
-        if (difference.inSeconds <= 10 && 
-            (_lastArrivalTime == null || 
-             mostRecentArrival.isAfter(_lastArrivalTime!))) {
+        if (difference.inSeconds <= 10 &&
+            (_lastArrivalTime == null ||
+                mostRecentArrival.isAfter(_lastArrivalTime!))) {
           _lastArrivalTime = mostRecentArrival;
           _startPulsing();
         }
@@ -131,8 +130,9 @@ class _PulsingButtonState extends State<PulsingButton>
       animation: _pulseAnimation,
       builder: (context, child) {
         final scale = _pulseAnimation.value;
-        final opacity = (scale - 1.0) / 0.15; // 0.0 a 1.0 cuando scale va de 1.0 a 1.15
-        
+        final opacity =
+            (scale - 1.0) / 0.15; // 0.0 a 1.0 cuando scale va de 1.0 a 1.15
+
         return Transform.scale(
           scale: scale,
           child: Container(
@@ -140,7 +140,8 @@ class _PulsingButtonState extends State<PulsingButton>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: widget.backgroundColor.withOpacity(0.5 * opacity),
+                  color:
+                      widget.backgroundColor.withValues(alpha: 0.5 * opacity),
                   blurRadius: 20 * opacity,
                   spreadRadius: 5 * opacity,
                 ),
@@ -153,4 +154,3 @@ class _PulsingButtonState extends State<PulsingButton>
     );
   }
 }
-

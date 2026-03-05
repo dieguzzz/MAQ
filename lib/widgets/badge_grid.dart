@@ -1,224 +1,131 @@
 import 'package:flutter/material.dart';
 import '../models/badge_model.dart';
-import '../data/badges_data.dart';
-
-enum BadgeFilter { all, featured, unlocked, locked }
 
 class BadgeGrid extends StatelessWidget {
   final BadgeFilter filter;
   final Function(BadgeModel) onBadgeTap;
+  final List<BadgeModel> badges;
 
   const BadgeGrid({
     super.key,
-    this.filter = BadgeFilter.all,
+    required this.filter,
     required this.onBadgeTap,
+    required this.badges,
   });
 
-  List<BadgeModel> _getFilteredBadges(List<BadgeModel> badges) {
+  List<BadgeModel> _getFilteredBadges() {
     switch (filter) {
+      case BadgeFilter.all:
+        return badges;
       case BadgeFilter.featured:
         return badges.where((b) => b.featured).toList();
       case BadgeFilter.unlocked:
         return badges.where((b) => b.unlocked).toList();
       case BadgeFilter.locked:
         return badges.where((b) => !b.unlocked).toList();
-      case BadgeFilter.all:
-      default:
-        return badges;
-    }
-  }
-
-  MaterialColor _getCategoryColor(BadgeCategory category) {
-    switch (category) {
-      case BadgeCategory.animal:
-        return Colors.green;
-      case BadgeCategory.mythology:
-        return Colors.purple;
-      case BadgeCategory.culture:
-        return Colors.pink;
-      case BadgeCategory.hero:
-        return Colors.orange;
-      case BadgeCategory.architecture:
-        return Colors.blue;
-      case BadgeCategory.nature:
-        return Colors.lime;
-      case BadgeCategory.festival:
-        return Colors.amber;
-    }
-  }
-
-  Color _getRarityBorderColor(BadgeRarity rarity) {
-    switch (rarity) {
-      case BadgeRarity.common:
-        return Colors.grey.shade300;
-      case BadgeRarity.rare:
-        return Colors.blue.shade400;
-      case BadgeRarity.epic:
-        return Colors.purple.shade500;
-      case BadgeRarity.legendary:
-        return Colors.amber.shade500;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final badges = _getFilteredBadges(BadgesData.allBadges);
-    
-    // Agrupar por categoría
-    final Map<BadgeCategory, List<BadgeModel>> groupedBadges = {};
-    for (var badge in badges) {
-      groupedBadges.putIfAbsent(badge.category, () => []).add(badge);
+    final filteredBadges = _getFilteredBadges();
+
+    if (filteredBadges.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'No hay badges para mostrar',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: groupedBadges.entries.map((entry) {
-        final categoryBadges = entry.value;
-        final unlockedCount = categoryBadges.where((b) => b.unlocked).length;
-        final totalCount = categoryBadges.length;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                    Text(
-                      categoryBadges.first.categoryLabel,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '($unlockedCount/$totalCount)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 1.0,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 6,
-                ),
-                itemCount: categoryBadges.length,
-                itemBuilder: (context, index) {
-                  final badge = categoryBadges[index];
-                  final categoryColor = _getCategoryColor(badge.category);
-                  final borderColor = _getRarityBorderColor(badge.rarity);
-
-                  return GestureDetector(
-                    onTap: () => onBadgeTap(badge),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: borderColor,
-                          width: 1,
-                        ),
-                      ),
-                      child: Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(6),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Icon
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        categoryColor[500]!,
-                                        categoryColor[700]!,
-                                      ],
-                                    ),
-                                    shape: BoxShape.circle,
-                                    color: badge.unlocked ? null : Colors.grey,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      badge.unlocked ? badge.icon : '🔒',
-                                      style: const TextStyle(fontSize: 18),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                
-                                // Name
-                                Flexible(
-                                  child: Text(
-                                    badge.name,
-                                    style: const TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Rarity indicator
-                          if (badge.rarity == BadgeRarity.legendary)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Icon(
-                                Icons.star,
-                                size: 10,
-                                color: Colors.amber,
-                              ),
-                            ),
-                          
-                          // Lock overlay
-                          if (!badge.unlocked)
-                            Positioned.fill(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.lock,
-                                    size: 18,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: filteredBadges.length,
+      itemBuilder: (context, index) {
+        final badge = filteredBadges[index];
+        return _BadgeCard(
+          badge: badge,
+          onTap: () => onBadgeTap(badge),
         );
-      }).toList(),
+      },
     );
   }
 }
 
+class _BadgeCard extends StatelessWidget {
+  final BadgeModel badge;
+  final VoidCallback onTap;
+
+  const _BadgeCard({
+    required this.badge,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLocked = !badge.unlocked;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        elevation: isLocked ? 1 : 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isLocked ? Colors.grey[200] : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                badge.icon,
+                style: TextStyle(
+                  fontSize: 40,
+                  color: isLocked ? Colors.grey[400] : null,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  badge.name,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isLocked ? Colors.grey[600] : null,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isLocked)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    Icons.lock,
+                    size: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

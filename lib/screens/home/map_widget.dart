@@ -10,7 +10,7 @@ import '../../services/train_simulation_service.dart';
 import '../../models/station_model.dart';
 import '../../models/train_model.dart';
 import '../../widgets/station_report_sheet.dart';
-import '../../widgets/train_report_flow_widget.dart';
+import '../../widgets/train_time_report_flow_widget.dart';
 import '../../widgets/station_position_editor_modal.dart';
 import '../../services/app_mode_service.dart';
 import '../../providers/auth_provider.dart';
@@ -22,21 +22,24 @@ import 'package:flutter/services.dart';
 
 class MapWidget extends StatefulWidget {
   final List<StationModel>? highlightedRoute;
+  final VoidCallback? onCenterLocationRequested;
 
   const MapWidget({
     super.key,
     this.highlightedRoute,
+    this.onCenterLocationRequested,
   });
 
   @override
-  State<MapWidget> createState() => _MapWidgetState();
+  State<MapWidget> createState() => MapWidgetState();
 }
 
-class _MapWidgetState extends State<MapWidget> {
+class MapWidgetState extends State<MapWidget> {
   GoogleMapController? _mapController;
   final MapService _mapService = MapService();
   final TrainSimulationService _trainSimulation = TrainSimulationService();
-  final StationPositionEditorService _positionEditor = StationPositionEditorService();
+  final StationPositionEditorService _positionEditor =
+      StationPositionEditorService();
   bool _hasAnimatedInitialCamera = false;
   Position? _lastKnownPosition;
   List<TrainModel> _simulatedTrains = [];
@@ -45,7 +48,65 @@ class _MapWidgetState extends State<MapWidget> {
   Set<Marker> _stationMarkers = {};
   List<StationModel>? _previousStations;
   List<TrainModel>? _previousTrains;
-  String? _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
+  String?
+      _previousSelectedLinea; // Puede ser null en la primera carga, luego será 'all', 'linea1' o 'linea2'
+
+  // Método público para centrar el mapa en la ubicación del usuario
+  Future<void> centerOnUserLocation() async {
+    if (_mapController == null || !mounted) return;
+
+    try {
+      final locationProvider =
+          Provider.of<LocationProvider>(context, listen: false);
+
+      // Verificar y obtener permisos si es necesario
+      final status = await locationProvider.checkLocationStatus();
+      if (!status.hasPermission && status.isGpsEnabled) {
+        await locationProvider.getCurrentLocation();
+      }
+
+      Position? currentPosition = locationProvider.currentPosition;
+
+      // Si no hay ubicación, intentar obtenerla
+      if (currentPosition == null) {
+        await locationProvider.getCurrentLocation();
+        currentPosition = locationProvider.currentPosition;
+      }
+
+      if (currentPosition != null && mounted) {
+        await _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                currentPosition.latitude,
+                currentPosition.longitude,
+              ),
+              zoom: 15.0,
+            ),
+          ),
+        );
+      } else if (mounted) {
+        // Si no hay ubicación, mostrar mensaje
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'No se pudo obtener tu ubicación. Verifica que los permisos de ubicación estén activados.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al centrar mapa en ubicación: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al obtener ubicación: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -59,16 +120,22 @@ class _MapWidgetState extends State<MapWidget> {
         _startTrainUpdates(metroProvider.trains);
       }
     });
-    
+
     // Escuchar cambios en el modo de edición para actualizar marcadores
     final editModeService = StationEditModeService();
     editModeService.addListener(_onEditModeChanged);
+
+    // Configurar callback para centrar ubicación si se proporciona
+    if (widget.onCenterLocationRequested != null) {
+      // El callback se llamará desde home_screen
+    }
   }
 
   void _onEditModeChanged() {
     // Cuando cambia el modo de edición, actualizar los marcadores
     if (mounted) {
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
       if (metroProvider.stations.isNotEmpty) {
         print('🔄 Modo edición cambió - actualizando marcadores');
         _updateStationMarkers(metroProvider.stations);
@@ -79,7 +146,8 @@ class _MapWidgetState extends State<MapWidget> {
   void _startTrainUpdates(List<TrainModel> originalTrains) {
     // Actualizar trenes cada 500ms para movimiento más fluido
     _updateTimer?.cancel();
-    _updateTimer = Timer.periodic(TrainSimulationService.updateInterval, (_) async {
+    _updateTimer =
+        Timer.periodic(TrainSimulationService.updateInterval, (_) async {
       if (mounted) {
         setState(() {
           _simulatedTrains = _trainSimulation.getUpdatedTrains(originalTrains);
@@ -112,9 +180,10 @@ class _MapWidgetState extends State<MapWidget> {
   Future<void> _showTrainReportModal(TrainModel train) async {
     if (!mounted) return;
     // Obtener la estación más cercana al tren o usar la estación actual
-    final metroDataProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroDataProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
     final stations = metroDataProvider.stations;
-    
+
     // Buscar la estación más cercana al tren o usar la primera estación de la línea
     StationModel? station;
     if (stations.isNotEmpty) {
@@ -124,7 +193,7 @@ class _MapWidgetState extends State<MapWidget> {
         orElse: () => stations.first,
       );
     }
-    
+
     if (station != null && mounted) {
       showModalBottomSheet<void>(
         context: context,
@@ -141,7 +210,7 @@ class _MapWidgetState extends State<MapWidget> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
-              child: TrainReportFlowWidget(
+              child: TrainTimeReportFlowWidget(
                 station: station!,
                 scrollController: scrollController,
               ),
@@ -155,7 +224,7 @@ class _MapWidgetState extends State<MapWidget> {
   Future<void> _updateStationMarkers(List<StationModel> stations) async {
     // Calcular tiempos estimados basados en la simulación de trenes
     final estimatedTimes = _calculateEstimatedTimes(stations);
-    
+
     // Aplicar coordenadas editadas a las estaciones antes de crear marcadores
     final stationsWithEditedPositions = stations.map((station) {
       final editedPosition = _positionEditor.getPosition(station.id);
@@ -172,36 +241,43 @@ class _MapWidgetState extends State<MapWidget> {
       }
       return station;
     }).toList();
-    
+
     final markers = await _mapService.createStationMarkers(
       stationsWithEditedPositions,
       onStationTap: (station) {
-        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        final editModeService =
+            Provider.of<StationEditModeService>(context, listen: false);
         // Si está en modo edición, mostrar coordenadas en lugar del bottom sheet
         if (editModeService.isEditModeActive) {
           _showCoordinatesDialog(station);
         } else {
           // Encontrar la estación original para pasar al bottom sheet
-          final originalStation = stations.firstWhere((s) => s.id == station.id);
+          final originalStation =
+              stations.firstWhere((s) => s.id == station.id);
           _showStationBottomSheet(originalStation);
         }
       },
       estimatedTimes: estimatedTimes,
       draggable: () {
-        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        final editModeService =
+            Provider.of<StationEditModeService>(context, listen: false);
         return editModeService.isEditModeActive;
       }(), // Hacer arrastrables solo cuando el modo de edición está activo
       onStationDragEnd: () {
-        final editModeService = Provider.of<StationEditModeService>(context, listen: false);
+        final editModeService =
+            Provider.of<StationEditModeService>(context, listen: false);
         if (!editModeService.isEditModeActive) return null;
         return (station, newPosition) {
           // Cuando se arrastra un marcador en Google Maps, actualizar la posición
-          final newGeoPoint = GeoPoint(newPosition.latitude, newPosition.longitude);
-          print('🧪 Marker drag end: ${station.nombre} -> [${newPosition.latitude}, ${newPosition.longitude}]');
+          final newGeoPoint =
+              GeoPoint(newPosition.latitude, newPosition.longitude);
+          print(
+              '🧪 Marker drag end: ${station.nombre} -> [${newPosition.latitude}, ${newPosition.longitude}]');
           _positionEditor.updatePosition(station.id, newGeoPoint);
-          
+
           // Actualizar los marcadores para reflejar la nueva posición
-          final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+          final metroProvider =
+              Provider.of<MetroDataProvider>(context, listen: false);
           metroProvider.refresh();
           _updateStationMarkers(stations);
         };
@@ -216,21 +292,22 @@ class _MapWidgetState extends State<MapWidget> {
 
   Map<String, int> _calculateEstimatedTimes(List<StationModel> stations) {
     final estimatedTimes = <String, int>{};
-    
+
     // Agrupar estaciones por línea
     final stationsByLine = <String, List<StationModel>>{};
     for (var station in stations) {
       stationsByLine.putIfAbsent(station.linea, () => []).add(station);
     }
-    
+
     // Para cada línea, calcular tiempo estimado basado en trenes cercanos
     for (var entry in stationsByLine.entries) {
       final lineStations = entry.value;
-      final lineTrains = _simulatedTrains.where((t) => t.linea == entry.key).toList();
-      
+      final lineTrains =
+          _simulatedTrains.where((t) => t.linea == entry.key).toList();
+
       for (var station in lineStations) {
         int? minTime;
-        
+
         for (var train in lineTrains) {
           // Calcular distancia entre tren y estación
           final distance = _distanceBetweenPoints(
@@ -239,27 +316,29 @@ class _MapWidgetState extends State<MapWidget> {
             station.ubicacion.latitude,
             station.ubicacion.longitude,
           );
-          
+
           // Asumir velocidad promedio de 30 km/h y calcular tiempo
           // 1 grado ≈ 111 km, entonces distance en grados * 111 = km
           final distanceKm = distance * 111;
           final timeMinutes = (distanceKm / 30 * 60).round();
-          
+
           if (minTime == null || timeMinutes < minTime) {
             minTime = timeMinutes;
           }
         }
-        
-        if (minTime != null && minTime < 30) { // Solo mostrar si es menos de 30 minutos
+
+        if (minTime != null && minTime < 30) {
+          // Solo mostrar si es menos de 30 minutos
           estimatedTimes[station.id] = minTime;
         }
       }
     }
-    
+
     return estimatedTimes;
   }
 
-  double _distanceBetweenPoints(double lat1, double lon1, double lat2, double lon2) {
+  double _distanceBetweenPoints(
+      double lat1, double lon1, double lat2, double lon2) {
     final dLat = (lat1 - lat2).abs();
     final dLon = (lon1 - lon2).abs();
     return dLat + dLon; // Aproximación simple
@@ -295,21 +374,27 @@ class _MapWidgetState extends State<MapWidget> {
 
         // Detectar cambios en el filtro de línea (más confiable que comparar listas)
         final filterChanged = _previousSelectedLinea != selectedLinea;
-        
+
         // Debug
         if (filterChanged) {
-          print('🔍 MapWidget: Filtro cambió de $_previousSelectedLinea a $selectedLinea');
-          print('🔍 MapWidget: Estaciones: ${stations.length}, Trenes: ${trains.length}');
-          print('🔍 MapWidget: Estaciones Línea 1: ${stations.where((s) => s.linea == 'linea1').length}');
-          print('🔍 MapWidget: Estaciones Línea 2: ${stations.where((s) => s.linea == 'linea2').length}');
+          print(
+              '🔍 MapWidget: Filtro cambió de $_previousSelectedLinea a $selectedLinea');
+          print(
+              '🔍 MapWidget: Estaciones: ${stations.length}, Trenes: ${trains.length}');
+          print(
+              '🔍 MapWidget: Estaciones Línea 1: ${stations.where((s) => s.linea == 'linea1').length}');
+          print(
+              '🔍 MapWidget: Estaciones Línea 2: ${stations.where((s) => s.linea == 'linea2').length}');
         }
-        
+
         // Si el filtro cambió, forzar actualización de marcadores
         // También detectar cambios en las listas filtradas (por si cambian los datos)
-        final stationsChanged = filterChanged || _previousStations == null || 
+        final stationsChanged = filterChanged ||
+            _previousStations == null ||
             _previousStations!.length != stations.length ||
             !_listsEqualStations(_previousStations!, stations);
-        final trainsChanged = filterChanged || _previousTrains == null || 
+        final trainsChanged = filterChanged ||
+            _previousTrains == null ||
             _previousTrains!.length != trains.length ||
             !_listsEqualTrains(_previousTrains!, trains);
 
@@ -328,29 +413,35 @@ class _MapWidgetState extends State<MapWidget> {
         }
 
         // Usar trenes simulados si están disponibles, sino usar los originales
-        final trainsToDisplay = _simulatedTrains.isNotEmpty ? _simulatedTrains : trains;
+        final trainsToDisplay =
+            _simulatedTrains.isNotEmpty ? _simulatedTrains : trains;
 
         // Actualizar marcadores cuando cambian las listas filtradas
         if (stationsChanged || trainsChanged || filterChanged) {
-          print('🔍 MapWidget: Actualizando marcadores - stationsChanged=$stationsChanged, trainsChanged=$trainsChanged, filterChanged=$filterChanged');
-          print('🔍 MapWidget: selectedLinea=$selectedLinea, estaciones totales=${stations.length}');
-          
+          print(
+              '🔍 MapWidget: Actualizando marcadores - stationsChanged=$stationsChanged, trainsChanged=$trainsChanged, filterChanged=$filterChanged');
+          print(
+              '🔍 MapWidget: selectedLinea=$selectedLinea, estaciones totales=${stations.length}');
+
           // Si el filtro cambió a "Todas las líneas" ('all'), reinicializar todo
           if (filterChanged && selectedLinea == 'all') {
-            print('🔍 MapWidget: Cambio a "Todas las líneas" - reinicializando todo');
-            print('🔍 MapWidget: Debe mostrar ${stations.length} estaciones (L1 + L2)');
+            print(
+                '🔍 MapWidget: Cambio a "Todas las líneas" - reinicializando todo');
+            print(
+                '🔍 MapWidget: Debe mostrar ${stations.length} estaciones (L1 + L2)');
             // Limpiar todo
             _stationMarkers.clear();
             _trainMarkers.clear();
             _simulatedTrains.clear();
             _previousStations = null;
             _previousTrains = null;
-            
+
             // Reinicializar simulación con todas las estaciones
             if (stations.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  print('🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
+                  print(
+                      '🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
                   _trainSimulation.initialize(stations);
                   _trainSimulation.start();
                   _startTrainUpdates(trains);
@@ -358,34 +449,39 @@ class _MapWidgetState extends State<MapWidget> {
               });
             }
           }
-          
+
           // Limpiar marcadores antiguos inmediatamente
           _stationMarkers.clear();
           _trainMarkers.clear();
-          
+
           // Actualizar marcadores con las nuevas listas
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              print('🔍 MapWidget: Actualizando marcadores - ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
-              print('🔍 MapWidget: Estaciones L1=${stations.where((s) => s.linea == 'linea1').length}, L2=${stations.where((s) => s.linea == 'linea2').length}');
-              
+              print(
+                  '🔍 MapWidget: Actualizando marcadores - ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
+              print(
+                  '🔍 MapWidget: Estaciones L1=${stations.where((s) => s.linea == 'linea1').length}, L2=${stations.where((s) => s.linea == 'linea2').length}');
+
               if (stations.isNotEmpty) {
                 _updateStationMarkers(stations).then((_) {
-                  print('🔍 MapWidget: Marcadores de estaciones actualizados: ${_stationMarkers.length}');
+                  print(
+                      '🔍 MapWidget: Marcadores de estaciones actualizados: ${_stationMarkers.length}');
                 });
               }
               if (trainsToDisplay.isNotEmpty) {
                 _updateTrainMarkers(trainsToDisplay).then((_) {
-                  print('🔍 MapWidget: Marcadores de trenes actualizados: ${_trainMarkers.length}');
+                  print(
+                      '🔍 MapWidget: Marcadores de trenes actualizados: ${_trainMarkers.length}');
                 });
               }
-              
+
               // Guardar estado actual para la próxima comparación (siempre crear nuevas listas)
               _previousStations = List.from(stations);
               _previousTrains = List.from(trainsToDisplay);
               _previousSelectedLinea = selectedLinea;
-              
-              print('🔍 MapWidget: Estado guardado - selectedLinea=$selectedLinea, estaciones=${_previousStations?.length ?? 0}');
+
+              print(
+                  '🔍 MapWidget: Estado guardado - selectedLinea=$selectedLinea, estaciones=${_previousStations?.length ?? 0}');
             }
           });
         } else {
@@ -426,8 +522,9 @@ class _MapWidgetState extends State<MapWidget> {
             currentPosition.latitude,
             currentPosition.longitude,
           );
-          isUserInPanamaCity = MapService.isWithinPanamaCityBounds(userLocation);
-          
+          isUserInPanamaCity =
+              MapService.isWithinPanamaCityBounds(userLocation);
+
           if (isUserInPanamaCity) {
             // Usuario está en la ciudad, centrar en su ubicación
             initialPosition = CameraPosition(
@@ -460,7 +557,8 @@ class _MapWidgetState extends State<MapWidget> {
         };
 
         // Ajustar cámara para mostrar la ruta resaltada si existe
-        if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
+        if (widget.highlightedRoute != null &&
+            widget.highlightedRoute!.isNotEmpty) {
           _maybeAnimateToRoute(widget.highlightedRoute!);
         }
 
@@ -480,9 +578,58 @@ class _MapWidgetState extends State<MapWidget> {
           minMaxZoomPreference: const MinMaxZoomPreference(10.0, 18.0),
           onMapCreated: (GoogleMapController controller) async {
             _mapController = controller;
-            
-            // Si el usuario no está en la ciudad, forzar centrado en el metro
-            if (currentPosition != null && !isUserInPanamaCity) {
+
+            // Esperar un momento para que la ubicación esté disponible
+            await Future.delayed(const Duration(milliseconds: 800));
+
+            if (!mounted) return;
+
+            // Obtener ubicación actual del provider
+            final locationProvider =
+                Provider.of<LocationProvider>(context, listen: false);
+            Position? currentPosition = locationProvider.currentPosition;
+
+            // Si no hay ubicación pero hay permisos, intentar obtenerla
+            if (currentPosition == null && locationProvider.hasPermission) {
+              await locationProvider.getCurrentLocation();
+              currentPosition = locationProvider.currentPosition;
+            }
+
+            // Si hay ubicación y está en la ciudad, centrar el mapa
+            if (currentPosition != null) {
+              final userLocation = LatLng(
+                currentPosition.latitude,
+                currentPosition.longitude,
+              );
+              final isUserInPanamaCity =
+                  MapService.isWithinPanamaCityBounds(userLocation);
+
+              if (isUserInPanamaCity) {
+                // Centrar en la ubicación del usuario
+                await controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: userLocation,
+                      zoom: 15.0,
+                    ),
+                  ),
+                );
+              } else {
+                // Si está fuera de la ciudad, centrar en el metro
+                final metroCenter = stations.isNotEmpty
+                    ? MapService.calculateCenterFromStations(stations)
+                    : MapService.metroSystemCenter;
+                await controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: metroCenter,
+                      zoom: 12.0,
+                    ),
+                  ),
+                );
+              }
+            } else {
+              // Si no hay ubicación, centrar en el sistema de metro
               final metroCenter = stations.isNotEmpty
                   ? MapService.calculateCenterFromStations(stations)
                   : MapService.metroSystemCenter;
@@ -495,9 +642,10 @@ class _MapWidgetState extends State<MapWidget> {
                 ),
               );
             }
-            
+
             // Animar a la ruta después de que el mapa se cree
-            if (widget.highlightedRoute != null && widget.highlightedRoute!.isNotEmpty) {
+            if (widget.highlightedRoute != null &&
+                widget.highlightedRoute!.isNotEmpty) {
               _animateToRoute(widget.highlightedRoute!);
             }
           },
@@ -517,7 +665,7 @@ class _MapWidgetState extends State<MapWidget> {
       final location = editedPosition != null
           ? LatLng(editedPosition.latitude, editedPosition.longitude)
           : LatLng(station.ubicacion.latitude, station.ubicacion.longitude);
-      
+
       final color = _mapService.getStationStateColor(station.estadoActual);
 
       // Círculo principal que indica el estado
@@ -566,9 +714,10 @@ class _MapWidgetState extends State<MapWidget> {
       return orderA.compareTo(orderB);
     });
 
-    final linea2MainStations = stations.where((s) => 
-      s.linea == 'linea2' && s.id != 'l2_aeropuerto' && s.id != 'l2_itse'
-    ).toList();
+    final linea2MainStations = stations
+        .where((s) =>
+            s.linea == 'linea2' && s.id != 'l2_aeropuerto' && s.id != 'l2_itse')
+        .toList();
     linea2MainStations.sort((a, b) {
       final orderA = linea2OrderMap[a.id] ?? 999;
       final orderB = linea2OrderMap[b.id] ?? 999;
@@ -587,10 +736,10 @@ class _MapWidgetState extends State<MapWidget> {
       for (int i = 0; i < linea1Stations.length - 1; i++) {
         final start = linea1Stations[i];
         final end = linea1Stations[i + 1];
-        
+
         final startEdited = _positionEditor.getPosition(start.id);
         final endEdited = _positionEditor.getPosition(end.id);
-        
+
         final startPoint = startEdited != null
             ? LatLng(startEdited.latitude, startEdited.longitude)
             : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
@@ -614,10 +763,10 @@ class _MapWidgetState extends State<MapWidget> {
       for (int i = 0; i < linea2MainStations.length - 1; i++) {
         final start = linea2MainStations[i];
         final end = linea2MainStations[i + 1];
-        
+
         final startEdited = _positionEditor.getPosition(start.id);
         final endEdited = _positionEditor.getPosition(end.id);
-        
+
         final startPoint = startEdited != null
             ? LatLng(startEdited.latitude, startEdited.longitude)
             : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
@@ -641,10 +790,10 @@ class _MapWidgetState extends State<MapWidget> {
       for (int i = 0; i < linea2AirportStations.length - 1; i++) {
         final start = linea2AirportStations[i];
         final end = linea2AirportStations[i + 1];
-        
+
         final startEdited = _positionEditor.getPosition(start.id);
         final endEdited = _positionEditor.getPosition(end.id);
-        
+
         final startPoint = startEdited != null
             ? LatLng(startEdited.latitude, startEdited.longitude)
             : LatLng(start.ubicacion.latitude, start.ubicacion.longitude);
@@ -662,30 +811,32 @@ class _MapWidgetState extends State<MapWidget> {
         );
       }
     }
-    
+
     // Dibujar conexión desde Corredor Sur a ITSE
     StationModel? corredorSur;
     StationModel? itse;
-    
+
     try {
-      corredorSur = linea2MainStations.firstWhere((s) => s.id == 'l2_corredor_sur');
+      corredorSur =
+          linea2MainStations.firstWhere((s) => s.id == 'l2_corredor_sur');
     } catch (e) {
       // No encontrado
     }
-    
+
     try {
       itse = linea2AirportStations.firstWhere((s) => s.id == 'l2_itse');
     } catch (e) {
       // No encontrado
     }
-    
+
     if (corredorSur != null && itse != null) {
       final corredorSurEdited = _positionEditor.getPosition(corredorSur.id);
       final itseEdited = _positionEditor.getPosition(itse.id);
-      
+
       final corredorSurPoint = corredorSurEdited != null
           ? LatLng(corredorSurEdited.latitude, corredorSurEdited.longitude)
-          : LatLng(corredorSur.ubicacion.latitude, corredorSur.ubicacion.longitude);
+          : LatLng(
+              corredorSur.ubicacion.latitude, corredorSur.ubicacion.longitude);
       final itsePoint = itseEdited != null
           ? LatLng(itseEdited.latitude, itseEdited.longitude)
           : LatLng(itse.ubicacion.latitude, itse.ubicacion.longitude);
@@ -708,7 +859,7 @@ class _MapWidgetState extends State<MapWidget> {
   void _showCoordinatesDialog(StationModel station) {
     final editedPosition = _positionEditor.getPosition(station.id);
     final position = editedPosition ?? station.ubicacion;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -717,7 +868,8 @@ class _MapWidgetState extends State<MapWidget> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Coordenadas:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Coordenadas:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text('Latitud: ${position.latitude}'),
             Text('Longitud: ${position.longitude}'),
@@ -730,7 +882,10 @@ class _MapWidgetState extends State<MapWidget> {
               const SizedBox(height: 8),
               const Text(
                 '(Coordenada editada)',
-                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.blue),
+                style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.blue),
               ),
             ],
           ],
@@ -743,7 +898,8 @@ class _MapWidgetState extends State<MapWidget> {
               ));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coordenadas copiadas al portapapeles')),
+                  const SnackBar(
+                      content: Text('Coordenadas copiadas al portapapeles')),
                 );
               }
               Navigator.of(context).pop();
@@ -761,25 +917,25 @@ class _MapWidgetState extends State<MapWidget> {
 
   Future<void> _showStationBottomSheet(StationModel station) async {
     if (!mounted) return;
-    
+
     // Verificar si estamos en modo test
     bool isTestMode = false;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
-    
+
     if (user != null) {
       try {
         final appModeService = AppModeService();
         isTestMode = await appModeService.isTestMode(user.uid);
-        
+
         // isTestMode se usa para decidir qué modal mostrar
       } catch (e) {
         print('Error verificando modo test: $e');
       }
     }
-    
+
     if (!mounted) return;
-    
+
     // En modo test, mostrar modal de edición de coordenadas
     if (isTestMode) {
       await showModalBottomSheet<void>(
@@ -793,9 +949,11 @@ class _MapWidgetState extends State<MapWidget> {
     } else {
       // Modo normal: mostrar bottom sheet de reporte
       if (!mounted) return;
-      final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
-      final trains = metroProvider.trains.where((t) => t.linea == station.linea).toList();
-      
+      final metroProvider =
+          Provider.of<MetroDataProvider>(context, listen: false);
+      final trains =
+          metroProvider.trains.where((t) => t.linea == station.linea).toList();
+
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
@@ -871,8 +1029,7 @@ class _MapWidgetState extends State<MapWidget> {
     List<StationModel> stations,
     Position userPosition,
   ) {
-    final sorted = [...stations]
-      ..sort(
+    final sorted = [...stations]..sort(
         (a, b) => _distanceToUser(a, userPosition)
             .compareTo(_distanceToUser(b, userPosition)),
       );
@@ -890,14 +1047,14 @@ class _MapWidgetState extends State<MapWidget> {
 
   Set<Polyline> _createHighlightedRoutePolylines(List<StationModel> route) {
     final polylines = <Polyline>{};
-    
+
     if (route.length < 2) return polylines;
 
     // Crear polylines para cada segmento de la ruta
     for (int i = 0; i < route.length - 1; i++) {
       final start = route[i];
       final end = route[i + 1];
-      
+
       polylines.add(
         Polyline(
           polylineId: PolylineId('highlighted_${start.id}_${end.id}'),
@@ -935,10 +1092,18 @@ class _MapWidgetState extends State<MapWidget> {
     double maxLng = route.first.ubicacion.longitude;
 
     for (final station in route) {
-      minLat = minLat < station.ubicacion.latitude ? minLat : station.ubicacion.latitude;
-      maxLat = maxLat > station.ubicacion.latitude ? maxLat : station.ubicacion.latitude;
-      minLng = minLng < station.ubicacion.longitude ? minLng : station.ubicacion.longitude;
-      maxLng = maxLng > station.ubicacion.longitude ? maxLng : station.ubicacion.longitude;
+      minLat = minLat < station.ubicacion.latitude
+          ? minLat
+          : station.ubicacion.latitude;
+      maxLat = maxLat > station.ubicacion.latitude
+          ? maxLat
+          : station.ubicacion.latitude;
+      minLng = minLng < station.ubicacion.longitude
+          ? minLng
+          : station.ubicacion.longitude;
+      maxLng = maxLng > station.ubicacion.longitude
+          ? maxLng
+          : station.ubicacion.longitude;
     }
 
     // Agregar padding
@@ -967,4 +1132,3 @@ class _MapWidgetState extends State<MapWidget> {
     super.dispose();
   }
 }
-

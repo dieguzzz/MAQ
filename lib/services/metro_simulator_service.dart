@@ -2,17 +2,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/simulator_state_model.dart';
 import '../models/station_model.dart';
-import 'simulated_time_service.dart';
 
 /// Servicio para gestionar el estado del simulador de metro
 class MetroSimulatorService extends ChangeNotifier {
-  static final MetroSimulatorService _instance = MetroSimulatorService._internal();
+  static final MetroSimulatorService _instance =
+      MetroSimulatorService._internal();
   factory MetroSimulatorService() => _instance;
   MetroSimulatorService._internal();
 
   SimulatorState _state = SimulatorState.defaultState();
   Timer? _autoModeTimer;
-  final SimulatedTimeService _simulatedTime = SimulatedTimeService();
+  // Note: SimulatedTimeService removed as unused
 
   /// Estado actual del simulador
   SimulatorState get state => _state;
@@ -220,4 +220,3 @@ class MetroSimulatorService extends ChangeNotifier {
     super.dispose();
   }
 }
-

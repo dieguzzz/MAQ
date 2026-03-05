@@ -8,6 +8,10 @@ class MetroColors {
   static const Color green = Color(0xFF00A651);
   static const Color energyOrange = Color(0xFFFF6B35);
 
+  // Line-specific colors
+  static const Color linea1 = blue;
+  static const Color linea2 = green;
+
   static const Color white = Color(0xFFFFFFFF);
   static const Color grayLight = Color(0xFFF5F5F5);
   static const Color grayMedium = Color(0xFFE0E0E0);
@@ -160,4 +164,3 @@ class MetroTheme {
     );
   }
 }
-

@@ -4,6 +4,7 @@ import '../../models/route_model.dart';
 import '../../models/station_model.dart';
 import '../../services/route_calculation_service.dart';
 import '../../providers/metro_data_provider.dart';
+import '../../theme/metro_theme.dart';
 import '../home/map_widget.dart';
 import '../../widgets/custom_metro_map.dart';
 
@@ -36,7 +37,8 @@ class _RouteResultsState extends State<RouteResults> {
   }
 
   void _calculateRouteStations() {
-    final metroProvider = Provider.of<MetroDataProvider>(context, listen: false);
+    final metroProvider =
+        Provider.of<MetroDataProvider>(context, listen: false);
     setState(() {
       _routeStations = RouteCalculationService.calculateRoute(
         widget.origen,
@@ -53,24 +55,26 @@ class _RouteResultsState extends State<RouteResults> {
 
     switch (widget.route.estadoRuta) {
       case EstadoRuta.optima:
-        estadoColor = Colors.green;
+        estadoColor = MetroColors.stateNormal;
         estadoIcon = Icons.check_circle;
         break;
       case EstadoRuta.congestionada:
-        estadoColor = Colors.orange;
+        estadoColor = MetroColors.stateModerate;
         estadoIcon = Icons.warning;
         break;
       case EstadoRuta.interrumpida:
-        estadoColor = Colors.red;
+        estadoColor = MetroColors.stateCritical;
         estadoIcon = Icons.error;
         break;
     }
 
+    final tieneTransbordo = widget.origen.linea != widget.destino.linea;
+    final lineasUsadas = _getLineasUsadas();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resultados de Ruta'),
+        title: const Text('Tu Ruta'),
         actions: [
-          // Botón para cambiar entre mapas
           IconButton(
             icon: Icon(_showCustomMap ? Icons.map : Icons.train),
             onPressed: () {
@@ -82,144 +86,366 @@ class _RouteResultsState extends State<RouteResults> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Panel superior con información de la ruta
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 600;
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Estado de la ruta
-                Card(
+                Container(
+                  width: 320,
+                  padding: const EdgeInsets.all(16.0),
+                  color: MetroColors.white,
+                  child: _buildRouteSteps(tieneTransbordo),
+                ),
+                Expanded(
+                  child:
+                      _buildMapAndStatus(estadoColor, estadoIcon, lineasUsadas),
+                ),
+              ],
+            );
+          } else {
+            return SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildMapAndStatus(estadoColor, estadoIcon, lineasUsadas),
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    color: MetroColors.white,
+                    child: _buildRouteSteps(tieneTransbordo),
+                  ),
+                ],
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildRouteSteps(bool tieneTransbordo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tu ruta',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildStationStep('Origen', widget.origen, isFirst: true),
+        if (tieneTransbordo && _routeStations != null) ...[
+          const SizedBox(height: 12),
+          _buildTransferStep(),
+          const SizedBox(height: 12),
+        ],
+        if (_routeStations != null && _routeStations!.length > 2) ...[
+          ..._routeStations!
+              .sublist(1, _routeStations!.length - 1)
+              .asMap()
+              .entries
+              .map((entry) {
+            return _buildStationStep(
+              'Estación ${entry.key + 1}',
+              entry.value,
+              showLine: true,
+            );
+          }),
+          const SizedBox(height: 12),
+        ],
+        _buildStationStep('Destino', widget.destino, isLast: true),
+      ],
+    );
+  }
+
+  Widget _buildMapAndStatus(
+      Color estadoColor, IconData estadoIcon, List<String> lineasUsadas) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          color: MetroColors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: Card(
                   color: estadoColor.withValues(alpha: 0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(estadoIcon, color: estadoColor, size: 48),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
+                        Row(
+                          children: [
+                            Icon(estadoIcon, color: estadoColor, size: 32),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
                                 widget.route.getEstadoTexto(),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: estadoColor,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Tiempo estimado: ${widget.route.tiempoEstimado} minutos',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tiempo: ${widget.route.tiempoEstimado} min',
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Información de estaciones
-                Card(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Ruta',
+                          'Líneas',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        _buildStationInfo('Origen', widget.origen),
-                        if (_routeStations != null && _routeStations!.length > 2) ...[
-                          const SizedBox(height: 8),
+                        const SizedBox(height: 8),
+                        if (lineasUsadas.isNotEmpty) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: lineasUsadas.map((linea) {
+                              final color = linea == 'linea1'
+                                  ? MetroColors.linea1
+                                  : MetroColors.linea2;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.train,
+                                      size: 14,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      linea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                                      style: TextStyle(
+                                        color: color,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ] else ...[
                           Text(
-                            '${_routeStations!.length - 2} estaciones intermedias',
-                            style: const TextStyle(
+                            'No disponible',
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color:
+                                  MetroColors.grayDark.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 16),
-                        _buildStationInfo('Destino', widget.destino),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Mapa con la ruta resaltada
-          Expanded(
-            child: Consumer<MetroDataProvider>(
-              builder: (context, metroProvider, child) {
-                if (_showCustomMap) {
-                  return CustomMetroMap(
-                    stations: metroProvider.stations,
-                    trains: metroProvider.trains,
-                    highlightedRoute: _routeStations,
-                    onStationTap: (station) {
-                      // Mostrar detalles de estación
-                    },
-                  );
-                } else {
-                  return MapWidget(
-                    highlightedRoute: _routeStations,
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStationInfo(String label, StationModel station) {
-    return Row(
-      children: [
-        Icon(
-          Icons.train,
-          color: station.linea == 'linea1' ? Colors.blue : Colors.orange,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                station.nombre,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
         ),
+        Expanded(
+          child: Consumer<MetroDataProvider>(
+            builder: (context, metroProvider, child) {
+              if (_showCustomMap) {
+                return CustomMetroMap(
+                  stations: metroProvider.stations,
+                  trains: const [],
+                  highlightedRoute: _routeStations,
+                  onStationTap: (station) {},
+                );
+              } else {
+                return MapWidget(
+                  highlightedRoute: _routeStations,
+                );
+              }
+            },
+          ),
+        ),
       ],
     );
   }
-}
 
+  // Métodos auxiliares
+  List<String> _getLineasUsadas() {
+    final lineas = <String>{};
+    if (_routeStations != null) {
+      for (var station in _routeStations!) {
+        lineas.add(station.linea);
+      }
+    }
+    return lineas.toList();
+  }
+
+  StationModel? _findTransferStation() {
+    if (_routeStations == null) return null;
+
+    // Buscar San Miguelito en la ruta
+    for (var station in _routeStations!) {
+      if (station.nombre.toLowerCase().contains('san miguelito')) {
+        return station;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildStationStep(
+    String label,
+    StationModel station, {
+    bool isFirst = false,
+    bool isLast = false,
+    bool showLine = false,
+  }) {
+    final lineColor =
+        station.linea == 'linea1' ? MetroColors.linea1 : MetroColors.linea2;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: lineColor,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  isFirst
+                      ? 'O'
+                      : isLast
+                          ? 'D'
+                          : '•',
+                  style: TextStyle(
+                    color: MetroColors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isFirst || isLast ? 16 : 20,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    station.nombre,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (showLine) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      station.linea == 'linea1' ? 'Línea 1' : 'Línea 2',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: lineColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransferStep() {
+    final transferStation = _findTransferStation();
+    final stationName = transferStation?.nombre ?? 'San Miguelito';
+
+    return Card(
+      color: MetroColors.energyOrange.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Icon(Icons.swap_horiz, color: MetroColors.energyOrange, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Transbordo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: MetroColors.grayDark.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    stationName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Cambia de línea aquí',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: MetroColors.energyOrange,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
