@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../../core/logger.dart';
 
 class ReportProgressService {
   static const String _progressKeyPrefix = 'report_progress_';
@@ -27,7 +28,7 @@ class ReportProgressService {
 
       await prefs.setString(key, jsonEncode(progress));
     } catch (e) {
-      print('Error saving report progress: $e');
+      AppLogger.error('Error saving report progress: $e');
     }
   }
 
@@ -57,7 +58,7 @@ class ReportProgressService {
 
       return progress;
     } catch (e) {
-      print('Error getting report progress: $e');
+      AppLogger.error('Error getting report progress: $e');
       return null;
     }
   }
@@ -69,7 +70,7 @@ class ReportProgressService {
       final key = '$_progressKeyPrefix$stationId';
       await prefs.remove(key);
     } catch (e) {
-      print('Error clearing report progress: $e');
+      AppLogger.error('Error clearing report progress: $e');
     }
   }
 

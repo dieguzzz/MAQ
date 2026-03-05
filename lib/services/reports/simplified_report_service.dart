@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/simplified_report_model.dart';
+import '../../core/logger.dart';
 
 /// Servicio simplificado para reportes según nuevo diseño
 class SimplifiedReportService {
@@ -132,7 +133,7 @@ class SimplifiedReportService {
 
       await _firestore.collection('reports').doc(reportId).update(updates);
     } catch (e) {
-      print('Error updating train report on arrival: $e');
+      AppLogger.error('Error updating train report on arrival: $e');
       rethrow;
     }
   }
@@ -211,13 +212,13 @@ class SimplifiedReportService {
             return report;
           }
         } catch (e) {
-          print('Error parsing report ${doc.id}: $e');
+          AppLogger.error('Error parsing report ${doc.id}: $e');
         }
       }
 
       return null;
     } catch (e) {
-      print('Error getting pending train report: $e');
+      AppLogger.error('Error getting pending train report: $e');
       return null;
     }
   }
@@ -231,7 +232,7 @@ class SimplifiedReportService {
       }
       return null;
     } catch (e) {
-      print('Error getting report: $e');
+      AppLogger.error('Error getting report: $e');
       return null;
     }
   }
@@ -258,7 +259,7 @@ class SimplifiedReportService {
 
       return callResult.data as Map<String, dynamic>;
     } catch (e) {
-      print('Error submitting validation: $e');
+      AppLogger.error('Error submitting validation: $e');
       rethrow;
     }
   }
@@ -291,7 +292,7 @@ class SimplifiedReportService {
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(limit).toList();
     } catch (e) {
-      print('Error getting recent reports: $e');
+      AppLogger.error('Error getting recent reports: $e');
       return [];
     }
   }
@@ -308,7 +309,7 @@ class SimplifiedReportService {
             try {
               return SimplifiedReportModel.fromFirestore(doc);
             } catch (e) {
-              print('Error parsing report ${doc.id}: $e');
+              AppLogger.error('Error parsing report ${doc.id}: $e');
               return null;
             }
           })
@@ -349,7 +350,7 @@ class SimplifiedReportService {
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports.take(limit).toList();
     } catch (e) {
-      print('Error getting recent train reports: $e');
+      AppLogger.error('Error getting recent train reports: $e');
       return [];
     }
   }
@@ -366,7 +367,7 @@ class SimplifiedReportService {
             try {
               return SimplifiedReportModel.fromFirestore(doc);
             } catch (e) {
-              print('Error parsing report ${doc.id}: $e');
+              AppLogger.error('Error parsing report ${doc.id}: $e');
               return null;
             }
           })

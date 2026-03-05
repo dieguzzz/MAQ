@@ -52,3 +52,6 @@ firebase_options.dart
 .env
 .env.local
 
+# Local properties (contains API keys)
+**/local.properties
+

@@ -8,6 +8,7 @@ import '../services/stations/train_status_aggregator.dart';
 import '../models/station_model.dart';
 import '../models/train_model.dart';
 import '../utils/metro_data.dart';
+import '../core/logger.dart';
 
 class MetroDataProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -90,13 +91,13 @@ class MetroDataProvider with ChangeNotifier {
     if (_selectedLinea == 'all') {
       // "Todas las líneas" - retornar todos los trenes (Línea 1 + Línea 2)
       final allTrains = List<TrainModel>.from(_trains);
-      print(
+      AppLogger.debug(
           '🔍 MetroDataProvider: trains getter - selectedLinea=all, retornando ${allTrains.length} trenes (todos)');
       return allTrains;
     } else {
       // Filtrar por línea específica
       final filtered = _trains.where((t) => t.linea == _selectedLinea).toList();
-      print(
+      AppLogger.debug(
           '🔍 MetroDataProvider: trains getter - selectedLinea=$_selectedLinea, retornando ${filtered.length} trenes');
       return filtered;
     }
@@ -136,7 +137,7 @@ class MetroDataProvider with ChangeNotifier {
           notifyListeners();
         },
         onError: (error) {
-          print('Error en stream de estaciones: $error');
+          AppLogger.error('Error en stream de estaciones: $error');
           // Usar datos estáticos como fallback
           _stations = MetroData.getAllStations();
           notifyListeners();
@@ -150,7 +151,7 @@ class MetroDataProvider with ChangeNotifier {
           notifyListeners();
         },
         onError: (error) {
-          print('Error en stream de trenes: $error');
+          AppLogger.error('Error en stream de trenes: $error');
           _trains = MetroData.getSampleTrains();
           notifyListeners();
         },
@@ -160,7 +161,7 @@ class MetroDataProvider with ChangeNotifier {
       _initReportsListener();
     } else {
       // En modo test, usar solo datos estáticos
-      print('🧪 Modo Test: Usando datos estáticos sin streams de Firestore');
+      AppLogger.debug('🧪 Modo Test: Usando datos estáticos sin streams de Firestore');
       _stations = MetroData.getAllStations();
       _trains = MetroData.getSampleTrains();
       notifyListeners();
@@ -175,7 +176,7 @@ class MetroDataProvider with ChangeNotifier {
     if (_isTestMode == isTestMode) return; // Ya está en ese modo
 
     _isTestMode = isTestMode;
-    print(
+    AppLogger.debug(
         '🧪 MetroDataProvider: Modo Test ${isTestMode ? "activado" : "desactivado"}');
 
     if (isTestMode) {
@@ -203,7 +204,7 @@ class MetroDataProvider with ChangeNotifier {
         setTestMode(isTest);
       }
     } catch (e) {
-      print('Error verificando modo test: $e');
+      AppLogger.error('Error verificando modo test: $e');
       _isTestMode = false;
     }
   }
@@ -215,7 +216,7 @@ class MetroDataProvider with ChangeNotifier {
     try {
       // En modo test, usar solo datos estáticos
       if (_isTestMode) {
-        print('🧪 Modo Test: Cargando datos estáticos de prueba');
+        AppLogger.debug('🧪 Modo Test: Cargando datos estáticos de prueba');
         _stations = MetroData.getAllStations();
         _trains = MetroData.getSampleTrains();
       } else {
@@ -233,14 +234,14 @@ class MetroDataProvider with ChangeNotifier {
 
         // Si no hay estaciones en Firestore, usar datos estáticos como fallback
         if (_stations.isEmpty) {
-          print('No hay estaciones en Firestore, usando datos estáticos...');
+          AppLogger.debug('No hay estaciones en Firestore, usando datos estáticos...');
           _stations = MetroData.getAllStations();
         }
       }
     } catch (e) {
-      print('Error loading metro data: $e');
+      AppLogger.error('Error loading metro data: $e');
       // Si hay error, usar datos estáticos como fallback
-      print('Usando datos estáticos como fallback...');
+      AppLogger.debug('Usando datos estáticos como fallback...');
       _stations = MetroData.getAllStations();
       _trains = MetroData.getSampleTrains();
     } finally {
@@ -253,7 +254,7 @@ class MetroDataProvider with ChangeNotifier {
     // Siempre actualizar y notificar, incluso si el valor es el mismo
     // Esto asegura que "Todas las líneas" funcione correctamente
     _selectedLinea = linea;
-    print(
+    AppLogger.debug(
         '🔍 MetroDataProvider: setSelectedLinea($linea) - notificando listeners');
     notifyListeners();
   }
@@ -317,12 +318,12 @@ class MetroDataProvider with ChangeNotifier {
         // Recalcular estado para cada estación afectada
         for (final stationId in stationIds) {
           _statusAggregator.updateStationFromReports(stationId).catchError((e) {
-            print('Error actualizando estado de estación $stationId: $e');
+            AppLogger.error('Error actualizando estado de estación $stationId: $e');
           });
         }
       },
       onError: (error) {
-        print('Error en listener de reportes: $error');
+        AppLogger.error('Error en listener de reportes: $error');
       },
     );
 
@@ -370,14 +371,14 @@ class MetroDataProvider with ChangeNotifier {
               _trainStatusAggregator
                   .updateTrainFromReports(train.id)
                   .catchError((e) {
-                print('Error actualizando estado de tren ${train.id}: $e');
+                AppLogger.error('Error actualizando estado de tren ${train.id}: $e');
               });
             });
           }
         }
       },
       onError: (error) {
-        print('Error en listener de reportes de trenes: $error');
+        AppLogger.error('Error en listener de reportes de trenes: $error');
       },
     );
   }

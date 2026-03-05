@@ -5,6 +5,7 @@ import '../../models/simplified_report_model.dart';
 import '../../services/reports/simplified_report_service.dart';
 import '../../services/location/location_service.dart';
 import '../../widgets/train_arrival_animation.dart';
+import '../../core/logger.dart';
 
 /// Pantalla para completar reporte de llegada del tren
 class TrainArrivalScreen extends StatefulWidget {
@@ -238,7 +239,7 @@ class _TrainArrivalScreenState extends State<TrainArrivalScreen> {
           position = await locationService.getCurrentPosition();
         }
       } catch (e) {
-        print('No se pudo obtener ubicación: $e');
+        AppLogger.error('No se pudo obtener ubicación: $e');
       }
 
       final points = widget.pendingReport != null ? 30 : 15;

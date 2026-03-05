@@ -1,5 +1,6 @@
 import '../../models/report_model.dart';
 import '../core/firebase_service.dart';
+import '../../core/logger.dart';
 
 class ConfidenceService {
   final FirebaseService _firebaseService = FirebaseService();
@@ -62,7 +63,7 @@ class ConfidenceService {
         'confidence': newConfidence,
       });
     } catch (e) {
-      print('Error updating report confidence: $e');
+      AppLogger.error('Error updating report confidence: $e');
     }
   }
 }

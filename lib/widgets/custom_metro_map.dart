@@ -21,6 +21,7 @@ import '../services/location/location_service.dart';
 import '../providers/location_provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../utils/metro_data.dart';
+import '../core/logger.dart';
 
 enum StationStatus {
   normal, // 🟢 Verde
@@ -118,10 +119,10 @@ class _CustomMetroMapState extends State<CustomMetroMap>
           }
 
           // El editor de posiciones ahora se controla mediante el botón EDIT
-          print('🧪 Modo Test activado: Los trenes no se moverán.');
-          print('🧪 Activa el modo EDIT para mover estaciones.');
+          AppLogger.debug('🧪 Modo Test activado: Los trenes no se moverán.');
+          AppLogger.debug('🧪 Activa el modo EDIT para mover estaciones.');
         } catch (e) {
-          print('Error verificando modo test: $e');
+          AppLogger.error('Error verificando modo test: $e');
         }
       }
 
@@ -180,12 +181,12 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 
           // El editor de posiciones ahora se controla mediante el botón EDIT
           if (isTestMode) {
-            print(
+            AppLogger.debug(
                 '🧪 Modo Test detectado. Activa el modo EDIT para mover estaciones.');
           }
         }
       } catch (e) {
-        print('Error verificando modo test: $e');
+        AppLogger.error('Error verificando modo test: $e');
       }
     }
   }
@@ -462,7 +463,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
           position = await locationService.getCurrentPosition();
         }
       } catch (e) {
-        print('No se pudo obtener ubicación: $e');
+        AppLogger.error('No se pudo obtener ubicación: $e');
       }
 
       await _reportService.createDirectArrivalReport(
@@ -769,7 +770,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 ? (details) {
                     // Cancelar el timer de tap para que no se abra el modal
                     _tapTimer?.cancel();
-                    print('🧪 Drag start: ${station.nombre}');
+                    AppLogger.debug('🧪 Drag start: ${station.nombre}');
                     setState(() {
                       _draggingStationId = station.id;
                       _dragOffset = Offset.zero;
@@ -809,7 +810,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 
                       final newGeoPoint = _canvasToGeoPoint(
                           clampedPoint, size, _currentBounds!);
-                      print(
+                      AppLogger.debug(
                           '🧪 Drag end: ${station.nombre} -> [${newGeoPoint.latitude}, ${newGeoPoint.longitude}]');
                       _positionEditor.updatePosition(station.id, newGeoPoint);
 
@@ -830,7 +831,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
               if (!editModeService.isEditModeActive) return null;
 
               return () {
-                print('🧪 Drag cancel: ${station.nombre}');
+                AppLogger.debug('🧪 Drag cancel: ${station.nombre}');
                 setState(() {
                   _draggingStationId = null;
                   _dragOffset = null;
@@ -902,7 +903,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                 ? (details) {
                     // Cancelar el timer de tap para que no se abra el modal
                     _tapTimer?.cancel();
-                    print('🧪 Drag start: ${station.nombre}');
+                    AppLogger.debug('🧪 Drag start: ${station.nombre}');
                     setState(() {
                       _draggingStationId = station.id;
                       _dragOffset = Offset.zero;
@@ -942,7 +943,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 
                       final newGeoPoint = _canvasToGeoPoint(
                           clampedPoint, size, _currentBounds!);
-                      print(
+                      AppLogger.debug(
                           '🧪 Drag end: ${station.nombre} -> [${newGeoPoint.latitude}, ${newGeoPoint.longitude}]');
                       _positionEditor.updatePosition(station.id, newGeoPoint);
 
@@ -963,7 +964,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
               if (!editModeService.isEditModeActive) return null;
 
               return () {
-                print('🧪 Drag cancel: ${station.nombre}');
+                AppLogger.debug('🧪 Drag cancel: ${station.nombre}');
                 setState(() {
                   _draggingStationId = null;
                   _dragOffset = null;

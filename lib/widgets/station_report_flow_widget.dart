@@ -7,6 +7,7 @@ import '../services/location/location_service.dart';
 import '../services/reports/report_progress_service.dart';
 import '../widgets/points_reward_animation.dart';
 import '../theme/metro_theme.dart';
+import '../core/logger.dart';
 
 /// Widget de flujo de reporte de estación para usar en bottom sheet
 class StationReportFlowWidget extends StatefulWidget {
@@ -100,7 +101,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
         );
       }
     } catch (e) {
-      print('❌ Error al guardar progreso: $e');
+      AppLogger.error('❌ Error al guardar progreso: $e');
     }
   }
 
@@ -772,7 +773,7 @@ class _StationReportFlowWidgetState extends State<StationReportFlowWidget> {
           position = await locationService.getCurrentPosition();
         }
       } catch (e) {
-        print('No se pudo obtener ubicación: $e');
+        AppLogger.error('No se pudo obtener ubicación: $e');
       }
 
       await _reportService.createStationReport(

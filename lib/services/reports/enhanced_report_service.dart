@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/enhanced_report_model.dart';
+import '../../core/logger.dart';
 
 /// Servicio mejorado para manejar reportes con validaciones ETA
 class EnhancedReportService {
@@ -115,7 +116,7 @@ class EnhancedReportService {
       }
       return null;
     } catch (e) {
-      print('Error getting report: $e');
+      AppLogger.error('Error getting report: $e');
       return null;
     }
   }
@@ -142,7 +143,7 @@ class EnhancedReportService {
 
       return callResult.data as Map<String, dynamic>;
     } catch (e) {
-      print('Error submitting validation: $e');
+      AppLogger.error('Error submitting validation: $e');
       rethrow;
     }
   }
@@ -170,7 +171,7 @@ class EnhancedReportService {
           .map((doc) => EnhancedReportModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error getting recent reports: $e');
+      AppLogger.error('Error getting recent reports: $e');
       return [];
     }
   }

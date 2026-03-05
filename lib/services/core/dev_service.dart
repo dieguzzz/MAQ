@@ -5,6 +5,7 @@ import '../../models/learning_report_model.dart';
 import '../learning/learning_report_service.dart';
 import '../simulation/schedule_service.dart';
 import 'firebase_service.dart';
+import '../../core/logger.dart';
 
 /// Servicio para modo desarrollador - testing y simulación
 class DevService {
@@ -36,7 +37,7 @@ class DevService {
       'problemStations': [],
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true)).catchError((e) {
-      print('Error inicializando dev metrics: $e');
+      AppLogger.error('Error inicializando dev metrics: $e');
     });
   }
 
@@ -90,7 +91,7 @@ class DevService {
       // Actualizar métricas
       await _updateMetrics();
     } catch (e) {
-      print('Error simulando reporte: $e');
+      AppLogger.error('Error simulando reporte: $e');
       rethrow;
     }
   }
@@ -140,7 +141,7 @@ class DevService {
       // Actualizar métricas después de la simulación masiva
       await _updateMetrics();
     } catch (e) {
-      print('Error en simulación masiva: $e');
+      AppLogger.error('Error en simulación masiva: $e');
       rethrow;
     }
   }
@@ -150,9 +151,9 @@ class DevService {
     try {
       // Aquí se podría llamar a un servicio de actualización del modelo
       // Por ahora solo loggeamos
-      print('Forzando actualización del modelo para estación: $stationId');
+      AppLogger.debug('Forzando actualización del modelo para estación: $stationId');
     } catch (e) {
-      print('Error forzando actualización del modelo: $e');
+      AppLogger.error('Error forzando actualización del modelo: $e');
     }
   }
 
@@ -200,7 +201,7 @@ class DevService {
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
-      print('Error actualizando métricas: $e');
+      AppLogger.error('Error actualizando métricas: $e');
     }
   }
 
@@ -252,7 +253,7 @@ class DevService {
 
       return problemStations.take(5).toList(); // Top 5
     } catch (e) {
-      print('Error obteniendo estaciones problemáticas: $e');
+      AppLogger.error('Error obteniendo estaciones problemáticas: $e');
       return [];
     }
   }
@@ -291,7 +292,7 @@ class DevService {
 
       return history;
     } catch (e) {
-      print('Error obteniendo historial de precisión: $e');
+      AppLogger.error('Error obteniendo historial de precisión: $e');
       return List.filled(10, 0.0);
     }
   }
@@ -300,11 +301,11 @@ class DevService {
   static Future<void> resetModel() async {
     try {
       // Aquí se implementaría la lógica para reiniciar el modelo
-      print('Reiniciando modelo de aprendizaje...');
+      AppLogger.debug('Reiniciando modelo de aprendizaje...');
       // Por ahora solo actualizamos métricas
       await _updateMetrics();
     } catch (e) {
-      print('Error reiniciando modelo: $e');
+      AppLogger.error('Error reiniciando modelo: $e');
       rethrow;
     }
   }
@@ -323,7 +324,7 @@ class DevService {
         'lastUpdated': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error guardando ajustes: $e');
+      AppLogger.error('Error guardando ajustes: $e');
       rethrow;
     }
   }
@@ -350,7 +351,7 @@ class DevService {
         'learningWeight': 0.3,
       };
     } catch (e) {
-      print('Error obteniendo ajustes: $e');
+      AppLogger.error('Error obteniendo ajustes: $e');
       return {
         'learningRate': 0.1,
         'baseScheduleWeight': 0.7,
@@ -362,7 +363,7 @@ class DevService {
   /// Limpia todos los datos de prueba
   static Future<void> clearTestData() async {
     try {
-      print('🧹 Limpiando datos de prueba...');
+      AppLogger.debug('🧹 Limpiando datos de prueba...');
 
       // 1. Eliminar reportes de aprendizaje de prueba
       final learningReports = await _firestore
@@ -389,9 +390,9 @@ class DevService {
       await _firestore.collection('dev_metrics').doc('realtime').delete();
 
       await batch.commit();
-      print('✅ Datos de prueba eliminados');
+      AppLogger.debug('✅ Datos de prueba eliminados');
     } catch (e) {
-      print('Error limpiando datos de prueba: $e');
+      AppLogger.error('Error limpiando datos de prueba: $e');
       rethrow;
     }
   }

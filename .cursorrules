@@ -32,6 +32,12 @@ Firebase / Firestore
 - ❌ Escribir Firestore directamente desde la UI
 - ❌ Exponer secretos, API keys o IDs sensibles
 - ❌ Modificar reglas sin explicación clara
+- ❌ Usar `print()` — usar `AppLogger` de `lib/core/logger.dart`
+- ❌ Permitir escrituras de cliente a colecciones compartidas (stations, trains)
+- ❌ Confiar en datos del cliente para puntos, streaks o gamificación
+- ❌ Mostrar `error.code` o `error.message` al usuario final
+- ❌ Hardcodear API keys en código Dart o AndroidManifest.xml
+- ❌ Permitir usuarios anónimos crear reportes o confirmaciones
 
 Arquitectura
 - ❌ Cambiar estructura de carpetas existente
@@ -124,6 +130,21 @@ Google Maps
 - Seguir patrones existentes antes de crear nuevos
 
 ────────────────────────────────────
+🔒 SEGURIDAD (ver .cursor/plans/90-security.md)
+────────────────────────────────────
+
+- ✅ Solo `AppLogger` para logging (lib/core/logger.dart)
+- ✅ Escrituras a colecciones compartidas via Cloud Functions
+- ✅ Firestore rules actualizadas para cada nueva colección
+- ✅ Rate limiting cliente + servidor
+- ✅ Validación server-side con whitelists
+- ✅ API keys en local.properties (git-ignored)
+- ✅ Usuarios anónimos bloqueados de ops sensibles
+- ✅ Mensajes de error genéricos (sin internals)
+- ✅ Ubicaciones validadas (no mock, rango 500m)
+- ✅ Storage: max 5MB, solo imágenes
+
+────────────────────────────────────
 🎯 DEFINITION OF DONE
 ────────────────────────────────────
 
@@ -137,3 +158,4 @@ Un cambio está completo cuando:
 - ✅ Tests pasan
 - ✅ `flutter analyze` limpio
 - ✅ Documentación actualizada
+- ✅ Cumple checklist de seguridad (.cursor/plans/90-security.md)

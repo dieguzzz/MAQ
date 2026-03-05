@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/logger.dart';
 
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -64,19 +65,21 @@ class NotificationService {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
 
-      await _firestore.collection('users').doc(userId).update({
-        'fcmToken': token,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+      // Store FCM token in separate collection for security
+      // Only the owner can read/write their own token
+      await _firestore.collection('fcm_tokens').doc(userId).set({
+        'token': token,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'platform': 'android',
       });
-      print('FCM Token guardado para usuario $userId');
     } catch (e) {
-      print('Error guardando FCM token: $e');
+      // Token save failure is non-critical
     }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap
-    print('Notification tapped: ${response.payload}');
+    AppLogger.debug('Notification tapped: ${response.payload}');
     if (response.payload != null && onNotificationTapped != null) {
       // Parse payload si es necesario
       onNotificationTapped!({'payload': response.payload});
@@ -115,7 +118,7 @@ class NotificationService {
     final data = message.data;
     final type = data['type'];
 
-    print('Notificación recibida: $type');
+    AppLogger.debug('Notificación recibida: $type');
 
     switch (type) {
       case 'eta_validation':
@@ -131,7 +134,7 @@ class NotificationService {
         // TODO: Manejar alertas de estación
         break;
       default:
-        print('Tipo de notificación desconocido: $type');
+        AppLogger.warning('Tipo de notificación desconocido: $type');
     }
   }
 
@@ -189,5 +192,5 @@ class NotificationService {
 // Top-level function for background message handling
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Background message received: ${message.messageId}');
+  AppLogger.debug('Background message received: ${message.messageId}');
 }

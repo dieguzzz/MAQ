@@ -15,9 +15,19 @@
 - Constantes: kPascalCase o const normal en constants.dart
 
 ## Errores y logging
-- No “print” suelto en producción
-- Usar `debugPrint` y mensajes con contexto
+- NUNCA usar `print()` — usar `AppLogger` de `lib/core/logger.dart`
+- `AppLogger` solo imprime en `kDebugMode` (zero output en release)
+- Niveles: `debug()`, `info()`, `warning()`, `error()`
+- Mensajes de error al usuario: genéricos, NUNCA exponer error.code/message
 - Servicios devuelven resultados tipados o lanzan excepciones controladas
+
+## Seguridad
+- Ver reglas completas en `.cursor/plans/90-security.md`
+- Escrituras a colecciones compartidas: solo via Cloud Functions
+- API keys: en `local.properties` (git-ignored), nunca en código
+- Usuarios anónimos: sin acceso a crear reportes/confirmaciones
+- Rate limiting: implementar en cliente Y servidor
+- Validación server-side: usar whitelists, no blacklists
 
 ## Firestore
 - Siempre `.limit()`

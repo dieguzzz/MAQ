@@ -5,6 +5,7 @@ import '../services/core/firebase_service.dart';
 import '../services/core/storage_service.dart';
 import '../services/core/error_handler_service.dart';
 import '../models/user_model.dart';
+import '../core/logger.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -54,11 +55,11 @@ class AuthProvider with ChangeNotifier {
           notifyListeners();
         }
       }, onError: (error) {
-        print('Error en auth state stream: $error');
+        AppLogger.error('Error en auth state stream: $error');
         // Continuar sin el stream si hay un error
       });
     } catch (e) {
-      print('Error initializing auth stream: $e');
+      AppLogger.error('Error initializing auth stream: $e');
       // Continuar sin el stream si hay un error
     }
   }
@@ -70,7 +71,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _currentUser = await _loadOrCreateUser(uid);
     } catch (e) {
-      print('Error loading user: $e');
+      AppLogger.error('Error loading user: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -257,7 +258,7 @@ class AuthProvider with ChangeNotifier {
           final storageService = StorageService();
           await storageService.deleteProfileImage(userId);
         } catch (e) {
-          print('Error eliminando imagen de perfil: $e');
+          AppLogger.error('Error eliminando imagen de perfil: $e');
           // Continuar aunque falle la eliminación de la imagen
         }
       }
@@ -275,7 +276,7 @@ class AuthProvider with ChangeNotifier {
 
       return true;
     } catch (e) {
-      print('Error eliminando cuenta: $e');
+      AppLogger.error('Error eliminando cuenta: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -293,7 +294,7 @@ class AuthProvider with ChangeNotifier {
       _currentUser = _currentUser!.copyWith(reputacion: newReputacion);
       notifyListeners();
     } catch (e) {
-      print('Error updating reputation: $e');
+      AppLogger.error('Error updating reputation: $e');
     }
   }
 
@@ -331,7 +332,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('Error updating profile: $e');
+      AppLogger.error('Error updating profile: $e');
       return false;
     }
   }

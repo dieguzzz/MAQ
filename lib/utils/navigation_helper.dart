@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/reports/eta_validation_screen.dart';
+import '../core/logger.dart';
 
 /// Helper para navegación global desde notificaciones
 class NavigationHelper {
@@ -29,7 +30,7 @@ class NavigationHelper {
         }
         break;
       default:
-        print('Tipo de notificación no manejado: $type');
+        AppLogger.warning('Tipo de notificación no manejado: $type');
     }
   }
 }

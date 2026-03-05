@@ -1,4 +1,5 @@
 import '../core/firebase_service.dart';
+import '../../core/logger.dart';
 
 class AccuracyService {
   final FirebaseService _firebaseService = FirebaseService();
@@ -28,7 +29,7 @@ class AccuracyService {
       final accuracy = (verifiedReports / userReports.length) * 100;
       return accuracy.clamp(0.0, 100.0);
     } catch (e) {
-      print('Error calculating user accuracy: $e');
+      AppLogger.error('Error calculating user accuracy: $e');
       return 0.0;
     }
   }
@@ -43,7 +44,7 @@ class AccuracyService {
         {'precision': accuracy},
       );
     } catch (e) {
-      print('Error updating user accuracy: $e');
+      AppLogger.error('Error updating user accuracy: $e');
     }
   }
 

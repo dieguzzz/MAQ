@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../core/logger.dart';
 import '../core/app_mode_service.dart';
 
 class ReportValidationService {
@@ -12,7 +14,7 @@ class ReportValidationService {
     try {
       // Validar parámetros
       if (userId.isEmpty) {
-        print('⚠️ canUserReport: userId está vacío');
+        AppLogger.warning('⚠️ canUserReport: userId está vacío');
         return false;
       }
 
@@ -20,7 +22,7 @@ class ReportValidationService {
       final oneHourAgo = now.subtract(const Duration(hours: 1));
       final fiveMinutesAgo = now.subtract(const Duration(minutes: 5));
 
-      print('🔍 Validando reporte - userId: $userId, objetivoId: $objetivoId');
+      AppLogger.debug('🔍 Validando reporte - userId: $userId, objetivoId: $objetivoId');
 
       // Verificar límite de reportes por hora
       try {
@@ -31,15 +33,15 @@ class ReportValidationService {
             .get();
 
         final recentCount = recentReportsSnapshot.docs.length;
-        print('📊 Reportes en la última hora: $recentCount');
+        AppLogger.debug('📊 Reportes en la última hora: $recentCount');
 
         if (recentCount >= 10) {
-          print(
+          AppLogger.error(
               '❌ Límite de spam alcanzado: $recentCount reportes en la última hora');
           return false; // Límite de spam alcanzado
         }
       } catch (e) {
-        print('⚠️ Error verificando límite de reportes por hora: $e');
+        AppLogger.warning('⚠️ Error verificando límite de reportes por hora: $e');
         // Continuar con la validación siguiente en lugar de bloquear
       }
 
@@ -55,26 +57,25 @@ class ReportValidationService {
               .get();
 
           if (recentSameTargetSnapshot.docs.isNotEmpty) {
-            print(
+            AppLogger.error(
                 '❌ Ya reportó esta estación/tren recientemente (últimos 5 minutos)');
             return false; // Ya reportó esta estación/tren recientemente
           }
-          print('✅ No hay reportes recientes para este objetivo');
+          AppLogger.debug('✅ No hay reportes recientes para este objetivo');
         } catch (e) {
-          print(
+          AppLogger.warning(
               '⚠️ Error verificando reportes recientes del mismo objetivo: $e');
           // Continuar permitiendo el reporte si hay error de red
         }
       } else {
-        print(
+        AppLogger.warning(
             '⚠️ objetivoId es null o vacío, saltando validación de duplicados');
       }
 
-      print('✅ Validación anti-spam pasada');
+      AppLogger.debug('✅ Validación anti-spam pasada');
       return true;
     } catch (e, stackTrace) {
-      print('❌ Error inesperado en canUserReport: $e');
-      print('📍 Stack trace: $stackTrace');
+      AppLogger.error('❌ Error inesperado en canUserReport: $e', e, stackTrace);
       // En caso de error inesperado, permitir el reporte para no bloquear usuarios legítimos
       // pero loggear el error para investigar
       return true;
@@ -89,9 +90,9 @@ class ReportValidationService {
     GeoPoint targetLocation, {
     AppMode? appMode,
   }) {
-    // En modo Test, omitir validación de ubicación
-    if (appMode == AppMode.test) {
-      print('🧪 Modo Test: Omitiendo validación de ubicación');
+    // Test mode bypass ONLY in debug builds
+    if (kDebugMode && appMode == AppMode.test) {
+      AppLogger.debug('Test mode: skipping location validation');
       return true;
     }
 
@@ -99,9 +100,9 @@ class ReportValidationService {
       return false; // Sin ubicación del usuario
     }
 
-    // 🔥 PREVENCIÓN: Bloquear si se detecta Mock Location (Fake GPS)
+    // Block mock/fake GPS locations
     if (userLocation.isMocked) {
-      print('🚨 ALERTA: MOCK LOCATION DETECTADA. Ubicación falseada.');
+      AppLogger.warning('Mock location detected');
       return false;
     }
 
@@ -112,8 +113,8 @@ class ReportValidationService {
       targetLocation.longitude,
     );
 
-    // Máximo 1 km (1000 metros)
-    return distance <= 1000;
+    // Máximo 500 metros
+    return distance <= 500;
   }
 
   /// Verifica si el usuario ya reportó recientemente para esta estación/tren
@@ -135,7 +136,7 @@ class ReportValidationService {
 
       return recentReportsSnapshot.docs.isNotEmpty;
     } catch (e) {
-      print('Error checking recent report: $e');
+      AppLogger.error('Error checking recent report: $e');
       return false;
     }
   }
@@ -161,7 +162,7 @@ class ReportValidationService {
               .get();
 
           final recentCount = recentReportsSnapshot.docs.length;
-          print(
+          AppLogger.debug(
               '📊 getValidationErrorMessage - Reportes en última hora: $recentCount');
 
           if (recentCount >= 10) {
@@ -178,14 +179,14 @@ class ReportValidationService {
 
           return 'No puedes reportar en este momento.';
         } catch (e) {
-          print('⚠️ Error obteniendo mensaje específico: $e');
+          AppLogger.warning('⚠️ Error obteniendo mensaje específico: $e');
           return 'Error al validar el reporte. Intenta de nuevo.';
         }
       }
 
-      // En modo Test, omitir validación de ubicación
-      if (appMode == AppMode.test) {
-        print('🧪 Modo Test: Omitiendo validación de ubicación');
+      // Test mode bypass ONLY in debug builds
+      if (kDebugMode && appMode == AppMode.test) {
+        AppLogger.debug('Test mode: skipping location validation');
         return null; // Sin errores
       }
 
@@ -198,13 +199,13 @@ class ReportValidationService {
         final isValid = isValidReportLocation(userLocation, targetLocation,
             appMode: appMode);
         if (!isValid) {
-          return 'Debes estar a menos de 1 km de la estación/tren para reportar.';
+          return 'Debes estar a menos de 500m de la estación/tren para reportar.';
         }
       }
 
       return null; // Sin errores
     } catch (e) {
-      print('❌ Error inesperado en getValidationErrorMessage: $e');
+      AppLogger.error('❌ Error inesperado en getValidationErrorMessage: $e');
       return 'Error al validar el reporte. Intenta de nuevo.';
     }
   }

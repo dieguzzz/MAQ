@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/logger.dart';
 
 /// Servicio para actualizar todas las estaciones en Firestore con coordenadas exactas
 class StationUpdateService {
@@ -253,34 +254,34 @@ class StationUpdateService {
     };
 
     try {
-      print('📋 Iniciando actualización de estaciones...');
+      AppLogger.debug('📋 Iniciando actualización de estaciones...');
 
       // 1. Obtener todas las estaciones existentes
-      print('📖 Leyendo estaciones existentes...');
+      AppLogger.debug('📖 Leyendo estaciones existentes...');
       final snapshot = await stationsRef.get();
       final existingIds = snapshot.docs.map((doc) => doc.id).toSet();
-      print('✅ Encontradas ${existingIds.length} estaciones existentes');
+      AppLogger.debug('✅ Encontradas ${existingIds.length} estaciones existentes');
 
       // 2. Eliminar documentos duplicados o incorrectos
-      print('🗑️  Eliminando documentos duplicados...');
+      AppLogger.debug('🗑️  Eliminando documentos duplicados...');
       final idsToDelete = ['l2_san_miguelito_l1'];
 
       for (final idToDelete in idsToDelete) {
         if (existingIds.contains(idToDelete)) {
           try {
             await stationsRef.doc(idToDelete).delete();
-            print('  ✅ Eliminado: $idToDelete');
+            AppLogger.debug('  ✅ Eliminado: $idToDelete');
             results['deleted'] = (results['deleted'] as int) + 1;
           } catch (e) {
             final errorMsg = 'Error eliminando $idToDelete: $e';
-            print('  ⚠️  $errorMsg');
+            AppLogger.warning('  ⚠️  $errorMsg');
             (results['errors'] as List<String>).add(errorMsg);
           }
         }
       }
 
       // 3. Actualizar o crear todas las estaciones con coordenadas exactas
-      print('💾 Actualizando/creando estaciones...');
+      AppLogger.debug('💾 Actualizando/creando estaciones...');
       final batches = <WriteBatch>[];
       WriteBatch? currentBatch = _firestore.batch();
       int operationsInBatch = 0;
@@ -326,45 +327,44 @@ class StationUpdateService {
       }
 
       // Ejecutar todos los batches
-      print('📦 Ejecutando ${batches.length} batch(es)...');
+      AppLogger.debug('📦 Ejecutando ${batches.length} batch(es)...');
       for (int i = 0; i < batches.length; i++) {
         await batches[i].commit();
-        print('  ✅ Batch ${i + 1}/${batches.length} completado');
+        AppLogger.debug('  ✅ Batch ${i + 1}/${batches.length} completado');
       }
 
-      print('✅ Actualización completada:');
-      print('   - Actualizadas: ${results['updated']} estaciones');
-      print('   - Creadas: ${results['created']} estaciones');
-      print('   - Eliminadas: ${results['deleted']} estaciones duplicadas');
+      AppLogger.debug('✅ Actualización completada:');
+      AppLogger.debug('   - Actualizadas: ${results['updated']} estaciones');
+      AppLogger.debug('   - Creadas: ${results['created']} estaciones');
+      AppLogger.debug('   - Eliminadas: ${results['deleted']} estaciones duplicadas');
 
       // 4. Verificar resultado final
-      print('🔍 Verificando resultado final...');
+      AppLogger.debug('🔍 Verificando resultado final...');
       final finalSnapshot = await stationsRef.get();
       final finalIds = finalSnapshot.docs.map((doc) => doc.id).toSet();
-      print('✅ Total de estaciones en Firestore: ${finalIds.length}');
+      AppLogger.debug('✅ Total de estaciones en Firestore: ${finalIds.length}');
 
       // Verificar que no haya San Miguelitos duplicados
       final sanMiguelitoStations =
           finalIds.where((id) => id.contains('san_miguelito')).toList();
-      print(
+      AppLogger.debug(
           '📊 Estaciones San Miguelito encontradas: ${sanMiguelitoStations.length}');
       for (final id in sanMiguelitoStations) {
-        print('   - $id');
+        AppLogger.debug('   - $id');
       }
 
       if (sanMiguelitoStations.length == 2) {
-        print('✅ Correcto: Solo hay 2 San Miguelito (uno por línea)');
+        AppLogger.debug('✅ Correcto: Solo hay 2 San Miguelito (uno por línea)');
       } else {
-        print(
+        AppLogger.warning(
             '⚠️  Advertencia: Se encontraron ${sanMiguelitoStations.length} San Miguelito');
       }
 
-      print('🎉 ¡Actualización completada exitosamente!');
+      AppLogger.debug('🎉 ¡Actualización completada exitosamente!');
       return results;
     } catch (e, stackTrace) {
       final errorMsg = 'Error ejecutando actualización: $e';
-      print('❌ $errorMsg');
-      print('📍 Stack trace: $stackTrace');
+      AppLogger.error('❌ $errorMsg', e, stackTrace);
       (results['errors'] as List<String>).add(errorMsg);
       return results;
     }

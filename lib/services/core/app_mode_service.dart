@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_service.dart';
+import '../../core/logger.dart';
 
 enum AppMode {
   development,
@@ -44,7 +45,7 @@ class AppModeService {
       }
       return fromString(user.appMode);
     } catch (e) {
-      print('Error obteniendo modo de app: $e');
+      AppLogger.error('Error obteniendo modo de app: $e');
       return AppMode.development; // Modo por defecto en caso de error
     }
   }
@@ -56,9 +57,9 @@ class AppModeService {
         'app_mode': toModeString(mode),
         'updated_at': FieldValue.serverTimestamp(),
       });
-      print('✅ Modo de app actualizado: ${toModeString(mode)}');
+      AppLogger.debug('✅ Modo de app actualizado: ${toModeString(mode)}');
     } catch (e) {
-      print('❌ Error actualizando modo de app: $e');
+      AppLogger.error('❌ Error actualizando modo de app: $e');
       rethrow;
     }
   }

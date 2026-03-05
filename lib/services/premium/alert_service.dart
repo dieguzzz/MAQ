@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/report_model.dart';
 import '../../models/user_model.dart';
 import '../core/notification_service.dart';
+import '../../core/logger.dart';
 
 class AlertService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,7 +50,7 @@ class AlertService {
         await _sendAlertToUser(user, report);
       }
     } catch (e) {
-      print('Error sending alerts: $e');
+      AppLogger.error('Error sending alerts: $e');
     }
   }
 
@@ -66,7 +67,7 @@ class AlertService {
         await _sendPriorityAlertToUser(user, report);
       }
     } catch (e) {
-      print('Error sending priority alert: $e');
+      AppLogger.error('Error sending priority alert: $e');
     }
   }
 
@@ -83,7 +84,7 @@ class AlertService {
       // return snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
       return [];
     } catch (e) {
-      print('Error getting users with favorite station: $e');
+      AppLogger.error('Error getting users with favorite station: $e');
       return [];
     }
   }
@@ -119,7 +120,7 @@ class AlertService {
 
       return nearbyUsers;
     } catch (e) {
-      print('Error getting nearby users: $e');
+      AppLogger.error('Error getting nearby users: $e');
       return [];
     }
   }
@@ -136,7 +137,7 @@ class AlertService {
         payload: 'report_${report.id}',
       );
     } catch (e) {
-      print('Error sending alert to user: $e');
+      AppLogger.error('Error sending alert to user: $e');
     }
   }
 
@@ -153,7 +154,7 @@ class AlertService {
         payload: 'priority_report_${report.id}',
       );
     } catch (e) {
-      print('Error sending priority alert to user: $e');
+      AppLogger.error('Error sending priority alert to user: $e');
     }
   }
 

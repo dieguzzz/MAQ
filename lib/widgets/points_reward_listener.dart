@@ -5,6 +5,7 @@ import '../services/gamification/points_history_service.dart';
 import '../models/points_transaction_model.dart';
 import 'points_reward_animation.dart';
 import 'dart:async';
+import '../core/logger.dart';
 
 /// Widget que escucha cambios en el historial de puntos y muestra animaciones
 /// Debe colocarse en la raíz de la app para detectar puntos ganados desde servicios
@@ -46,7 +47,7 @@ class _PointsRewardListenerState extends State<PointsRewardListener> {
         _shownTransactions.add(transaction.id);
       }
     }).catchError((e) {
-      print('Error loading initial transactions: $e');
+      AppLogger.error('Error loading initial transactions: $e');
     });
 
     // Escuchar nuevas transacciones

@@ -5,6 +5,7 @@ import '../reports/accuracy_service.dart';
 import 'level_service.dart';
 import '../simulation/schedule_service.dart';
 import '../core/firebase_service.dart';
+import '../../core/logger.dart';
 
 class GamificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -64,7 +65,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.influencerMetro);
       }
     } catch (e) {
-      print('Error awarding points: $e');
+      AppLogger.error('Error awarding points: $e');
     }
   }
 
@@ -98,7 +99,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.ayudanteComunidad);
       }
     } catch (e) {
-      print('Error awarding verification points: $e');
+      AppLogger.error('Error awarding verification points: $e');
     }
   }
 
@@ -155,7 +156,7 @@ class GamificationService {
         'gamification.puntos_por_linea': puntosPorLinea,
       });
     } catch (e) {
-      print('Error awarding points to report author: $e');
+      AppLogger.error('Error awarding points to report author: $e');
     }
   }
 
@@ -225,7 +226,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.streakMes);
       }
     } catch (e) {
-      print('Error updating streak: $e');
+      AppLogger.error('Error updating streak: $e');
     }
   }
 
@@ -251,7 +252,7 @@ class GamificationService {
         'gamification.badges': currentBadges,
       });
     } catch (e) {
-      print('Error awarding badge: $e');
+      AppLogger.error('Error awarding badge: $e');
     }
   }
 
@@ -540,7 +541,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.observador);
       }
     } catch (e) {
-      print('Error checking accuracy badges: $e');
+      AppLogger.error('Error checking accuracy badges: $e');
     }
   }
 
@@ -565,7 +566,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.maestroLinea2);
       }
     } catch (e) {
-      print('Error checking linea badges: $e');
+      AppLogger.error('Error checking linea badges: $e');
     }
   }
 
@@ -586,7 +587,7 @@ class GamificationService {
         await _awardBadge(userId, BadgeType.reyCarnaval);
       }
     } catch (e) {
-      print('Error checking event badges: $e');
+      AppLogger.error('Error checking event badges: $e');
     }
   }
 
@@ -607,7 +608,7 @@ class GamificationService {
           'gamification.nivel': nuevoNivel, // Actualizar nivel automáticamente
         });
       } catch (e) {
-        print('Error awarding epic report: $e');
+        AppLogger.error('Error awarding epic report: $e');
       }
     }
   }
@@ -634,7 +635,7 @@ class GamificationService {
 
       await batch.commit();
     } catch (e) {
-      print('Error updating rankings: $e');
+      AppLogger.error('Error updating rankings: $e');
     }
   }
 
@@ -695,7 +696,7 @@ class GamificationService {
         await _awardTeachingBadge(userId);
       }
     } catch (e) {
-      print('Error rewarding teaching report: $e');
+      AppLogger.error('Error rewarding teaching report: $e');
     }
   }
 

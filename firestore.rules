@@ -10,7 +10,7 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false; // No permitir eliminar (usar función de Firebase Auth)
-      
+
       // Subcolección de historial de puntos
       match /points_history/{transactionId} {
         // Solo el propio usuario puede leer su historial
@@ -21,61 +21,84 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if false;
       }
+
+      // Subcolección de historial de ubicación
+      match /location_history/{locationId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update: if false;
+        allow delete: if false;
+      }
     }
-    
-    // Stations collection
+
+    // FCM Tokens collection - separada de users para seguridad
+    match /fcm_tokens/{userId} {
+      // Solo el propio usuario puede leer/escribir su token
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Public Profiles collection - datos públicos para leaderboards
+    match /public_profiles/{userId} {
+      // Cualquier usuario autenticado puede leer perfiles públicos
+      allow read: if request.auth != null;
+      // Solo el propio usuario puede escribir su perfil público
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Stations collection - SOLO lectura desde clientes
     match /stations/{stationId} {
       allow read: if true; // Todos pueden leer
-      // Permitir crear para inicialización (no requiere autenticación si el documento no existe)
-      // set() sin merge se trata como create si el documento no existe
-      allow create: if !exists(/databases/$(database)/documents/stations/$(stationId));
-      // Permitir actualizar solo si el documento existe y el usuario está autenticado
-      allow update: if exists(/databases/$(database)/documents/stations/$(stationId)) && request.auth != null;
-      // Permitir write (set) solo para crear nuevos documentos (inicialización)
-      allow write: if !exists(/databases/$(database)/documents/stations/$(stationId));
-      // No permitir eliminar
+      // Solo Cloud Functions (Admin SDK) pueden escribir
+      allow write: if false;
+      allow create: if false;
+      allow update: if false;
       allow delete: if false;
     }
-    
-    // Trains collection
+
+    // Trains collection - SOLO lectura desde clientes
     match /trains/{trainId} {
       allow read: if true; // Todos pueden leer
-      // Permitir crear para inicialización (no requiere autenticación si el documento no existe)
-      // set() sin merge se trata como create si el documento no existe
-      allow create: if !exists(/databases/$(database)/documents/trains/$(trainId));
-      // Permitir actualizar solo si el documento existe y el usuario está autenticado
-      allow update: if exists(/databases/$(database)/documents/trains/$(trainId)) && request.auth != null;
-      // Permitir write (set) solo para crear nuevos documentos (inicialización)
-      allow write: if !exists(/databases/$(database)/documents/trains/$(trainId));
-      // No permitir eliminar
+      // Solo Cloud Functions (Admin SDK) pueden escribir
+      allow write: if false;
+      allow create: if false;
+      allow update: if false;
       allow delete: if false;
     }
-    
+
     // Reports collection (modelo simplificado)
     match /reports/{reportId} {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
-      // Permitir crear si el usuario está autenticado y el userId coincide
-      allow create: if request.auth != null 
-        && request.resource.data.userId == request.auth.uid;
+      // Permitir crear si el usuario está autenticado, NO es anónimo, y el userId coincide
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
       // Permitir actualizar si:
       // - El usuario es el dueño del reporte, O
       // - Solo se actualizan campos de confirmación/validación (cualquier usuario autenticado puede confirmar reportes de otros, pero no su propio reporte)
-      allow update: if request.auth != null 
-        && (resource.data.userId == request.auth.uid 
+      allow update: if request.auth != null
+        && (resource.data.userId == request.auth.uid
             || (request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['confirmations', 'confirmation_count', 'status', 'confidence', 'verification_status', 'validationStatus', 'validationPoints', 'totalPoints'])
-                && resource.data.userId != request.auth.uid)); // No puede actualizar confirmaciones de su propio reporte
+                && resource.data.userId != request.auth.uid
+                // Validar que confirmations solo incremente de a 1
+                && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['confirmations'])
+                    || request.resource.data.confirmations == resource.data.confirmations + 1)
+                // Validar que confidence sea entre 0.0 y 1.0
+                && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['confidence'])
+                    || (request.resource.data.confidence >= 0.0 && request.resource.data.confidence <= 1.0))
+                ));
       allow delete: if false; // No permitir eliminar
-      
+
       // Subcolección de validaciones ETA
       match /eta_validations/{userId} {
         allow read: if request.auth != null;
-        allow create: if request.auth != null 
+        allow create: if request.auth != null
           && request.auth.uid == userId;
         allow update: if false;
         allow delete: if false;
       }
-      
+
       // Subcolección de confirmaciones
       match /confirmations/{userId} {
         allow read: if request.auth != null;
@@ -84,44 +107,51 @@ service cloud.firestore {
         // - El userId de la ruta coincide con el auth.uid
         // - No existe ya una confirmación
         // - El usuario NO es el dueño del reporte
-        allow create: if request.auth != null 
+        // - El usuario NO es anónimo
+        allow create: if request.auth != null
           && request.auth.uid == userId
           && !exists(/databases/$(database)/documents/reports/$(reportId)/confirmations/$(userId))
-          && get(/databases/$(database)/documents/reports/$(reportId)).data.userId != request.auth.uid;
+          && get(/databases/$(database)/documents/reports/$(reportId)).data.userId != request.auth.uid
+          && request.auth.token.firebase.sign_in_provider != 'anonymous';
         allow update: if false;
         allow delete: if false;
       }
     }
-    
+
     // Routes collection
     match /routes/{routeId} {
       allow read: if true; // Todos pueden leer
       allow write: if false; // Solo system (Cloud Functions) puede escribir
     }
-    
+
     // Learning Reports collection (para reportes de aprendizaje/enseñanza)
     match /learning_reports/{reportId} {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
       // Permitir crear si el usuario está autenticado y:
       // - El usuario_id coincide con el usuario autenticado (con prefijo simulated_ para admin)
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && (request.resource.data.usuario_id == request.auth.uid
             || request.resource.data.usuario_id == 'simulated_' + request.auth.uid);
       allow update: if false; // No permitir actualizar reportes
       allow delete: if false; // No permitir eliminar reportes
     }
-    
-    // Model Metrics collection (para métricas del modelo de ML)
+
+    // Model Metrics collection - SOLO Cloud Functions pueden escribir
     match /model_metrics/{metricId} {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
-      allow write: if request.auth != null; // Usuarios autenticados pueden escribir (para admin/testing)
+      allow write: if false; // Solo Cloud Functions (Admin SDK) pueden escribir
     }
-    
+
     // Community Stats collection (para estadísticas del dashboard)
     match /community_stats/{statId} {
       allow read: if request.auth != null; // Usuarios autenticados pueden leer
       allow write: if false; // Solo Cloud Functions pueden escribir
     }
+
+    // Security Alerts collection (para monitoreo de anomalías)
+    match /security_alerts/{alertId} {
+      allow read: if false; // Solo Admin SDK
+      allow write: if false; // Solo Cloud Functions
+    }
   }
 }
-

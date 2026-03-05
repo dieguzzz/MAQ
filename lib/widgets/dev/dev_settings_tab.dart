@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/core/dev_service.dart';
+import '../../core/logger.dart';
 
 /// Tab de ajustes para el panel de desarrollador
 class DevSettingsTab extends StatefulWidget {
@@ -32,7 +33,7 @@ class _DevSettingsTabState extends State<DevSettingsTab> {
         _learningWeight = settings['learningWeight'] ?? 0.3;
       });
     } catch (e) {
-      print('Error cargando ajustes: $e');
+      AppLogger.error('Error cargando ajustes: $e');
     } finally {
       setState(() => _isLoading = false);
     }

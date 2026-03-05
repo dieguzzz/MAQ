@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/points_transaction_model.dart';
+import '../../core/logger.dart';
 
 class PointsHistoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,7 +32,7 @@ class PointsHistoryService {
         if (metadata != null) 'metadata': metadata,
       });
     } catch (e) {
-      print('Error saving points transaction: $e');
+      AppLogger.error('Error saving points transaction: $e');
       // No lanzar error para no interrumpir el flujo principal
     }
   }
@@ -67,7 +68,7 @@ class PointsHistoryService {
           .map((doc) => PointsTransaction.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error getting points history: $e');
+      AppLogger.error('Error getting points history: $e');
       return [];
     }
   }
@@ -93,7 +94,7 @@ class PointsHistoryService {
       }
       return pointsByType;
     } catch (e) {
-      print('Error getting points by type: $e');
+      AppLogger.error('Error getting points by type: $e');
       return {};
     }
   }

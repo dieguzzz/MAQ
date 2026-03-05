@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/metro_data.dart';
 import '../core/notification_service.dart';
+import '../../core/logger.dart';
 
 class BackgroundLocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,6 +22,10 @@ class BackgroundLocationService {
   final _stations = MetroData.getAllStations();
   static const double _geofenceRadiusMeters = 150.0; // Radio de alerta
   static const int _cooldownHours = 6; // Enfriamiento por estación
+
+  // Throttle: only write location_history if moved >100m from last write
+  static const double _minLocationHistoryDistanceMeters = 100.0;
+  Position? _lastHistoryPosition;
 
   Future<void> startTracking() async {
     if (_isTracking) return;
@@ -43,7 +48,7 @@ class BackgroundLocationService {
         _updateUserLocation(position);
       },
       onError: (error) {
-        print('Error en ubicación: $error');
+        AppLogger.error('Error en ubicación: $error');
       },
     );
 
@@ -57,7 +62,7 @@ class BackgroundLocationService {
         );
         await _updateUserLocation(position);
       } catch (e) {
-        print('Error obteniendo ubicación: $e');
+        AppLogger.error('Error obteniendo ubicación: $e');
       }
     });
   }
@@ -104,17 +109,31 @@ class BackgroundLocationService {
       'ultima_ubicacion_timestamp': FieldValue.serverTimestamp(),
     });
 
-    // Guardar en el historial SIN leerlo primero.
-    // Idealmente, un Firebase Cloud Function en el backend o un TTL policy
-    // en Firestore borraría las ubicaciones viejas, en lugar de hacerlo en cliente cada vez que camina.
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('location_history')
-        .add({
-      'ubicacion': geoPoint,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    // Only write to location_history if user moved >100m since last write
+    // This reduces Firestore writes significantly
+    bool shouldWriteHistory = true;
+    if (_lastHistoryPosition != null) {
+      final distanceSinceLastWrite = Geolocator.distanceBetween(
+        _lastHistoryPosition!.latitude,
+        _lastHistoryPosition!.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      shouldWriteHistory =
+          distanceSinceLastWrite >= _minLocationHistoryDistanceMeters;
+    }
+
+    if (shouldWriteHistory) {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('location_history')
+          .add({
+        'ubicacion': geoPoint,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      _lastHistoryPosition = position;
+    }
 
     // --- Lógica de Geofencing (Alertas Proactivas) ---
     _checkGeofencesAndAlert(position);
@@ -147,7 +166,7 @@ class BackgroundLocationService {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
 
       final int msPassed = nowMs - lastNotificationMs;
-      final int cooldownMs = _cooldownHours * 60 * 60 * 1000;
+      const int cooldownMs = _cooldownHours * 60 * 60 * 1000;
 
       if (msPassed > cooldownMs) {
         // Enviar alerta al usuario
@@ -162,7 +181,7 @@ class BackgroundLocationService {
         await prefs.setInt(cooldownKey, nowMs);
       }
     } catch (e) {
-      print('Error en Geofence Alert: $e');
+      AppLogger.error('Error en Geofence Alert: $e');
     }
   }
 

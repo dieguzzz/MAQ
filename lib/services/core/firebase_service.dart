@@ -11,6 +11,7 @@ import '../../models/route_model.dart';
 import '../../models/learning_report_model.dart';
 import 'error_handler_service.dart';
 import '../gamification/gamification_service.dart';
+import '../../core/logger.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,10 +43,10 @@ class FirebaseService {
       }
       return null;
     } on FirebaseException catch (e) {
-      print('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
+      AppLogger.error('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
       return null;
     } catch (e) {
-      print('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
+      AppLogger.error('Error getting user: ${ErrorHandlerService.getErrorMessage(e)}');
       return null;
     }
   }
@@ -164,16 +165,33 @@ class FirebaseService {
   }
 
   /// Confirma un reporte (nuevo sistema de confirmaciones)
+  /// Includes retry logic with exponential backoff (3 attempts)
   Future<void> confirmReport(String reportId, String userId) async {
-    try {
-      // Validaciones básicas
-      if (reportId.isEmpty) {
-        throw Exception('El ID del reporte es requerido');
-      }
-      if (userId.isEmpty) {
-        throw Exception('El ID del usuario es requerido');
-      }
+    // Validaciones básicas
+    if (reportId.isEmpty) {
+      throw Exception('El ID del reporte es requerido');
+    }
+    if (userId.isEmpty) {
+      throw Exception('El ID del usuario es requerido');
+    }
 
+    // Retry with exponential backoff
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await _confirmReportInternal(reportId, userId);
+      } on FirebaseException catch (e) {
+        if (e.code == 'aborted' && attempt < 2) {
+          // Transaction contention - retry with backoff
+          await Future.delayed(Duration(milliseconds: 100 * (attempt + 1)));
+          continue;
+        }
+        throw Exception(ErrorHandlerService.getErrorMessage(e));
+      }
+    }
+  }
+
+  Future<void> _confirmReportInternal(String reportId, String userId) async {
+    try {
       final reportRef = _firestore.collection('reports').doc(reportId);
       final confirmationsRef = _firestore
           .collection('reports')
@@ -269,17 +287,17 @@ class FirebaseService {
           .get();
       return confirmationDoc.exists;
     } catch (e) {
-      print('Error checking confirmation: $e');
+      AppLogger.error('Error checking confirmation: $e');
       return false;
     }
   }
 
-  /// Obtiene el stream del leaderboard global (top 100 usuarios por puntos)
+  /// Obtiene el stream del leaderboard global (top 20 usuarios por puntos)
   Stream<QuerySnapshot> getGlobalLeaderboardStream() {
     return _firestore
         .collection('users')
         .orderBy('gamification.puntos', descending: true)
-        .limit(100)
+        .limit(20)
         .snapshots();
   }
 
@@ -354,7 +372,7 @@ class FirebaseService {
           .map((doc) => ReportModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error finding similar reports: $e');
+      AppLogger.error('Error finding similar reports: $e');
       return [];
     }
   }
@@ -583,7 +601,7 @@ class FirebaseService {
           .map((doc) => LearningReportModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error getting learning reports by station: $e');
+      AppLogger.error('Error getting learning reports by station: $e');
       return [];
     }
   }
@@ -625,7 +643,7 @@ class FirebaseService {
       }
       return null;
     } catch (e) {
-      print('Error getting model metrics: $e');
+      AppLogger.error('Error getting model metrics: $e');
       return null;
     }
   }

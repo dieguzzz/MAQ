@@ -10,6 +10,7 @@ import '../services/reports/accuracy_service.dart';
 import '../services/core/error_handler_service.dart';
 import '../services/core/app_mode_service.dart';
 import '../models/report_model.dart';
+import '../core/logger.dart';
 
 class ReportProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -50,13 +51,13 @@ class ReportProvider with ChangeNotifier {
           notifyListeners();
         },
         onError: (error) {
-          print('Error listening to reports stream: $error');
+          AppLogger.error('Error listening to reports stream: $error');
           // No hacer nada, solo loggear el error
         },
         cancelOnError: false,
       );
     } catch (e) {
-      print('Error initializing reports stream: $e');
+      AppLogger.error('Error initializing reports stream: $e');
       // Continuar sin el stream si hay un error
     }
   }
@@ -218,7 +219,7 @@ class ReportProvider with ChangeNotifier {
       notifyListeners();
       return reportId;
     } catch (e) {
-      print('Error creating report: $e');
+      AppLogger.error('Error creating report: $e');
       _isLoading = false;
       notifyListeners();
       // Re-lanzar la excepción con mensaje amigable
@@ -304,7 +305,7 @@ class ReportProvider with ChangeNotifier {
 
       return true;
     } catch (e) {
-      print('Error confirming report: $e');
+      AppLogger.error('Error confirming report: $e');
       // Re-lanzar la excepción con mensaje amigable
       throw Exception(ErrorHandlerService.getErrorMessage(e));
     }
@@ -378,7 +379,7 @@ class ReportProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error updating station/train status: $e');
+      AppLogger.error('Error updating station/train status: $e');
     }
   }
 
@@ -392,7 +393,7 @@ class ReportProvider with ChangeNotifier {
     try {
       return await _firebaseService.getReportsByLocation(location, radiusKm);
     } catch (e) {
-      print('Error getting reports by location: $e');
+      AppLogger.error('Error getting reports by location: $e');
       return [];
     }
   }

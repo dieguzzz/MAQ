@@ -19,6 +19,7 @@ import '../../services/stations/station_edit_mode_service.dart';
 import '../../utils/metro_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import '../../core/logger.dart';
 
 class MapWidget extends StatefulWidget {
   final List<StationModel>? highlightedRoute;
@@ -73,7 +74,7 @@ class _MapWidgetState extends State<MapWidget> {
       final metroProvider =
           Provider.of<MetroDataProvider>(context, listen: false);
       if (metroProvider.stations.isNotEmpty) {
-        print('🔄 Modo edición cambió - actualizando marcadores');
+        AppLogger.debug('🔄 Modo edición cambió - actualizando marcadores');
         _updateStationMarkers(metroProvider.stations);
       }
     }
@@ -207,7 +208,7 @@ class _MapWidgetState extends State<MapWidget> {
           // Cuando se arrastra un marcador en Google Maps, actualizar la posición
           final newGeoPoint =
               GeoPoint(newPosition.latitude, newPosition.longitude);
-          print(
+          AppLogger.debug(
               '🧪 Marker drag end: ${station.nombre} -> [${newPosition.latitude}, ${newPosition.longitude}]');
           _positionEditor.updatePosition(station.id, newGeoPoint);
 
@@ -313,13 +314,13 @@ class _MapWidgetState extends State<MapWidget> {
 
         // Debug
         if (filterChanged) {
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: Filtro cambió de $_previousSelectedLinea a $selectedLinea');
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: Estaciones: ${stations.length}, Trenes: ${trains.length}');
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: Estaciones Línea 1: ${stations.where((s) => s.linea == 'linea1').length}');
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: Estaciones Línea 2: ${stations.where((s) => s.linea == 'linea2').length}');
         }
 
@@ -354,16 +355,16 @@ class _MapWidgetState extends State<MapWidget> {
 
         // Actualizar marcadores cuando cambian las listas filtradas
         if (stationsChanged || trainsChanged || filterChanged) {
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: Actualizando marcadores - stationsChanged=$stationsChanged, trainsChanged=$trainsChanged, filterChanged=$filterChanged');
-          print(
+          AppLogger.debug(
               '🔍 MapWidget: selectedLinea=$selectedLinea, estaciones totales=${stations.length}');
 
           // Si el filtro cambió a "Todas las líneas" ('all'), reinicializar todo
           if (filterChanged && selectedLinea == 'all') {
-            print(
+            AppLogger.debug(
                 '🔍 MapWidget: Cambio a "Todas las líneas" - reinicializando todo');
-            print(
+            AppLogger.debug(
                 '🔍 MapWidget: Debe mostrar ${stations.length} estaciones (L1 + L2)');
             // Limpiar todo
             _stationMarkers.clear();
@@ -376,7 +377,7 @@ class _MapWidgetState extends State<MapWidget> {
             if (stations.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  print(
+                  AppLogger.debug(
                       '🔍 MapWidget: Reinicializando simulación con ${stations.length} estaciones');
                   _trainSimulation.initialize(stations);
                   _trainSimulation.start();
@@ -393,20 +394,20 @@ class _MapWidgetState extends State<MapWidget> {
           // Actualizar marcadores con las nuevas listas
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              print(
+              AppLogger.debug(
                   '🔍 MapWidget: Actualizando marcadores - ${stations.length} estaciones y ${trainsToDisplay.length} trenes');
-              print(
+              AppLogger.debug(
                   '🔍 MapWidget: Estaciones L1=${stations.where((s) => s.linea == 'linea1').length}, L2=${stations.where((s) => s.linea == 'linea2').length}');
 
               if (stations.isNotEmpty) {
                 _updateStationMarkers(stations).then((_) {
-                  print(
+                  AppLogger.debug(
                       '🔍 MapWidget: Marcadores de estaciones actualizados: ${_stationMarkers.length}');
                 });
               }
               if (trainsToDisplay.isNotEmpty) {
                 _updateTrainMarkers(trainsToDisplay).then((_) {
-                  print(
+                  AppLogger.debug(
                       '🔍 MapWidget: Marcadores de trenes actualizados: ${_trainMarkers.length}');
                 });
               }
@@ -416,7 +417,7 @@ class _MapWidgetState extends State<MapWidget> {
               _previousTrains = List.from(trainsToDisplay);
               _previousSelectedLinea = selectedLinea;
 
-              print(
+              AppLogger.debug(
                   '🔍 MapWidget: Estado guardado - selectedLinea=$selectedLinea, estaciones=${_previousStations?.length ?? 0}');
             }
           });
@@ -817,7 +818,7 @@ class _MapWidgetState extends State<MapWidget> {
 
         // isTestMode se usa para decidir qué modal mostrar
       } catch (e) {
-        print('Error verificando modo test: $e');
+        AppLogger.error('Error verificando modo test: $e');
       }
     }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/logger.dart';
 
 /// Servicio para manejar la subida de archivos a Firebase Storage
 class StorageService {
@@ -18,7 +19,7 @@ class StorageService {
       );
       return image;
     } catch (e) {
-      print('Error seleccionando imagen de galería: $e');
+      AppLogger.error('Error seleccionando imagen de galería: $e');
       return null;
     }
   }
@@ -34,7 +35,7 @@ class StorageService {
       );
       return image;
     } catch (e) {
-      print('Error tomando foto con cámara: $e');
+      AppLogger.error('Error tomando foto con cámara: $e');
       return null;
     }
   }
@@ -68,7 +69,7 @@ class StorageService {
 
       return downloadUrl;
     } catch (e) {
-      print('Error subiendo imagen de perfil: $e');
+      AppLogger.error('Error subiendo imagen de perfil: $e');
       return null;
     }
   }
@@ -84,7 +85,7 @@ class StorageService {
       await ref.delete();
     } catch (e) {
       // Ignorar error si el archivo no existe
-      print('Error eliminando imagen anterior (puede que no exista): $e');
+      AppLogger.warning('Error eliminando imagen anterior (puede que no exista): $e');
     }
   }
 
@@ -124,7 +125,7 @@ class StorageService {
 
       return downloadUrl;
     } catch (e) {
-      print('Error subiendo imagen de reporte: $e');
+      AppLogger.error('Error subiendo imagen de reporte: $e');
       return null;
     }
   }

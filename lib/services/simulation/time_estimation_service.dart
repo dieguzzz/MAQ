@@ -2,6 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../models/train_model.dart';
 import '../../models/station_model.dart';
 import 'schedule_service.dart';
+import '../../core/logger.dart';
 
 /// Servicio para validar tiempos estimados reportados por usuarios
 class TimeEstimationService {
@@ -129,12 +130,12 @@ class TimeEstimationService {
     // Validar si está dentro del margen de error
     final isValid = difference <= errorMarginMinutes;
 
-    print('⏱️ Validación de tiempo estimado:');
-    print('   Tiempo reportado: $reportedMinutes minutos');
-    print('   Tiempo calculado: $calculatedMinutes minutos');
-    print('   Diferencia: $difference minutos');
-    print('   Margen de error: ±$errorMarginMinutes minutos');
-    print('   Válido: $isValid');
+    AppLogger.debug('⏱️ Validación de tiempo estimado:');
+    AppLogger.debug('   Tiempo reportado: $reportedMinutes minutos');
+    AppLogger.debug('   Tiempo calculado: $calculatedMinutes minutos');
+    AppLogger.debug('   Diferencia: $difference minutos');
+    AppLogger.debug('   Margen de error: ±$errorMarginMinutes minutos');
+    AppLogger.debug('   Válido: $isValid');
 
     return isValid;
   }

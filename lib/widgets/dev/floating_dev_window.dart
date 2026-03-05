@@ -4,6 +4,7 @@ import '../../services/core/dev_service.dart';
 import 'dev_simulation_tab.dart';
 import 'dev_metrics_tab.dart';
 import 'dev_settings_tab.dart';
+import '../../core/logger.dart';
 import 'dev_stations_tab.dart';
 
 /// Ventana flotante draggable para modo desarrollador
@@ -40,7 +41,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
         });
       }
     } catch (e) {
-      print('Error cargando posición: $e');
+      AppLogger.error('Error cargando posición: $e');
     }
   }
 
@@ -51,7 +52,7 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
       await prefs.setDouble('dev_window_y', _position.dy);
       await prefs.setBool('dev_window_minimized', _isMinimized);
     } catch (e) {
-      print('Error guardando posición: $e');
+      AppLogger.error('Error guardando posición: $e');
     }
   }
 

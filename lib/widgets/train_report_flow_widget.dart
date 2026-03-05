@@ -6,6 +6,7 @@ import '../services/reports/simplified_report_service.dart';
 import '../services/location/location_service.dart';
 import '../widgets/points_reward_animation.dart';
 import '../theme/metro_theme.dart';
+import '../core/logger.dart';
 
 /// Widget de flujo de reporte de tren para usar en bottom sheet
 class TrainReportFlowWidget extends StatefulWidget {
@@ -707,7 +708,7 @@ class _TrainReportFlowWidgetState extends State<TrainReportFlowWidget> {
           position = await locationService.getCurrentPosition();
         }
       } catch (e) {
-        print('No se pudo obtener ubicación: $e');
+        AppLogger.error('No se pudo obtener ubicación: $e');
       }
 
       await _reportService.createTrainReport(

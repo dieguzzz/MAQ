@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/logger.dart';
 
 /// Pantalla de resumen que se muestra al volver a la app después de confirmar reportes
 class ReportSummaryScreen extends StatefulWidget {
@@ -69,7 +70,7 @@ class _ReportSummaryScreenState extends State<ReportSummaryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading summary: $e');
+      AppLogger.error('Error loading summary: $e');
       setState(() => _isLoading = false);
     }
   }

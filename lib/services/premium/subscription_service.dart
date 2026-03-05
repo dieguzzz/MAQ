@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/firebase_service.dart';
+import '../../core/logger.dart';
 
 class SubscriptionService {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
@@ -26,7 +27,7 @@ class SubscriptionService {
     _subscription = _inAppPurchase.purchaseStream.listen(
       _onPurchaseUpdate,
       onDone: () => _subscription?.cancel(),
-      onError: (error) => print('Error en compras: $error'),
+      onError: (error) => AppLogger.error('Error en compras: $error'),
     );
 
     // Cargar productos disponibles
@@ -45,7 +46,7 @@ class SubscriptionService {
         await _inAppPurchase.queryProductDetails(productIds);
 
     if (response.notFoundIDs.isNotEmpty) {
-      print('Productos no encontrados: ${response.notFoundIDs}');
+      AppLogger.warning('Productos no encontrados: ${response.notFoundIDs}');
     }
 
     _products = response.productDetails;
@@ -80,7 +81,7 @@ class SubscriptionService {
       } else {
         if (purchase.status == PurchaseStatus.error) {
           // Manejar error
-          print('Error en compra: ${purchase.error}');
+          AppLogger.error('Error en compra: ${purchase.error}');
         } else if (purchase.status == PurchaseStatus.purchased ||
             purchase.status == PurchaseStatus.restored) {
           // Verificar y activar suscripción
@@ -119,7 +120,7 @@ class SubscriptionService {
       final data = userDoc.data();
       return data?['premium'] == true;
     } catch (e) {
-      print('Error verificando premium: $e');
+      AppLogger.error('Error verificando premium: $e');
       return false;
     }
   }

@@ -4,6 +4,7 @@ import '../../models/station_model.dart';
 import '../../models/user_model.dart';
 import '../core/firebase_service.dart';
 import '../gamification/gamification_service.dart';
+import '../../core/logger.dart';
 
 /// Servicio para crear y gestionar reportes de aprendizaje
 class LearningReportService {
@@ -61,7 +62,7 @@ class LearningReportService {
 
       return docRef.id;
     } catch (e) {
-      print('Error creating learning report: $e');
+      AppLogger.error('Error creating learning report: $e');
       rethrow;
     }
   }
@@ -92,7 +93,7 @@ class LearningReportService {
           .map((doc) => LearningReportModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error getting recent learning reports: $e');
+      AppLogger.error('Error getting recent learning reports: $e');
       return [];
     }
   }
@@ -135,7 +136,7 @@ class LearningReportService {
 
       return hourlyAverages;
     } catch (e) {
-      print('Error analyzing hourly patterns: $e');
+      AppLogger.error('Error analyzing hourly patterns: $e');
       return {};
     }
   }
@@ -159,7 +160,7 @@ class LearningReportService {
       // return distanceMeters <= proximityRadiusMeters;
       return true; // Siempre permitir reportes sin validar distancia
     } catch (e) {
-      print('Error checking proximity: $e');
+      AppLogger.error('Error checking proximity: $e');
       return false;
     }
   }
@@ -181,7 +182,7 @@ class LearningReportService {
           .map((doc) => LearningReportModel.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error getting reports by station: $e');
+      AppLogger.error('Error getting reports by station: $e');
       return [];
     }
   }
@@ -250,7 +251,7 @@ class LearningReportService {
         await _updateStationModel(station);
       }
     } catch (e) {
-      print('Error forcing model update: $e');
+      AppLogger.error('Error forcing model update: $e');
       rethrow;
     }
   }
@@ -271,7 +272,7 @@ class LearningReportService {
 
       return stationIds;
     } catch (e) {
-      print('Error getting stations with reports: $e');
+      AppLogger.error('Error getting stations with reports: $e');
       return [];
     }
   }
@@ -286,10 +287,10 @@ class LearningReportService {
       // Por ahora, solo guardamos los patrones para referencia futura
       // En fases futuras, esto se usará para ajustar las predicciones
 
-      print('Modelo actualizado para estación: $stationId');
-      print('Patrones: $patterns');
+      AppLogger.debug('Modelo actualizado para estación: $stationId');
+      AppLogger.debug('Patrones: $patterns');
     } catch (e) {
-      print('Error updating station model: $e');
+      AppLogger.error('Error updating station model: $e');
       rethrow;
     }
   }

@@ -3,6 +3,7 @@ import '../../models/simplified_report_model.dart';
 import '../../models/station_model.dart';
 import '../../utils/station_status_mapper.dart';
 import '../reports/simplified_report_service.dart';
+import '../../core/logger.dart';
 
 /// Servicio para agregar múltiples reportes y calcular el estado de una estación
 class StationStatusAggregator {
@@ -49,7 +50,7 @@ class StationStatusAggregator {
         confidence,
       );
     } catch (e) {
-      print('Error updating station from reports: $e');
+      AppLogger.error('Error updating station from reports: $e');
       rethrow;
     }
   }

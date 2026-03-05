@@ -1,4 +1,5 @@
 import '../learning/station_learning_service.dart';
+import '../../core/logger.dart';
 
 /// Enum para identificar el tipo de franja horaria
 enum TimeSlot {
@@ -92,7 +93,7 @@ class ScheduleService {
         );
       } catch (e) {
         // Si falla el aprendizaje, usar tiempo base sin ajuste
-        print('Error obteniendo ajuste aprendido: $e');
+        AppLogger.error('Error obteniendo ajuste aprendido: $e');
       }
     }
 

@@ -25,6 +25,7 @@ import '../../services/reports/simplified_report_service.dart';
 import '../../models/station_model.dart';
 import '../../services/location/location_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/logger.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -415,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           position = await locationService.getCurrentPosition();
         }
       } catch (e) {
-        print('No se pudo obtener ubicación: $e');
+        AppLogger.error('No se pudo obtener ubicación: $e');
       }
 
       await _reportService.createDirectArrivalReport(
@@ -693,16 +694,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   final previousLine = metroProvider.selectedLinea;
 
                   // Debug: verificar que se llamó
-                  print(
+                  AppLogger.debug(
                       '🔍 HomeScreen: onSelected llamado con value=$value, previousLine=$previousLine');
 
                   // Asegurar que se establece el valor
                   metroProvider.setSelectedLinea(value);
 
                   // Verificar que se actualizó
-                  print(
+                  AppLogger.debug(
                       '🔍 HomeScreen: Después de setSelectedLinea, selectedLinea=${metroProvider.selectedLinea}');
-                  print(
+                  AppLogger.debug(
                       '🔍 HomeScreen: Estaciones después del cambio: ${metroProvider.stations.length}');
 
                   // Notificar cambio de línea al servicio de sesión

@@ -5,6 +5,7 @@ import '../services/core/firebase_service.dart';
 import '../services/simulation/metro_simulator_service.dart';
 import '../models/simulator_state_model.dart';
 import '../utils/metro_data.dart';
+import '../core/logger.dart';
 
 class LocationProvider with ChangeNotifier {
   final LocationService _locationService = LocationService();
@@ -146,7 +147,7 @@ class LocationProvider with ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print('Error getting location: $e');
+      AppLogger.error('Error getting location: $e');
     }
   }
 

@@ -351,7 +351,7 @@ async function sendRelevantNotifications(report) {
       .where('ultima_ubicacion', '!=', null)
       .get();
 
-    const nearbyUsers = [];
+    const nearbyUserIds = [];
     for (const userDoc of usersSnapshot.docs) {
       const user = userDoc.data();
       if (!user.ultima_ubicacion) continue;
@@ -364,18 +364,23 @@ async function sendRelevantNotifications(report) {
       );
 
       if (distance <= 5) { // 5 km
-        nearbyUsers.push({
-          id: userDoc.id,
-          fcmToken: user.fcm_token,
-          nombre: user.nombre,
-        });
+        nearbyUserIds.push(userDoc.id);
       }
     }
+
+    // Fetch FCM tokens from separate secure collection
+    const tokenPromises = nearbyUserIds.map(uid =>
+      db.collection('fcm_tokens').doc(uid).get()
+    );
+    const tokenDocs = await Promise.all(tokenPromises);
+    const nearbyUsers = nearbyUserIds.map((uid, i) => ({
+      id: uid,
+      fcmToken: tokenDocs[i].exists ? tokenDocs[i].data().token : null,
+    })).filter(u => u.fcmToken);
 
     // Enviar notificaciones push
     const messaging = admin.messaging();
     const messages = nearbyUsers
-      .filter(user => user.fcmToken)
       .map(user => ({
         token: user.fcmToken,
         notification: {
@@ -450,66 +455,7 @@ function getEstadoText(estadoPrincipal) {
   return estados[estadoPrincipal] || estadoPrincipal;
 }
 
-// Cloud Function: Procesar confirmación de reporte
-exports.processReportConfirmation = functions.firestore
-  .document('reports/{reportId}/confirmations/{userId}')
-  .onCreate(async (snap, context) => {
-    const reportId = context.params.reportId;
-    const userId = context.params.userId;
-
-    try {
-      // Obtener el reporte
-      const reportDoc = await db.collection('reports').doc(reportId).get();
-      if (!reportDoc.exists) return null;
-
-      const report = reportDoc.data();
-      const confirmationCount = report.confirmations || report.confirmation_count || 0;
-
-      // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
-      if (confirmationCount >= 3) {
-        await db.collection('reports').doc(reportId).update({
-          'verification_status': 'community_verified',
-          'confidence': 0.9,
-        });
-
-        // Actualizar estado de estación/tren con agregación completa
-        if (report.scope === 'station' && report.stationId) {
-          await updateStationStatus(report.stationId, report);
-        } else if (report.scope === 'train' && report.stationId) {
-          // Actualizar estado de tren cuando alcanza 3 confirmaciones
-          await updateTrainStatusAggregated(report.stationId, report);
-        }
-
-        // Notificar al creador del reporte
-        const creatorId = report.usuario_id;
-        if (creatorId) {
-          const creatorDoc = await db.collection('users').doc(creatorId).get();
-          if (creatorDoc.exists) {
-            const creator = creatorDoc.data();
-            if (creator.fcm_token) {
-              const messaging = admin.messaging();
-              await messaging.send({
-                token: creator.fcm_token,
-                notification: {
-                  title: '🎉 ¡Tu reporte fue verificado!',
-                  body: '3 usuarios confirmaron tu reporte. ¡Gracias por ayudar a la comunidad!',
-                },
-                data: {
-                  type: 'report_verified',
-                  reportId: reportId,
-                },
-              });
-            }
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error processing confirmation:', error);
-      return null;
-    }
-  });
+// Note: processReportConfirmation is defined below with rate limiting
 
 // Cloud Function: Generar datos iniciales de trenes basados en horarios
 // DESHABILITADO: Los datos se construirán desde los reportes de usuarios
@@ -761,23 +707,47 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión');
   }
-  
+
   const userId = context.auth.uid;
   const { reportId, result, actualArrivalTime } = data;
-  
+
+  // Validate required fields
+  if (!reportId || typeof reportId !== 'string' || reportId.length > 128) {
+    throw new functions.https.HttpsError('invalid-argument', 'ID de reporte inválido');
+  }
+
+  // Whitelist of allowed result values
+  const allowedResults = ['arrived', 'not_arrived', 'cant_confirm'];
+  if (!result || !allowedResults.includes(result)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Resultado de validación inválido');
+  }
+
+  // Validate actualArrivalTime if provided
+  if (actualArrivalTime !== undefined && actualArrivalTime !== null) {
+    const parsed = new Date(actualArrivalTime);
+    if (isNaN(parsed.getTime())) {
+      throw new functions.https.HttpsError('invalid-argument', 'Hora de llegada inválida');
+    }
+  }
+
   try {
     // 1. Verificar que el usuario puede validar este reporte
     const reportDoc = await db.collection('reports').doc(reportId).get();
     if (!reportDoc.exists) {
       throw new functions.https.HttpsError('not-found', 'Reporte no encontrado');
     }
-    
+
     const report = reportDoc.data();
-    
+
+    // Validate report has a userId before comparing
+    if (!report.userId) {
+      throw new functions.https.HttpsError('failed-precondition', 'Reporte sin usuario asociado');
+    }
+
     if (report.userId !== userId) {
       throw new functions.https.HttpsError('permission-denied', 'No puedes validar este reporte');
     }
-    
+
     if (report.trainData?.validationStatus !== 'pending') {
       throw new functions.https.HttpsError('failed-precondition', 'Validación ya procesada');
     }
@@ -858,8 +828,13 @@ exports.processValidationResponse = functions.https.onCall(async (data, context)
       totalPoints: report.totalPoints + validationPoints
     };
   } catch (error) {
+    // Re-throw HttpsErrors as-is (they have safe messages)
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
     console.error('Error processing validation:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    // Never expose internal error details to client
+    throw new functions.https.HttpsError('internal', 'Error procesando la validación. Intenta de nuevo.');
   }
 });
 
@@ -1146,7 +1121,7 @@ function mapTrainStatusToEstado(trainStatus, trainCrowd) {
 // Función auxiliar: Obtener promedio ponderado por confirmaciones para trenes
 function getWeightedAverageTrainEstado(reports, estados) {
   const weights = {};
-  
+
   for (let i = 0; i < reports.length && i < estados.length; i++) {
     const report = reports[i];
     const estado = estados[i];
@@ -1165,4 +1140,449 @@ function getWeightedAverageTrainEstado(reports, estados) {
 
   return maxEstado;
 }
+
+// ============================================
+// SECURITY: Validation & Rate Limiting
+// ============================================
+
+// Panama City bounding box for GeoPoint validation
+const PANAMA_BOUNDS = {
+  latMin: 8.9, latMax: 9.15,
+  lngMin: -79.6, lngMax: -79.35,
+};
+
+// Validate GeoPoint is within Panama City bounds
+function isValidPanamaGeoPoint(geoPoint) {
+  if (!geoPoint || typeof geoPoint.latitude !== 'number' || typeof geoPoint.longitude !== 'number') {
+    return false;
+  }
+  const lat = geoPoint.latitude;
+  const lng = geoPoint.longitude;
+  // Global bounds check
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+  // Panama City bounds check
+  return lat >= PANAMA_BOUNDS.latMin && lat <= PANAMA_BOUNDS.latMax &&
+         lng >= PANAMA_BOUNDS.lngMin && lng <= PANAMA_BOUNDS.lngMax;
+}
+
+// Whitelists for server-side validation
+const VALID_SCOPES = ['station', 'train'];
+const VALID_STATION_OPERATIONAL = ['yes', 'no', 'partial'];
+const VALID_TRAIN_STATUS = ['normal', 'slow', 'stopped'];
+
+// Enhanced onReportCreated with server-side validation (wraps existing)
+// Note: The existing onReportCreated already handles point assignment.
+// This validation runs as part of processNewReport.
+const originalProcessNewReport = exports.processNewReport;
+exports.processNewReport = functions.firestore
+  .document('reports/{reportId}')
+  .onCreate(async (snap, context) => {
+    const report = snap.data();
+    const reportId = context.params.reportId;
+
+    try {
+      // SERVER-SIDE VALIDATION
+      // 1. Validate scope
+      if (report.scope && !VALID_SCOPES.includes(report.scope)) {
+        console.warn(`Invalid scope '${report.scope}' in report ${reportId}, deleting`);
+        await snap.ref.delete();
+        return null;
+      }
+
+      // 2. Validate crowdLevel (1-5)
+      if (report.stationCrowd !== undefined && report.stationCrowd !== null) {
+        if (!Number.isInteger(report.stationCrowd) || report.stationCrowd < 1 || report.stationCrowd > 5) {
+          console.warn(`Invalid stationCrowd ${report.stationCrowd} in report ${reportId}, deleting`);
+          await snap.ref.delete();
+          return null;
+        }
+      }
+      if (report.trainCrowd !== undefined && report.trainCrowd !== null) {
+        if (!Number.isInteger(report.trainCrowd) || report.trainCrowd < 1 || report.trainCrowd > 5) {
+          console.warn(`Invalid trainCrowd ${report.trainCrowd} in report ${reportId}, deleting`);
+          await snap.ref.delete();
+          return null;
+        }
+      }
+
+      // 3. Validate stationOperational against whitelist
+      if (report.stationOperational && !VALID_STATION_OPERATIONAL.includes(report.stationOperational)) {
+        console.warn(`Invalid stationOperational in report ${reportId}, deleting`);
+        await snap.ref.delete();
+        return null;
+      }
+
+      // 4. Validate trainStatus against whitelist
+      if (report.trainStatus && !VALID_TRAIN_STATUS.includes(report.trainStatus)) {
+        console.warn(`Invalid trainStatus in report ${reportId}, deleting`);
+        await snap.ref.delete();
+        return null;
+      }
+
+      // 5. Validate GeoPoint bounds (Panama City)
+      if (report.ubicacion && !isValidPanamaGeoPoint(report.ubicacion)) {
+        console.warn(`Invalid GeoPoint in report ${reportId}, deleting`);
+        await snap.ref.delete();
+        return null;
+      }
+
+      // 6. Rate limiting: Max 10 reports per user per hour (server-side)
+      if (report.userId) {
+        const oneHourAgo = admin.firestore.Timestamp.fromDate(
+          new Date(Date.now() - 60 * 60 * 1000)
+        );
+        const userReports = await db.collection('reports')
+          .where('userId', '==', report.userId)
+          .where('createdAt', '>=', oneHourAgo)
+          .get();
+
+        if (userReports.size > 10) {
+          console.warn(`Rate limit exceeded for user ${report.userId}, deleting report ${reportId}`);
+          await snap.ref.delete();
+          return null;
+        }
+      }
+
+      // Proceed with original processing
+      await verifyReportAutomatically(report, reportId);
+      await updateStationStatus(report);
+      await sendRelevantNotifications(report);
+      await updateRouteEstimates(report);
+
+      return null;
+    } catch (error) {
+      console.error('Error processing new report:', error);
+      return null;
+    }
+  });
+
+// Rate limiting for confirmations: Max 20 per user per hour
+exports.processReportConfirmation = functions.firestore
+  .document('reports/{reportId}/confirmations/{userId}')
+  .onCreate(async (snap, context) => {
+    const reportId = context.params.reportId;
+    const userId = context.params.userId;
+
+    try {
+      // Rate limit check: max 20 confirmations per user per hour
+      const oneHourAgo = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 60 * 60 * 1000)
+      );
+      const userConfirmations = await db.collectionGroup('confirmations')
+        .where('usuario_id', '==', userId)
+        .where('confirmado_en', '>=', oneHourAgo)
+        .get();
+
+      if (userConfirmations.size > 20) {
+        console.warn(`Confirmation rate limit exceeded for user ${userId}`);
+        await snap.ref.delete();
+        return null;
+      }
+
+      // Obtener el reporte
+      const reportDoc = await db.collection('reports').doc(reportId).get();
+      if (!reportDoc.exists) return null;
+
+      const report = reportDoc.data();
+      const confirmationCount = report.confirmations || report.confirmation_count || 0;
+
+      // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
+      if (confirmationCount >= 3) {
+        await db.collection('reports').doc(reportId).update({
+          'verification_status': 'community_verified',
+          'confidence': 0.9,
+        });
+
+        // Actualizar estado de estación/tren con agregación completa
+        if (report.scope === 'station' && report.stationId) {
+          await updateStationStatus(report.stationId, report);
+        } else if (report.scope === 'train' && report.stationId) {
+          await updateTrainStatusAggregated(report.stationId, report);
+        }
+
+        // Notificar al creador del reporte
+        const creatorId = report.usuario_id;
+        if (creatorId) {
+          const tokenDoc = await db.collection('fcm_tokens').doc(creatorId).get();
+          if (tokenDoc.exists && tokenDoc.data().token) {
+            const messaging = admin.messaging();
+            await messaging.send({
+              token: tokenDoc.data().token,
+              notification: {
+                title: '🎉 ¡Tu reporte fue verificado!',
+                body: '3 usuarios confirmaron tu reporte. ¡Gracias por ayudar a la comunidad!',
+              },
+              data: {
+                type: 'report_verified',
+                reportId: reportId,
+              },
+            });
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error processing confirmation:', error);
+      return null;
+    }
+  });
+
+// ============================================
+// SECURITY: Points cap & Streak fix
+// ============================================
+
+// Enhanced updateUserStats with daily points cap (max 500/day)
+async function updateUserStatsWithCap(userId, points) {
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return;
+
+    const userData = userDoc.data();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const pointsToday = userData.gamification?.points_today || 0;
+    const pointsDate = userData.gamification?.points_date || '';
+
+    // Reset if new day
+    const actualPointsToday = pointsDate === today ? pointsToday : 0;
+
+    // Cap at 500 points per day
+    const cappedPoints = Math.min(points, 500 - actualPointsToday);
+    if (cappedPoints <= 0) {
+      console.log(`Daily points cap reached for user ${userId}`);
+      return;
+    }
+
+    await userRef.update({
+      'gamification.puntos': admin.firestore.FieldValue.increment(cappedPoints),
+      'gamification.reportes_count': admin.firestore.FieldValue.increment(1),
+      'gamification.points_today': actualPointsToday + cappedPoints,
+      'gamification.points_date': today,
+    });
+  } catch (error) {
+    console.error(`Error updating user stats for ${userId}:`, error);
+  }
+}
+
+// Streak calculation: only increment if last report was on previous calendar day
+async function updateStreak(userId) {
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return;
+
+    const userData = userDoc.data();
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const lastReportDate = userData.gamification?.last_report_date || '';
+    const currentStreak = userData.gamification?.streak || 0;
+
+    let newStreak;
+    if (lastReportDate === today) {
+      // Already reported today, no change
+      return;
+    } else if (lastReportDate === yesterday) {
+      // Consecutive day, increment
+      newStreak = currentStreak + 1;
+    } else {
+      // Streak broken, reset to 1
+      newStreak = 1;
+    }
+
+    await userRef.update({
+      'gamification.streak': newStreak,
+      'gamification.last_report_date': today,
+      'gamification.best_streak': Math.max(newStreak, userData.gamification?.best_streak || 0),
+    });
+  } catch (error) {
+    console.error(`Error updating streak for ${userId}:`, error);
+  }
+}
+
+// ============================================
+// SECURITY: Atomic account deletion
+// ============================================
+
+// Trigger: when a user is deleted from Firebase Auth, clean up all their data
+exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
+  const userId = user.uid;
+  console.log(`Cleaning up data for deleted user: ${userId}`);
+
+  try {
+    const batch = db.batch();
+
+    // 1. Delete user document
+    batch.delete(db.collection('users').doc(userId));
+
+    // 2. Delete FCM token
+    batch.delete(db.collection('fcm_tokens').doc(userId));
+
+    // 3. Delete public profile
+    batch.delete(db.collection('public_profiles').doc(userId));
+
+    await batch.commit();
+
+    // 4. Delete location history subcollection (can't batch subcollection deletes easily)
+    const locationHistory = await db.collection('users').doc(userId)
+      .collection('location_history').get();
+    const locationBatch = db.batch();
+    locationHistory.docs.forEach(doc => locationBatch.delete(doc.ref));
+    if (locationHistory.size > 0) await locationBatch.commit();
+
+    // 5. Delete points history subcollection
+    const pointsHistory = await db.collection('users').doc(userId)
+      .collection('points_history').get();
+    const pointsBatch = db.batch();
+    pointsHistory.docs.forEach(doc => pointsBatch.delete(doc.ref));
+    if (pointsHistory.size > 0) await pointsBatch.commit();
+
+    // 6. Delete profile image from Storage
+    try {
+      const bucket = admin.storage().bucket();
+      await bucket.file(`profile_images/${userId}/profile.jpg`).delete();
+    } catch (storageError) {
+      // Ignore if file doesn't exist
+    }
+
+    console.log(`Cleanup complete for user: ${userId}`);
+  } catch (error) {
+    console.error(`Error cleaning up user ${userId}:`, error);
+  }
+});
+
+// ============================================
+// SCHEDULED: Location history cleanup (every 24h)
+// ============================================
+
+exports.cleanupLocationHistory = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async (context) => {
+    try {
+      const sevenDaysAgo = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      );
+
+      // Get all users
+      const usersSnapshot = await db.collection('users').get();
+      let totalDeleted = 0;
+
+      for (const userDoc of usersSnapshot.docs) {
+        const oldLocations = await userDoc.ref
+          .collection('location_history')
+          .where('timestamp', '<', sevenDaysAgo)
+          .limit(500) // Process in batches
+          .get();
+
+        if (oldLocations.size > 0) {
+          const batch = db.batch();
+          oldLocations.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+          totalDeleted += oldLocations.size;
+        }
+      }
+
+      console.log(`Location history cleanup: deleted ${totalDeleted} old entries`);
+      return null;
+    } catch (error) {
+      console.error('Error in location history cleanup:', error);
+      return null;
+    }
+  });
+
+// ============================================
+// SCHEDULED: Anomaly detection (hourly)
+// ============================================
+
+exports.detectAnomalies = functions.pubsub
+  .schedule('every 1 hours')
+  .onRun(async (context) => {
+    try {
+      const oneHourAgo = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 60 * 60 * 1000)
+      );
+      const alerts = [];
+
+      // 1. Users with >50 reports/hour
+      const reportsSnapshot = await db.collection('reports')
+        .where('createdAt', '>=', oneHourAgo)
+        .get();
+
+      const reportsByUser = {};
+      reportsSnapshot.docs.forEach(doc => {
+        const userId = doc.data().userId;
+        if (userId) {
+          reportsByUser[userId] = (reportsByUser[userId] || 0) + 1;
+        }
+      });
+
+      for (const [userId, count] of Object.entries(reportsByUser)) {
+        if (count > 50) {
+          alerts.push({
+            type: 'excessive_reports',
+            userId,
+            count,
+            detectedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      // 2. Users with >1000 points/day
+      const today = new Date().toISOString().split('T')[0];
+      const highPointsUsers = await db.collection('users')
+        .where('gamification.points_date', '==', today)
+        .where('gamification.points_today', '>', 1000)
+        .get();
+
+      highPointsUsers.docs.forEach(doc => {
+        alerts.push({
+          type: 'excessive_points',
+          userId: doc.id,
+          pointsToday: doc.data().gamification?.points_today,
+          detectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+
+      // Write alerts
+      if (alerts.length > 0) {
+        const batch = db.batch();
+        alerts.forEach(alert => {
+          const ref = db.collection('security_alerts').doc();
+          batch.set(ref, alert);
+        });
+        await batch.commit();
+        console.log(`Anomaly detection: ${alerts.length} alerts generated`);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in anomaly detection:', error);
+      return null;
+    }
+  });
+
+// ============================================
+// CALLABLE: Update station from client (replaces direct writes)
+// ============================================
+
+exports.updateStationFromClient = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión');
+  }
+
+  const { stationId } = data;
+  if (!stationId || typeof stationId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'stationId inválido');
+  }
+
+  try {
+    // Trigger aggregation from recent reports
+    const report = { stationId, scope: 'station' };
+    await updateStationStatus(stationId, report);
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateStationFromClient:', error);
+    throw new functions.https.HttpsError('internal', 'Error actualizando estación');
+  }
+});
 

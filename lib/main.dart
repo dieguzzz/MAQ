@@ -29,12 +29,13 @@ import 'services/ads/ad_session_service.dart';
 import 'widgets/dev/floating_dev_window.dart';
 import 'services/core/dev_service.dart';
 import 'widgets/points_reward_listener.dart';
+import 'core/logger.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await _ensureFirebaseInitialized();
-  print('Background message: ${message.messageId}');
+  AppLogger.debug('Background message: ${message.messageId}');
 }
 
 void main() async {
@@ -45,18 +46,17 @@ void main() async {
 
   // Inicializar Firebase PRIMERO (con timeout para no bloquear demasiado)
   try {
-    print('🔥 Inicializando Firebase...');
+    AppLogger.debug('🔥 Inicializando Firebase...');
     await _ensureFirebaseInitialized().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        print('⚠️ Firebase initialization timeout');
+        AppLogger.warning('⚠️ Firebase initialization timeout');
         throw TimeoutException('Firebase initialization timeout');
       },
     );
-    print('✅ Firebase inicializado');
+    AppLogger.debug('✅ Firebase inicializado');
   } catch (e, stackTrace) {
-    print('❌ Error inicializando Firebase: $e');
-    print('📍 Stack trace: $stackTrace');
+    AppLogger.error('❌ Error inicializando Firebase: $e', e, stackTrace);
     // Continuar de todas formas, pero los servicios que dependen de Firebase fallarán
   }
 
@@ -65,29 +65,28 @@ void main() async {
   notificationService.onNotificationTapped =
       NavigationHelper.handleNotificationNavigation;
   notificationService.initialize().catchError((e) {
-    print('❌ Error inicializando NotificationService (no crítico): $e');
+    AppLogger.error('❌ Error inicializando NotificationService (no crítico): $e');
   });
-  print('🔔 Inicialización de NotificationService iniciada (asíncrona)');
+  AppLogger.debug('🔔 Inicialización de NotificationService iniciada (asíncrona)');
 
   // Inicializar AdMob de forma asíncrona para no bloquear el arranque
   getIt<AdService>().initialize().catchError((e) {
-    print('❌ Error inicializando AdService (no crítico): $e');
+    AppLogger.error('❌ Error inicializando AdService (no crítico): $e');
   });
-  print('📢 Inicialización de AdService iniciada (asíncrona)');
+  AppLogger.debug('📢 Inicialización de AdService iniciada (asíncrona)');
 
   // Inicializar Ad Session Service de forma asíncrona
   getIt<AdSessionService>().initializeSession().catchError((e) {
-    print('❌ Error inicializando AdSessionService (no crítico): $e');
+    AppLogger.error('❌ Error inicializando AdSessionService (no crítico): $e');
   });
-  print('📊 Inicialización de AdSessionService iniciada (asíncrona)');
+  AppLogger.debug('📊 Inicialización de AdSessionService iniciada (asíncrona)');
 
   try {
     // Set up background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    print('✅ Background message handler configurado');
+    AppLogger.debug('✅ Background message handler configurado');
   } catch (e, stackTrace) {
-    print('❌ Error configurando background message handler: $e');
-    print('📍 Stack trace: $stackTrace');
+    AppLogger.error('❌ Error configurando background message handler: $e', e, stackTrace);
     // Continuar de todas formas
   }
 
@@ -95,16 +94,15 @@ void main() async {
     // Initialize static stations in Firestore (solo si no existen)
     // Hacer esto de forma asíncrona para no bloquear el arranque
     _initializeStations().catchError((e) {
-      print('❌ Error inicializando estaciones (no crítico): $e');
+      AppLogger.error('❌ Error inicializando estaciones (no crítico): $e');
     });
-    print('✅ Inicialización de estaciones iniciada (asíncrona)');
+    AppLogger.debug('✅ Inicialización de estaciones iniciada (asíncrona)');
   } catch (e, stackTrace) {
-    print('❌ Error iniciando inicialización de estaciones: $e');
-    print('📍 Stack trace: $stackTrace');
+    AppLogger.error('❌ Error iniciando inicialización de estaciones: $e', e, stackTrace);
     // Continuar de todas formas
   }
 
-  print('🚀 Iniciando app...');
+  AppLogger.debug('🚀 Iniciando app...');
   runApp(const MetroPTYApp());
 }
 
@@ -118,26 +116,25 @@ Future<void> _ensureFirebaseInitialized() async {
 
 Future<void> _initializeStations() async {
   try {
-    print('🚀 Iniciando inicialización/actualización de estaciones...');
+    AppLogger.debug('🚀 Iniciando inicialización/actualización de estaciones...');
     final stationUpdateService = getIt<StationUpdateService>();
 
     // Usar el servicio de actualización que maneja todo
     final results = await stationUpdateService.updateAllStations();
 
-    print('✅ Actualización completada:');
-    print('   - Actualizadas: ${results['updated']} estaciones');
-    print('   - Creadas: ${results['created']} estaciones');
-    print('   - Eliminadas: ${results['deleted']} estaciones duplicadas');
+    AppLogger.debug('✅ Actualización completada:');
+    AppLogger.debug('   - Actualizadas: ${results['updated']} estaciones');
+    AppLogger.debug('   - Creadas: ${results['created']} estaciones');
+    AppLogger.debug('   - Eliminadas: ${results['deleted']} estaciones duplicadas');
 
     if ((results['errors'] as List).isNotEmpty) {
-      print('⚠️  Errores encontrados:');
+      AppLogger.warning('⚠️  Errores encontrados:');
       for (final error in results['errors'] as List) {
-        print('   - $error');
+        AppLogger.warning('   - $error');
       }
     }
   } catch (e, stackTrace) {
-    print('❌ Error inicializando/actualizando estaciones: $e');
-    print('📍 Stack trace: $stackTrace');
+    AppLogger.error('❌ Error inicializando/actualizando estaciones: $e', e, stackTrace);
   }
 }
 

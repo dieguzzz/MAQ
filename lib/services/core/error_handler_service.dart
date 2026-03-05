@@ -68,7 +68,8 @@ class ErrorHandlerService {
         return 'La operación fue cancelada.';
 
       default:
-        return error.message ?? 'Error desconocido: ${error.code}';
+        // Never expose internal error codes to users
+        return 'Ocurrió un error inesperado. Por favor intenta de nuevo.';
     }
   }
 
@@ -112,7 +113,8 @@ class ErrorHandlerService {
         return 'Error de conexión. Verifica tu internet.';
 
       default:
-        return error.message ?? 'Error de autenticación: ${error.code}';
+        // Never expose internal error codes to users
+        return 'Error de autenticación. Por favor intenta de nuevo.';
     }
   }
 

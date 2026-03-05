@@ -4,6 +4,7 @@ import '../../models/learning_report_model.dart';
 import '../../models/test_scenario_model.dart';
 import '../core/firebase_service.dart';
 import 'learning_report_service.dart';
+import '../../core/logger.dart';
 
 /// Servicio para operaciones administrativas de testing del sistema de aprendizaje
 class AdminLearningService {
@@ -68,7 +69,7 @@ class AdminLearningService {
       // Ejecutar análisis inmediato
       await _runImmediateAnalysis(stationId);
     } catch (e) {
-      print('Error simulating user report: $e');
+      AppLogger.error('Error simulating user report: $e');
       rethrow;
     }
   }
@@ -98,7 +99,7 @@ class AdminLearningService {
         // Pequeña pausa entre escenarios
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (e) {
-        print('Error ejecutando escenario $scenarioId: $e');
+        AppLogger.error('Error ejecutando escenario $scenarioId: $e');
         // Continuar con el siguiente
       }
     }
@@ -142,7 +143,7 @@ class AdminLearningService {
         }
       }
     } catch (e) {
-      print('Error inicializando datos de prueba: $e');
+      AppLogger.error('Error inicializando datos de prueba: $e');
       rethrow;
     }
   }
@@ -164,15 +165,15 @@ class AdminLearningService {
       } catch (e) {
         // Si hay error de permisos, solo loguear pero no fallar
         if (e.toString().contains('permission-denied')) {
-          print(
+          AppLogger.warning(
               'No se pueden actualizar métricas en Firestore (permisos insuficientes)');
         } else {
-          print('Error actualizando métricas: $e');
+          AppLogger.error('Error actualizando métricas: $e');
         }
         // Continuar sin fallar
       }
     } catch (e) {
-      print('Error en análisis inmediato: $e');
+      AppLogger.error('Error en análisis inmediato: $e');
       // No rethrow, es opcional
     }
   }

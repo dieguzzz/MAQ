@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/station_model.dart';
 import '../../services/core/dev_service.dart';
 import '../../services/core/firebase_service.dart';
+import '../../core/logger.dart';
 
 /// Tab de simulación para el panel de desarrollador
 class DevSimulationTab extends StatefulWidget {
@@ -34,7 +35,7 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
         }
       });
     } catch (e) {
-      print('Error cargando estaciones: $e');
+      AppLogger.error('Error cargando estaciones: $e');
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/simplified_report_model.dart';
 import '../../models/train_model.dart';
 import '../../utils/train_status_mapper.dart';
+import '../../core/logger.dart';
 
 /// Servicio para agregar múltiples reportes y calcular el estado de un tren
 class TrainStatusAggregator {
@@ -54,7 +55,7 @@ class TrainStatusAggregator {
         confidence,
       );
     } catch (e) {
-      print('Error updating train from reports: $e');
+      AppLogger.error('Error updating train from reports: $e');
       rethrow;
     }
   }
@@ -77,7 +78,7 @@ class TrainStatusAggregator {
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reports;
     } catch (e) {
-      print('Error getting recent train reports: $e');
+      AppLogger.error('Error getting recent train reports: $e');
       return [];
     }
   }

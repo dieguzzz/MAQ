@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/station_knowledge_model.dart';
+import '../../core/logger.dart';
 
 /// Servicio para almacenar y cargar conocimiento aprendido
 class LearningStorageService {
@@ -13,7 +14,7 @@ class LearningStorageService {
       final json = knowledge.toJson();
       await prefs.setString(key, json);
     } catch (e) {
-      print('Error guardando conocimiento de estación: $e');
+      AppLogger.error('Error guardando conocimiento de estación: $e');
     }
   }
 
@@ -30,7 +31,7 @@ class LearningStorageService {
 
       return StationKnowledge.fromJson(json);
     } catch (e) {
-      print('Error cargando conocimiento de estación: $e');
+      AppLogger.error('Error cargando conocimiento de estación: $e');
       return null;
     }
   }
@@ -54,7 +55,7 @@ class LearningStorageService {
 
       return knowledgeMap;
     } catch (e) {
-      print('Error obteniendo todos los conocimientos: $e');
+      AppLogger.error('Error obteniendo todos los conocimientos: $e');
       return {};
     }
   }
@@ -66,7 +67,7 @@ class LearningStorageService {
       final key = '$_prefix$stationId';
       await prefs.remove(key);
     } catch (e) {
-      print('Error eliminando conocimiento de estación: $e');
+      AppLogger.error('Error eliminando conocimiento de estación: $e');
     }
   }
 
@@ -82,7 +83,7 @@ class LearningStorageService {
         }
       }
     } catch (e) {
-      print('Error limpiando conocimientos: $e');
+      AppLogger.error('Error limpiando conocimientos: $e');
     }
   }
 }
