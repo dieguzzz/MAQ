@@ -19,7 +19,6 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
   final double _width = 300;
   final double _height = 400;
   bool _isMinimized = false;
-  bool _isDragging = false;
 
   @override
   void initState() {
@@ -72,12 +71,10 @@ class _FloatingDevWindowState extends State<FloatingDevWindow> {
 
   void _onPanEnd(DragEndDetails details) {
     _savePosition();
-    setState(() => _isDragging = false);
   }
 
-  void _onPanStart(DragStartDetails details) {
-    setState(() => _isDragging = true);
-  }
+  void _onPanStart(DragStartDetails details) {}
+
 
   void _toggleMinimize() {
     setState(() {

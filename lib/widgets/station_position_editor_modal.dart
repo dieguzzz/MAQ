@@ -399,7 +399,7 @@ class _StationPositionEditorModalState
                                     .resetPosition(widget.station.id);
                                 Provider.of<MetroDataProvider>(context,
                                         listen: false)
-                                    .notifyListeners();
+                                    .refresh();
                                 Navigator.of(context).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -484,7 +484,7 @@ class _StationPositionEditorModalState
     _positionEditor.updatePosition(widget.station.id, newGeoPoint);
 
     // Notificar al provider para refrescar el mapa
-    Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+    Provider.of<MetroDataProvider>(context, listen: false).refresh();
   }
 
   void _applyChanges() {
@@ -492,7 +492,7 @@ class _StationPositionEditorModalState
     _positionEditor.updatePosition(widget.station.id, newGeoPoint);
 
     // Notificar al provider
-    Provider.of<MetroDataProvider>(context, listen: false).notifyListeners();
+    Provider.of<MetroDataProvider>(context, listen: false).refresh();
 
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(

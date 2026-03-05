@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui show lerpDouble;
@@ -816,7 +815,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 
                       // Notificar al provider para refrescar
                       Provider.of<MetroDataProvider>(context, listen: false)
-                          .notifyListeners();
+                          .refresh();
                     }
                     setState(() {
                       _draggingStationId = null;
@@ -949,7 +948,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
 
                       // Notificar al provider para refrescar
                       Provider.of<MetroDataProvider>(context, listen: false)
-                          .notifyListeners();
+                          .refresh();
                     }
                     setState(() {
                       _draggingStationId = null;
@@ -1078,7 +1077,7 @@ class _CustomMetroMapState extends State<CustomMetroMap>
                           clampedPoint, size, _currentBounds!);
                       _positionEditor.updatePosition(station.id, newGeoPoint);
                       Provider.of<MetroDataProvider>(context, listen: false)
-                          .notifyListeners();
+                          .refresh();
                     }
                     setState(() {
                       _draggingStationId = null;
@@ -1172,66 +1171,6 @@ class _CustomMetroMapState extends State<CustomMetroMap>
       isDismissible: true, // Permitir cerrar tocando fuera
       enableDrag: true, // Permitir arrastrar para cerrar
       builder: (context) => StationPositionEditorModal(station: station),
-    );
-  }
-
-  /// Muestra un diálogo con las coordenadas de la estación
-  void _showCoordinatesDialog(BuildContext context, StationModel station) {
-    final editedPosition = _positionEditor.getPosition(station.id);
-    final position = editedPosition ?? station.ubicacion;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(station.nombre),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Coordenadas:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Latitud: ${position.latitude}'),
-            Text('Longitud: ${position.longitude}'),
-            const SizedBox(height: 8),
-            SelectableText(
-              '[${position.latitude}, ${position.longitude}]',
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            ),
-            if (editedPosition != null) ...[
-              const SizedBox(height: 8),
-              const Text(
-                '(Coordenada editada)',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.blue),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(
-                text: '[${position.latitude}, ${position.longitude}]',
-              ));
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Coordenadas copiadas al portapapeles')),
-                );
-              }
-              Navigator.of(context).pop();
-            },
-            child: const Text('Copiar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1403,16 +1342,6 @@ class MetroMapPainter extends CustomPainter {
   }
 
   void _drawInterconnection(Canvas canvas, Paint paint) {
-    // Buscar estación San Miguelito en L1
-    Offset? l1SanMiguelitoPoint;
-    for (int i = 0; i < linea1Stations.length && i < line1Points.length; i++) {
-      if (linea1Stations[i].id == 'l1_san_miguelito') {
-        l1SanMiguelitoPoint = line1Points[i];
-        break;
-      }
-    }
-
-    // Buscar estación San Miguelito en L2 (ya no existe, se eliminó)
     // l2_san_miguelito fue eliminado - no hay interconexión en San Miguelito
   }
 
@@ -1682,20 +1611,6 @@ List<Offset> _projectStations(
   }).toList();
 }
 
-Offset _positionAlongLine(List<Offset> points, double progress) {
-  if (points.length < 2) {
-    return points.isNotEmpty ? points.first : Offset.zero;
-  }
-  final totalSegments = points.length - 1;
-  final scaled = progress * totalSegments;
-  final index = scaled.floor().clamp(0, totalSegments - 1);
-  final t = scaled - index;
-  final start = points[index];
-  final end = points[index + 1];
-  final dx = ui.lerpDouble(start.dx, end.dx, t)!;
-  final dy = ui.lerpDouble(start.dy, end.dy, t)!;
-  return Offset(dx, dy);
-}
 
 class _GeoBounds {
   _GeoBounds({

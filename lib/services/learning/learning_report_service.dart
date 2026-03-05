@@ -24,7 +24,7 @@ class LearningReportService {
       }
 
       // Validar que la estación existe
-      final station = (await _firebaseService.getStations()).firstWhere(
+      (await _firebaseService.getStations()).firstWhere(
         (s) => s.id == report.estacionId,
         orElse: () => throw Exception('Estación no encontrada'),
       );

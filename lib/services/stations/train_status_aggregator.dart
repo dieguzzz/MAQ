@@ -2,12 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/simplified_report_model.dart';
 import '../../models/train_model.dart';
 import '../../utils/train_status_mapper.dart';
-import '../reports/simplified_report_service.dart';
 
 /// Servicio para agregar múltiples reportes y calcular el estado de un tren
 class TrainStatusAggregator {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final SimplifiedReportService _reportService = SimplifiedReportService();
 
   /// Actualiza el estado de un tren basado en reportes activos recientes
   ///
@@ -190,7 +188,7 @@ class TrainStatusAggregator {
     // Confirmaciones totales (máximo 0.3)
     final totalConfirmations = reports.fold<int>(
       0,
-      (sum, r) => sum + r.confirmations,
+      (total, r) => total + r.confirmations,
     );
     final confirmationScore = (totalConfirmations / 20.0).clamp(0.0, 0.3);
 

@@ -23,7 +23,6 @@ class BadgeGrid extends StatelessWidget {
       case BadgeFilter.locked:
         return badges.where((b) => !b.unlocked).toList();
       case BadgeFilter.all:
-      default:
         return badges;
     }
   }

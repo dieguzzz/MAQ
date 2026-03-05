@@ -161,7 +161,7 @@ class StationStatusAggregator {
     // Confirmaciones totales (máximo 0.3)
     final totalConfirmations = reports.fold<int>(
       0,
-      (sum, r) => sum + r.confirmations,
+      (total, r) => total + r.confirmations,
     );
     final confirmationScore = (totalConfirmations / 20.0).clamp(0.0, 0.3);
 
