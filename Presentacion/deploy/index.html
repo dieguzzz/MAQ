@@ -210,7 +210,145 @@
   @media (max-width: 900px) {
     .slide { padding: 20px 24px; }
     h2 { font-size: 1.8rem; }
-    .grid-2, .grid-3, .grid-2x3 { grid-template-columns: 1fr; }
+    .grid-2, .grid-3, .grid-2x3 { grid-template-columns: 1fr 1fr; }
+    .plan-price { font-size: 2.2rem; }
+  }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    html, body {
+      overflow: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .slide {
+      padding: 16px 16px 50px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      justify-content: flex-start;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .slide.centered { text-align: center; align-items: center; }
+
+    /* Tipografia legible */
+    h2 br { display: none; }
+    h2 { font-size: 1.25rem; margin-bottom: 6px; line-height: 1.3; letter-spacing: -0.5px; }
+    h3 { font-size: 0.95rem; margin-bottom: 4px; }
+    p, li { font-size: 0.85rem; line-height: 1.45; }
+    .subtitle { font-size: 0.9rem; margin-bottom: 8px; }
+    .section-label { font-size: 0.65rem; margin-bottom: 4px; }
+
+    /* Override inline margins */
+    .slide p[style*="margin-bottom"] { margin-bottom: 10px !important; }
+    .slide div[style*="margin-bottom"] { margin-bottom: 10px !important; }
+
+    /* Grids */
+    .grid-3, .grid-2x3 { grid-template-columns: 1fr !important; gap: 8px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    /* Cards */
+    .card { padding: 12px; border-radius: 10px; }
+    .card p { font-size: 0.82rem; }
+
+    /* Pain cards - horizontal */
+    .pain-card {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border-top-width: 3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+    .pain-card .ic { margin: 0 !important; flex-shrink: 0; }
+    .pain-card h3 { font-size: 0.9rem; margin-bottom: 2px; }
+    .pain-card p { font-size: 0.8rem; line-height: 1.35; }
+
+    /* Steps - fila horizontal */
+    .steps-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
+    .step-card {
+      padding: 8px 12px;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center;
+      gap: 10px;
+      text-align: left !important;
+      border-radius: 10px;
+    }
+    .step-card .ic { margin: 0 !important; }
+    .step-card h3 { margin-bottom: 1px; font-size: 0.9rem; }
+    .step-card p { font-size: 0.8rem !important; }
+    .step-arrow { display: none !important; }
+    .step-number { width: 30px; height: 30px; font-size: 0.85rem; margin: 0 !important; flex-shrink: 0; min-width: 30px; }
+
+    /* Features */
+    .feature-item { padding: 10px; gap: 10px; border-radius: 10px; }
+    .feature-item h4 { font-size: 0.9rem; margin-bottom: 2px; }
+    .feature-item p { font-size: 0.78rem; line-height: 1.35; }
+    .feature-item .ic { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; }
+    .feature-item .ic svg { width: 16px; height: 16px; }
+
+    /* Iconos */
+    .ic { width: 36px; height: 36px; border-radius: 8px; }
+    .ic svg { width: 18px; height: 18px; }
+
+    /* Badges */
+    .badge-row { gap: 5px; }
+    .badge-chip { padding: 5px 10px; font-size: 0.72rem; gap: 4px; border-radius: 20px; }
+    .badge-chip svg { width: 12px; height: 12px; }
+
+    /* Benefit cards */
+    .benefit-card { padding: 10px 12px; }
+    .benefit-card h3 { font-size: 0.95rem; margin-bottom: 6px; }
+    .benefit-card h3 svg { width: 16px; height: 16px; }
+    .benefit-card li { font-size: 0.8rem; padding: 2px 0; gap: 6px; }
+    .chk svg { width: 14px; height: 14px; }
+
+    /* Diff cards - horizontal */
+    .diff-card {
+      padding: 10px 12px;
+      border-bottom-width: 3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+    .diff-card .ic { margin: 0 !important; flex-shrink: 0; }
+    .diff-card h3 { font-size: 0.9rem; }
+    .diff-card p { font-size: 0.8rem; }
+
+    /* Plan cards */
+    .plan-card { padding: 14px 12px; border-radius: 12px; }
+    .plan-card.premium { border-width: 1.5px; }
+    .plan-card.premium::before { font-size: 0.5rem; padding: 2px 28px; top: 10px; right: -34px; }
+    .plan-name { font-size: 0.95rem; }
+    .plan-price { font-size: 1.6rem; margin-bottom: 6px; }
+    .plan-price small { font-size: 0.7rem; }
+    .plan-features li { font-size: 0.78rem; padding: 4px 0; }
+    .plan-features .chk svg { width: 13px; height: 13px; }
+
+    /* Nav */
+    .slide-counter { font-size: 10px; bottom: 6px; right: 10px; }
+    .nav-hint { display: none; }
+    .progress-bar { height: 3px; }
+
+    /* Deco */
+    .metro-line-decoration { width: 60px; height: 3px; margin: 6px auto; }
+    .spacer { margin-top: 10px; }
+    .spacer-sm { margin-top: 6px; }
+
+    /* Logo */
+    .slide img[src^="data:image"] { max-width: 130px; height: auto; }
+
+    /* Portada */
+    .portada-bg h2 { font-size: 1.3rem; }
+    .portada-bg .subtitle { font-size: 0.85rem; }
+
+    /* Override inline max-widths */
+    .slide .grid-2[style*="max-width"] { max-width: 100% !important; }
+    .slide .section-label[style] { font-size: 0.65rem !important; margin-bottom: 6px !important; }
   }
 </style>
 </head>
@@ -502,6 +640,25 @@
   document.getElementById('presentation').addEventListener('click', function(e) {
     if (e.clientX / window.innerWidth > 0.3) next(); else prev();
   });
+
+  // Soporte swipe para dispositivos táctiles
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  document.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    const diffX = touchStartX - e.changedTouches[0].screenX;
+    const diffY = touchStartY - e.changedTouches[0].screenY;
+    // Solo navegar si el swipe es claramente horizontal (ratio 2:1) y mayor a 60px
+    if (Math.abs(diffX) > Math.abs(diffY) * 2 && Math.abs(diffX) > 60) {
+      if (diffX > 0) next();
+      else prev();
+    }
+  }, { passive: true });
 
   updateSlide();
 </script>
