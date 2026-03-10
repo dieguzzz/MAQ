@@ -405,12 +405,12 @@ class _RouteResultsState extends State<RouteResults> {
     final stationName = transferStation?.nombre ?? 'San Miguelito';
 
     return Card(
-      color: MetroColors.energyOrange.withValues(alpha: 0.08),
+      color: MetroColors.red.withValues(alpha: 0.08),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            Icon(Icons.swap_horiz, color: MetroColors.energyOrange, size: 32),
+            Icon(Icons.swap_horiz, color: MetroColors.red, size: 32),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -436,7 +436,7 @@ class _RouteResultsState extends State<RouteResults> {
                     'Cambia de línea aquí',
                     style: TextStyle(
                       fontSize: 12,
-                      color: MetroColors.energyOrange,
+                      color: MetroColors.red,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

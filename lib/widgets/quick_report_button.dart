@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../theme/metro_theme.dart';
+import '../providers/auth_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/metro_data_provider.dart';
 import '../models/station_model.dart';
+import 'guest_upgrade_dialog.dart';
 import 'station_report_sheet.dart';
 
 class QuickReportButton extends StatefulWidget {
@@ -46,6 +48,11 @@ class _QuickReportButtonState extends State<QuickReportButton> {
 
   /// Maneja el reporte de estación (1 toque) - Abre directamente el formulario
   Future<void> _handleStationReport() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.isGuest) {
+      GuestUpgradeDialog.show(context, feature: 'los reportes detallados');
+      return;
+    }
     final metroProvider =
         Provider.of<MetroDataProvider>(context, listen: false);
     final locationProvider =

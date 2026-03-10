@@ -15,6 +15,8 @@ import '../services/eta_arrival_service.dart';
 import '../models/eta_group_model.dart';
 import '../models/simplified_report_model.dart';
 import 'station_report_flow_widget.dart';
+import '../providers/auth_provider.dart';
+import 'guest_upgrade_dialog.dart';
 
 /// Widget que combina la información de la estación y el modal de reporte
 /// Permite deslizar entre las dos vistas
@@ -47,8 +49,11 @@ class _StationReportSheetState extends State<StationReportSheet> {
   @override
   void initState() {
     super.initState();
-    _currentPage = widget.initialPage;
-    _pageController = PageController(initialPage: widget.initialPage);
+    // Force guests to page 0 (info only)
+    final isGuest = Provider.of<AuthProvider>(context, listen: false).isGuest;
+    final startPage = isGuest ? 0 : widget.initialPage;
+    _currentPage = startPage;
+    _pageController = PageController(initialPage: startPage);
   }
 
   @override
@@ -96,6 +101,18 @@ class _StationReportSheetState extends State<StationReportSheet> {
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (index) {
+                    // Block guests from accessing report page
+                    if (index == 1) {
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      if (auth.isGuest) {
+                        _pageController.animateToPage(0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                        GuestUpgradeDialog.show(context, feature: 'los reportes');
+                        return;
+                      }
+                    }
                     setState(() {
                       _currentPage = index;
                     });
@@ -1213,7 +1230,7 @@ class _StatusSection extends StatelessWidget {
         (index) => Icon(
           index < value ? Icons.star_rounded : Icons.star_border_rounded,
           size: 20,
-          color: MetroColors.energyOrange,
+          color: MetroColors.red,
         ),
       ),
     );

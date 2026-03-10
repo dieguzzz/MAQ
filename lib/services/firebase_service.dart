@@ -502,6 +502,43 @@ class FirebaseService {
     }
   }
 
+  Future<UserCredential?> linkWithGoogle() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('No hay usuario autenticado');
+      }
+
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        return await currentUser.linkWithProvider(googleProvider);
+      } else {
+        await _googleSignIn.initialize();
+        final GoogleSignInAccount account = await _googleSignIn.authenticate(scopeHint: ['email']);
+        final GoogleSignInAuthentication auth = account.authentication;
+        final String? idToken = auth.idToken;
+        final GoogleSignInClientAuthorization? clientAuth =
+            await account.authorizationClient.authorizationForScopes(['email']);
+        final String? accessToken = clientAuth?.accessToken;
+
+        if (idToken == null || accessToken == null) {
+          throw Exception('No se pudieron obtener los tokens de autenticación');
+        }
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: accessToken,
+          idToken: idToken,
+        );
+        return await currentUser.linkWithCredential(credential);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al vincular con Google: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
+  }
+
   Future<void> signOut() async {
     if (!kIsWeb) {
       try {

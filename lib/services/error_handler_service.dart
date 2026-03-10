@@ -101,6 +101,9 @@ class ErrorHandlerService {
       
       case 'account-exists-with-different-credential':
         return 'Ya existe una cuenta con este correo pero con otro método de autenticación.';
+
+      case 'credential-already-in-use':
+        return 'Esta cuenta de Google ya está vinculada a otro usuario. Intenta con otra cuenta o inicia sesión directamente.';
       
       case 'invalid-verification-code':
         return 'El código de verificación no es válido.';

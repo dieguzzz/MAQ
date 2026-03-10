@@ -113,13 +113,13 @@ class _StationPositionEditorModalState
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: MetroColors.energyOrange.withValues(alpha: 0.2),
+                      color: MetroColors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Editada',
                       style: TextStyle(
-                        color: MetroColors.energyOrange,
+                        color: MetroColors.red,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -411,7 +411,7 @@ class _StationPositionEditorModalState
                               icon: const Icon(Icons.refresh, size: 16),
                               label: const Text('Reset'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: MetroColors.energyOrange,
+                                foregroundColor: MetroColors.red,
                               ),
                             ),
                           ),

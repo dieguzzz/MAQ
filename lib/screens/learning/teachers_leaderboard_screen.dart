@@ -167,7 +167,7 @@ class TeachersLeaderboardScreen extends StatelessWidget {
                       const Icon(
                         Icons.emoji_events,
                         size: 16,
-                        color: MetroColors.energyOrange,
+                        color: MetroColors.red,
                       ),
                       const SizedBox(width: 8),
                       Text(

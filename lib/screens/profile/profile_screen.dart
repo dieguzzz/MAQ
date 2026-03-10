@@ -10,6 +10,8 @@ import '../reports/report_history_screen.dart';
 import '../leaderboards/leaderboard_screen.dart';
 import '../profile/edit_profile_screen.dart';
 import '../profile/achievements_screen.dart';
+import '../../widgets/guest_upgrade_dialog.dart';
+import '../../widgets/google_logo.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -27,6 +29,7 @@ class ProfileScreen extends StatelessWidget {
             );
           }
 
+          final isGuest = authProvider.isGuest;
           final gamification = user.gamification;
           final puntos = gamification?.puntos ?? 0;
           final level = user.level;
@@ -100,54 +103,115 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // CTA para invitados
+                    if (isGuest)
+                      Card(
+                        margin: const EdgeInsets.all(16),
+                        color: MetroColors.blue.withValues(alpha: 0.05),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: MetroColors.blue.withValues(alpha: 0.3)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.lock_open, size: 48, color: MetroColors.blue),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Desbloquea todo el potencial',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Vincula tu cuenta de Google para acceder a reportes, rutas, logros y más.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: MetroColors.grayDark.withValues(alpha: 0.7)),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => GuestUpgradeDialog.show(context, feature: 'todas las funciones'),
+                                  icon: const GoogleLogo(size: 20),
+                                  label: const Text('Vincular con Google'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: MetroColors.blue,
+                                    foregroundColor: MetroColors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     // Nivel actual
-                    Card(
-                      margin: const EdgeInsets.all(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Text(
-                              levelName,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                    _buildMaybeLockedSection(
+                      context,
+                      isGuest: isGuest,
+                      feature: 'logros',
+                      child: Card(
+                        margin: const EdgeInsets.all(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Text(
+                                isGuest ? 'Pasajero Novato' : levelName,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Nivel $level',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color:
-                                    MetroColors.grayDark.withValues(alpha: 0.6),
+                              const SizedBox(height: 8),
+                              Text(
+                                isGuest ? 'Nivel 1' : 'Nivel $level',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                      MetroColors.grayDark.withValues(alpha: 0.6),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            LevelProgressBar(
-                              currentPoints: puntos,
-                              currentLevel: level,
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              LevelProgressBar(
+                                currentPoints: isGuest ? 0 : puntos,
+                                currentLevel: isGuest ? 1 : level,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
 
                     // Estadísticas
-                    ProfileStatsCard(user: user),
-
-                    // Badges recientes
-                    ProfileBadgesPreview(
-                      badges: gamification?.badges ?? [],
+                    _buildMaybeLockedSection(
+                      context,
+                      isGuest: isGuest,
+                      feature: 'logros',
+                      child: ProfileStatsCard(user: user),
                     ),
 
+                    // Badges recientes
+                    _buildMaybeLockedSection(
+                      context,
+                      isGuest: isGuest,
+                      feature: 'logros',
+                      child: ProfileBadgesPreview(
+                        badges: gamification?.badges ?? [],
+                      ),
+                    ),
+
+                    if (!isGuest) ...[
                     // Ranking global
                     if (ranking > 0)
                       Card(
                         margin: const EdgeInsets.all(16),
                         child: ListTile(
                           leading: const Icon(Icons.emoji_events,
-                              color: MetroColors.energyOrange),
+                              color: MetroColors.red),
                           title: const Text('Ranking Global'),
                           subtitle: Text('Posición #$ranking'),
                           trailing: const Icon(Icons.chevron_right),
@@ -200,6 +264,7 @@ class ProfileScreen extends StatelessWidget {
                         },
                       ),
                     ),
+                    ], // end !isGuest
 
                     // Acciones
                     Card(
@@ -282,6 +347,35 @@ class ProfileScreen extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildMaybeLockedSection(
+    BuildContext context, {
+    required bool isGuest,
+    required String feature,
+    required Widget child,
+  }) {
+    if (!isGuest) return child;
+    return GestureDetector(
+      onTap: () => GuestUpgradeDialog.show(context, feature: feature),
+      child: Stack(
+        children: [
+          Opacity(opacity: 0.3, child: IgnorePointer(child: child)),
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: MetroColors.grayDark.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock, size: 28, color: MetroColors.grayDark),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

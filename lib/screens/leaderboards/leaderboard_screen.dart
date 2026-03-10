@@ -6,6 +6,7 @@ import '../../services/firebase_service.dart';
 import '../../models/user_model.dart';
 import '../../theme/metro_theme.dart';
 import '../../widgets/leaderboard_user_card.dart';
+import '../../widgets/guest_upgrade_dialog.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -95,6 +96,30 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         ),
         body: Column(
           children: [
+            // Banner para invitados
+            if (authProvider.isGuest)
+              GestureDetector(
+                onTap: () => GuestUpgradeDialog.show(context, feature: 'el ranking'),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: MetroColors.blue.withValues(alpha: 0.1),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: MetroColors.blue, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Vincula tu cuenta de Google para aparecer en el ranking',
+                          style: TextStyle(color: MetroColors.blue, fontSize: 13),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: MetroColors.blue, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+
             // Selector de leaderboards
             _buildLeaderboardSelector(),
 
@@ -145,6 +170,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
                   var users = snapshot.data!.docs
                       .map((doc) => UserModel.fromFirestore(doc))
+                      .where((u) => u.email.isNotEmpty) // Exclude guest users
                       .toList();
 
                   // Filtrar por línea si es necesario
@@ -283,16 +309,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         children: [
           // Segundo lugar
           if (users.length >= 2)
-            _buildTopThreeCard(users[1], 2, MetroColors.grayMedium),
+            _buildTopThreeCard(users[1], 2, Colors.grey[400]!),
 
           // Primer lugar (más grande)
           if (users.isNotEmpty)
-            _buildTopThreeCard(users[0], 1, MetroColors.energyOrange,
+            _buildTopThreeCard(users[0], 1, Colors.amber[700]!,
                 isFirst: true),
 
           // Tercer lugar
           if (users.length >= 3)
-            _buildTopThreeCard(users[2], 3, MetroColors.blue),
+            _buildTopThreeCard(users[2], 3, Colors.orange[700]!),
         ],
       ),
     );

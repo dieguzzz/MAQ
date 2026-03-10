@@ -28,6 +28,8 @@ class AuthProvider with ChangeNotifier {
     return _currentUser != null;
   }
 
+  bool get isGuest => FirebaseAuth.instance.currentUser?.isAnonymous ?? true;
+
   AuthProvider() {
     // No inicializar streams aquí - se hará de forma lazy cuando se necesiten
   }
@@ -278,6 +280,45 @@ class AuthProvider with ChangeNotifier {
 
       loadUser(user.uid);
       // El stream se encargará de actualizar _isLoading y _currentUser automáticamente
+      return null; // Éxito
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ErrorHandlerService.getErrorMessage(e);
+    }
+  }
+
+  Future<String?> linkWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final credential = await _firebaseService.linkWithGoogle();
+      final user = credential?.user;
+      if (user == null) {
+        _isLoading = false;
+        notifyListeners();
+        return 'Se canceló la vinculación con Google';
+      }
+
+      // Actualizar el perfil con datos de Google
+      final updateData = <String, dynamic>{};
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        updateData['nombre'] = user.displayName;
+      }
+      if (user.email != null && user.email!.isNotEmpty) {
+        updateData['email'] = user.email;
+      }
+      if (user.photoURL != null) {
+        updateData['foto_url'] = user.photoURL;
+      }
+      updateData['reputacion'] = 50; // Upgrade from guest reputation (30)
+
+      if (updateData.isNotEmpty) {
+        await _firebaseService.updateUser(user.uid, updateData);
+      }
+
+      loadUser(user.uid);
       return null; // Éxito
     } catch (e) {
       _isLoading = false;

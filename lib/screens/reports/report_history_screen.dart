@@ -689,7 +689,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                             report.stationOperational == 'yes'
                                 ? MetroColors.stateNormal
                                 : report.stationOperational == 'partial'
-                                    ? MetroColors.energyOrange
+                                    ? MetroColors.red
                                     : MetroColors.stateCritical,
                           ),
                           const SizedBox(height: 8),
@@ -718,7 +718,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                                 padding: EdgeInsets.zero,
                                 materialTapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap,
-                                backgroundColor: MetroColors.energyOrange
+                                backgroundColor: MetroColors.red
                                     .withValues(alpha: 0.1),
                               );
                             }).toList(),
@@ -747,7 +747,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                             report.trainStatus == 'normal'
                                 ? MetroColors.stateNormal
                                 : report.trainStatus == 'slow'
-                                    ? MetroColors.energyOrange
+                                    ? MetroColors.red
                                     : MetroColors.stateCritical,
                           ),
                           const SizedBox(height: 8),
@@ -1173,7 +1173,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       return Chip(
                         label: Text(_getProblemaTexto(issue)),
                         backgroundColor:
-                            MetroColors.energyOrange.withValues(alpha: 0.1),
+                            MetroColors.red.withValues(alpha: 0.1),
                       );
                     }).toList(),
                   ),
@@ -1337,7 +1337,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                     return Chip(
                       label: Text(_getProblemaTexto(issue)),
                       backgroundColor:
-                          MetroColors.energyOrange.withValues(alpha: 0.1),
+                          MetroColors.red.withValues(alpha: 0.1),
                     );
                   }).toList(),
                 ),

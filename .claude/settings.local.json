@@ -4,7 +4,11 @@
       "Bash(flutter analyze:*)",
       "WebSearch",
       "Bash(dart analyze:*)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "Bash(python3:*)",
+      "Bash(base64 -w0 \"/home/guz/MAQ/Presentacion/logo-20260305T225311Z-3-001/logo/logo-metropty-imago-.png\")",
+      "Read(//tmp/**)",
+      "mcp__plugin_playwright_playwright__browser_press_key"
     ]
   }
 }
