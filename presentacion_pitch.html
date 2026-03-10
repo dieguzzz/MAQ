@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetroPTY - Presentación al Metro de Panamá</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --blue: #0c5ba2;
+    --blue-dark: #004490;
+    --blue-light: #e8f0fa;
+    --red: #E53935;
+    --red-light: #fdeaea;
+    --yellow: #f8d133;
+    --yellow-light: #fef9e7;
+    --green: #4CAF50;
+    --green-light: #eaf5ea;
+    --bg: #f4f4f4;
+    --white: #ffffff;
+    --text: #242424;
+    --text2: #484848;
+    --text3: #7a7a7a;
+    --border: #e0e0e0;
+    --shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Collage background with logos for light slides */
+  .slide:not(.slide-dark) {
+    background: var(--bg);
+    position: relative;
+  }
+  .slide:not(.slide-dark)::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.05;
+    background-image:
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png'),
+      url('assets/images/logo-ico.png');
+    background-size:
+      240px, 30px, 170px, 22px, 200px, 38px, 280px, 26px, 150px, 48px, 210px, 20px, 180px, 34px, 130px, 260px, 28px, 160px, 42px, 190px,
+      200px, 28px, 160px, 44px, 240px, 24px, 140px, 36px, 210px, 30px, 170px, 20px, 190px, 48px, 150px, 260px, 32px, 130px, 40px, 220px;
+    background-position:
+      1% 3%, 20% 70%, 42% 8%, 68% 50%, 94% 6%, 10% 38%, 56% 80%, 81% 32%, 30% 46%, 4% 88%, 50% 22%, 74% 73%, 38% 60%, 86% 55%, 16% 13%, 64% 40%, 26% 28%, 46% 95%, 78% 15%, 8% 58%,
+      6% 25%, 24% 52%, 48% 75%, 66% 15%, 96% 42%, 13% 65%, 36% 32%, 60% 58%, 80% 10%, 3% 50%, 46% 90%, 70% 35%, 23% 85%, 56% 3%, 88% 80%, 42% 42%, 14% 78%, 72% 62%, 54% 48%, 90% 28%;
+    background-repeat: no-repeat;
+  }
+  .slide:not(.slide-dark) > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .slide {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: none; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 50px 90px;
+    opacity: 0; transition: opacity 0.45s ease;
+    z-index: 1;
+  }
+  .slide.active { display: flex; opacity: 1; }
+
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 4px;
+    background: linear-gradient(90deg, var(--blue), var(--red));
+    transition: width 0.4s ease; z-index: 100;
+  }
+  .slide-counter {
+    position: fixed; bottom: 22px; right: 34px;
+    font-size: 13px; color: var(--text3); z-index: 100; font-weight: 600;
+  }
+  .nav-hint {
+    position: fixed; bottom: 22px; left: 34px;
+    font-size: 11px; color: var(--text3); z-index: 100; opacity: 0.4;
+  }
+
+  h1 { font-size: 3.2rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1; }
+  h2 { font-size: 2.3rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 16px; line-height: 1.2; }
+  h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+  p, li { font-size: 1.05rem; line-height: 1.65; color: var(--text2); }
+
+  .subtitle { font-size: 1.35rem; font-weight: 400; color: var(--text2); margin-top: 10px; }
+  .big-sub { font-size: 1.3rem; font-weight: 300; color: var(--text2); max-width: 680px; text-align: center; margin-bottom: 36px; }
+
+  .blue { color: var(--blue); }
+  .red { color: var(--red); }
+  .green { color: var(--green); }
+  .yt { color: #b8960a; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; width: 100%; max-width: 1040px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; width: 100%; max-width: 1040px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 18px; width: 100%; max-width: 1040px; }
+
+  .card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+    padding: 26px; box-shadow: var(--shadow);
+    transition: transform 0.3s ease;
+  }
+  .card:hover { transform: translateY(-3px); }
+  .card-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+  .card p { font-size: 0.95rem; }
+
+  .card-blue { border-left: 4px solid var(--blue); }
+  .card-red { border-left: 4px solid var(--red); }
+  .card-green { border-left: 4px solid var(--green); }
+  .card-yellow { border-left: 4px solid var(--yellow); }
+
+  .label {
+    display: inline-block; padding: 5px 14px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 14px;
+  }
+  .lb { background: var(--blue-light); color: var(--blue); }
+  .lr { background: var(--red-light); color: var(--red); }
+  .lg { background: var(--green-light); color: var(--green); }
+  .ly { background: var(--yellow-light); color: #b8960a; }
+
+  .tag {
+    display: inline-block; padding: 5px 13px; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 600; margin: 3px;
+  }
+  .tag-b { background: var(--blue-light); color: var(--blue); }
+  .tag-r { background: var(--red-light); color: var(--red); }
+
+  .stat { text-align: center; padding: 18px; }
+  .stat-num {
+    font-size: 3rem; font-weight: 900; line-height: 1; margin-bottom: 6px; color: var(--blue);
+  }
+  .stat-num.rn { color: var(--red); }
+  .stat-num.gn { color: var(--green); }
+  .stat-label { font-size: 0.9rem; color: var(--text2); font-weight: 500; }
+
+  .flist { list-style: none; padding: 0; }
+  .flist li {
+    font-size: 1rem; padding: 7px 0; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  .flist li:last-child { border: none; }
+  .ck { color: var(--green); font-weight: bold; }
+
+  .flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .fstep {
+    background: var(--white); border: 2px solid var(--border); border-radius: 14px;
+    padding: 18px 24px; text-align: center; min-width: 155px; box-shadow: var(--shadow);
+  }
+  .fstep:hover { border-color: var(--blue); }
+  .snum {
+    display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--blue); color: white; font-weight: 800; font-size: 0.85rem;
+    line-height: 30px; margin-bottom: 6px;
+  }
+  .fstep h4 { font-size: 0.95rem; margin-bottom: 3px; }
+  .fstep p { font-size: 0.8rem; color: var(--text3); }
+  .farr { font-size: 1.2rem; color: var(--text3); }
+
+  .bar-chart { width: 100%; max-width: 460px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bar-lbl { font-size: 0.8rem; font-weight: 600; min-width: 130px; text-align: right; color: var(--text2); }
+  .bar-track { flex: 1; height: 26px; background: #eee; border-radius: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 8px; font-size: 0.7rem; font-weight: 700; color: white; }
+
+  .badge-grid { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; max-width: 780px; }
+  .badge-item {
+    background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+    padding: 9px 16px; text-align: center; font-size: 0.82rem; min-width: 105px;
+    box-shadow: var(--shadow);
+  }
+  .badge-item span { display: block; font-size: 1.5rem; margin-bottom: 2px; }
+
+  .slide-dark { background: var(--text); color: white; z-index: 2; }
+  .slide-dark h1, .slide-dark h2, .slide-dark h3 { color: white; }
+  .slide-dark p { color: #b0b0b0; }
+  .slide-dark .subtitle { color: #b0b0b0; }
+
+  .centered { text-align: center; align-items: center; }
+  .left-a { align-items: flex-start; text-align: left; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-32 { margin-bottom: 32px; }
+  .mb-40 { margin-bottom: 40px; }
+
+  .metro-div {
+    width: 120px; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--red) 50%, var(--blue) 50%, var(--blue) 100%);
+    margin: 14px auto;
+  }
+
+  .quote {
+    font-size: 1.4rem; font-style: italic; font-weight: 300;
+    color: var(--text); max-width: 650px; text-align: center;
+    line-height: 1.6; position: relative; padding: 0 40px;
+  }
+  .quote::before { content: '\201C'; font-size: 3rem; color: var(--blue); opacity: 0.3; position: absolute; top: -20px; left: 0; font-style: normal; font-weight: 900; }
+  .quote::after { content: '\201D'; font-size: 3rem; color: var(--blue); opacity: 0.3; position: absolute; bottom: -30px; right: 0; font-style: normal; font-weight: 900; }
+
+  .artist-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+    padding: 28px; text-align: center; box-shadow: var(--shadow);
+    background: linear-gradient(135deg, #fff 0%, var(--blue-light) 100%);
+  }
+
+  .highlight-box {
+    background: var(--blue-light); border: none; border-radius: 14px;
+    padding: 18px 24px; text-align: center;
+  }
+  .highlight-box p { color: var(--blue); font-weight: 600; font-size: 1.05rem; }
+
+  .phase-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; text-align: center; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+  }
+  .phase-card .phase-num {
+    font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--text3); margin-bottom: 8px;
+  }
+  .phase-card h3 { font-size: 1.15rem; }
+  .phase-card p { font-size: 0.9rem; }
+  .phase-active { border: 2px solid var(--blue); }
+  .phase-active .phase-num { color: var(--blue); }
+
+  @media (max-width: 900px) {
+    .slide { padding: 28px 36px; }
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.6rem; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="nav-hint">&#8592; &#8594; para navegar</div>
+
+<!-- ===== 1. PORTADA ===== -->
+<div class="slide slide-dark centered active">
+  <img src="assets/images/logo-ico.png" alt="MetroPTY" style="height: 280px; margin-bottom: -30px; filter: drop-shadow(0 6px 30px rgba(0,0,0,0.4));">
+  <img src="assets/images/logo-txt.png" alt="MetroPTY" style="height: 240px; margin-bottom: -10px; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.3));">
+  <div class="metro-div" style="margin-bottom: 4px;"></div>
+  <p class="subtitle" style="color: #ccc; max-width: 580px; text-align: center; font-size: 1.5rem;">
+    Tu compañero inteligente del Metro de Panamá
+  </p>
+  <div style="margin-top: 6px;">
+    <span class="tag tag-r">Tiempo Real</span>
+    <span class="tag tag-b">Colaborativa</span>
+    <span class="tag tag-r">100% Panameña</span>
+  </div>
+</div>
+
+<!-- ===== 2. EL PROBLEMA ===== -->
+<div class="slide centered">
+  <span class="label lr">El Problema</span>
+  <h2>Los pasajeros viajan <span class="red">a ciegas</span></h2>
+  <p class="big-sub">No existe forma de saber qué está pasando en el metro antes de llegar a la estación</p>
+  <div class="grid-3">
+    <div class="card card-red centered">
+      <span class="card-icon">&#8987;</span>
+      <h3>Espera incierta</h3>
+      <p>No se sabe cuánto falta para el próximo tren ni si hay retrasos</p>
+    </div>
+    <div class="card card-red centered">
+      <span class="card-icon">&#128101;</span>
+      <h3>Aglomeración desconocida</h3>
+      <p>No hay forma de saber qué tan llena está una estación antes de llegar</p>
+    </div>
+    <div class="card card-red centered">
+      <span class="card-icon">&#128263;</span>
+      <h3>Sin comunicación directa</h3>
+      <p>El Metro no tiene un canal directo para comunicarse en tiempo real con sus pasajeros</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. LA SOLUCION ===== -->
+<div class="slide centered">
+  <span class="label lb">La Solución</span>
+  <h2>Cada pasajero se convierte en un <span class="blue">sensor inteligente</span></h2>
+  <div class="metro-div mb-32"></div>
+  <div class="grid-3">
+    <div class="card card-blue centered">
+      <span class="card-icon">&#9889;</span>
+      <h3>Tiempo real</h3>
+      <p>Estado de estaciones y trenes actualizado al instante por la comunidad</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#129309;</span>
+      <h3>Colaborativa</h3>
+      <p>Miles de pasajeros reportando y validando información entre sí</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#127942;</span>
+      <h3>Recompensas</h3>
+      <p>Puntos, niveles y logros que motivan a participar todos los días</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 4. UNICO EN EL MUNDO ===== -->
+<div class="slide centered">
+  <span class="label lr">Innovación</span>
+  <h2>La <span class="red">primera</span> app de su tipo en el mundo</h2>
+  <p class="big-sub">No existe en ningún país una app de transporte público gamificada con identidad cultural propia</p>
+  <div class="grid-2" style="max-width: 900px;">
+    <div class="card card-red centered">
+      <span class="card-icon">&#127477;&#127462;</span>
+      <h3>Primera app panameña de esta magnitud</h3>
+      <p>No hay una aplicación hecha en Panamá que combine transporte público, comunidad, gamificación y cultura en una sola plataforma</p>
+    </div>
+    <div class="card card-red centered">
+      <span class="card-icon">&#127758;</span>
+      <h3>Sin precedente mundial</h3>
+      <p>Ningún país tiene una app de transporte que enseñe su cultura, historia y tradiciones a locales y extranjeros mientras usan el metro</p>
+    </div>
+  </div>
+  <div class="highlight-box" style="margin-top: 28px; max-width: 700px;">
+    <p>Panamá puede ser pionero mundial en transporte público inteligente y cultural</p>
+  </div>
+</div>
+
+<!-- ===== 5. COMO FUNCIONA ===== -->
+<div class="slide centered">
+  <span class="label lb">Así de fácil</span>
+  <h2>Cómo <span class="blue">funciona</span></h2>
+  <p class="big-sub">Reportar toma menos de 10 segundos</p>
+  <div class="flow">
+    <div class="fstep">
+      <span class="snum">1</span>
+      <h4>Abre la app</h4>
+      <p>Ve el mapa y el<br>estado del metro</p>
+    </div>
+    <span class="farr">&#10132;</span>
+    <div class="fstep">
+      <span class="snum">2</span>
+      <h4>Reporta</h4>
+      <p>Dinos qué ves:<br>aglomeración, tren</p>
+    </div>
+    <span class="farr">&#10132;</span>
+    <div class="fstep">
+      <span class="snum">3</span>
+      <h4>Gana puntos</h4>
+      <p>Sube de nivel y<br>desbloquea logros</p>
+    </div>
+    <span class="farr">&#10132;</span>
+    <div class="fstep" style="border-color: var(--green);">
+      <span class="snum" style="background: var(--green);">&#10003;</span>
+      <h4>Todos ganan</h4>
+      <p>Mejor información<br>para la comunidad</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. PARA EL PASAJERO ===== -->
+<div class="slide centered">
+  <span class="label lb">Para el Pasajero</span>
+  <h2>Todo lo que necesita <span class="blue">en una app</span></h2>
+  <div class="grid-2" style="max-width: 950px;">
+    <div class="card card-blue">
+      <span class="card-icon">&#128506;</span>
+      <h3>Mapa interactivo</h3>
+      <p>Estado de cada estación en tiempo real, niveles de aglomeración y posición de trenes</p>
+    </div>
+    <div class="card card-blue">
+      <span class="card-icon">&#128227;</span>
+      <h3>Notificaciones inteligentes</h3>
+      <p>Alertas de retrasos, incidencias o cambios en su ruta habitual</p>
+    </div>
+    <div class="card card-blue">
+      <span class="card-icon">&#128652;</span>
+      <h3>Planificador de ruta</h3>
+      <p>El mejor camino entre estaciones con tiempos estimados de viaje</p>
+    </div>
+    <div class="card card-blue">
+      <span class="card-icon">&#128179;</span>
+      <h3>Recarga de tarjeta</h3>
+      <p>Recargar la tarjeta del metro directamente desde la app, sin hacer fila</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 7. DATOS PARA EL METRO ===== -->
+<div class="slide centered">
+  <span class="label lg">Para el Metro de Panamá</span>
+  <h2>Datos que <span class="green">hoy no existen</span></h2>
+  <p class="big-sub">Cada reporte genera información valiosa para mejorar el servicio</p>
+  <div class="grid-2" style="max-width: 950px;">
+    <div>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <span class="bar-lbl">Aglomeración/estación</span>
+          <div class="bar-track"><div class="bar-fill" style="width:92%; background: var(--blue);">Nuevo</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-lbl">Horas pico reales</span>
+          <div class="bar-track"><div class="bar-fill" style="width:87%; background: var(--blue);">Nuevo</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-lbl">Tiempos de espera</span>
+          <div class="bar-track"><div class="bar-fill" style="width:80%; background: var(--red);">Nuevo</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-lbl">Incidencias frecuentes</span>
+          <div class="bar-track"><div class="bar-fill" style="width:75%; background: var(--red);">Nuevo</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-lbl">Satisfacción del pasajero</span>
+          <div class="bar-track"><div class="bar-fill" style="width:70%; background: var(--green);">Nuevo</div></div>
+        </div>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text3); margin-top: 10px;">* Datos generados por la comunidad de usuarios</p>
+    </div>
+    <div>
+      <div class="card card-green mb-16">
+        <h3 style="color: var(--green);">Inteligencia operativa</h3>
+        <p>Saber dónde hay más demanda, qué líneas tienen más incidencias y en qué horarios</p>
+      </div>
+      <div class="card card-green mb-16">
+        <h3 style="color: var(--green);">Decisiones informadas</h3>
+        <p>Optimizar frecuencias, asignar personal y planificar mantenimiento con datos reales</p>
+      </div>
+      <div class="card card-green">
+        <h3 style="color: var(--green);">Cero costo</h3>
+        <p>Los datos los genera la comunidad. El Metro obtiene inteligencia sin inversión adicional</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 8. CANAL DE COMUNICACION ===== -->
+<div class="slide centered">
+  <span class="label lb">Canal Directo</span>
+  <h2>Comunicación <span class="blue">directa</span> con cada pasajero</h2>
+  <p class="big-sub">Un canal para llegar al celular de cada usuario del metro</p>
+  <div class="grid-3">
+    <div class="card card-blue centered">
+      <span class="card-icon">&#128226;</span>
+      <h3>Avisos de servicio</h3>
+      <p>Mantenimientos, cambios de horario, cierres temporales, emergencias</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#128218;</span>
+      <h3>Educación y orden</h3>
+      <p>Campañas de buen uso del metro, normas de convivencia, civismo</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#127881;</span>
+      <h3>Eventos y promociones</h3>
+      <p>Ampliaciones de servicio, eventos especiales, logros del sistema</p>
+    </div>
+  </div>
+  <div class="highlight-box" style="margin-top: 28px; max-width: 680px;">
+    <p>Mensajes segmentados por línea, estación u horario. Llegue directamente a quien necesita la información.</p>
+  </div>
+</div>
+
+<!-- ===== 9. GAMIFICACION + INCENTIVOS ===== -->
+<div class="slide centered">
+  <span class="label ly">Engagement</span>
+  <h2>Un sistema que <span class="yt">motiva</span> a participar</h2>
+  <p class="big-sub">Gamificación + incentivos reales = usuarios activos generando datos</p>
+  <div class="grid-4 mb-24">
+    <div class="stat">
+      <div class="stat-num">50</div>
+      <div class="stat-label">Niveles</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num rn">40+</div>
+      <div class="stat-label">Logros</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num gn">&#8734;</div>
+      <div class="stat-label">Rachas diarias</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">Top</div>
+      <div class="stat-label">Rankings</div>
+    </div>
+  </div>
+  <div class="grid-2" style="max-width: 800px;">
+    <div class="card card-yellow centered">
+      <span class="card-icon">&#127873;</span>
+      <h3>Incentivos reales</h3>
+      <p>Los usuarios top pueden ganar premios físicos: paraguas, termos, gorras, maletas y más, patrocinados por el Metro o aliados</p>
+    </div>
+    <div class="card card-yellow centered">
+      <span class="card-icon">&#129504;</span>
+      <h3>Trivia educativa</h3>
+      <p>Juegos de preguntas sobre Panamá, su historia y cultura. Los niños aprenden mientras se divierten usando la app</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 10. 100% PANAMENO ===== -->
+<div class="slide centered">
+  <span class="label lr">Identidad</span>
+  <h2>100% <span class="red">Panameño</span></h2>
+  <p class="big-sub">Logros inspirados en nuestra cultura, historia y tradiciones</p>
+  <div class="badge-grid mb-32">
+    <div class="badge-item"><span>&#128652;</span>Diablo Rojo</div>
+    <div class="badge-item"><span>&#9875;</span>Canal de Panamá</div>
+    <div class="badge-item"><span>&#127915;</span>Carnaval</div>
+    <div class="badge-item"><span>&#128131;</span>La Pollera</div>
+    <div class="badge-item"><span>&#127961;</span>Casco Viejo</div>
+    <div class="badge-item"><span>&#127796;</span>Puente Américas</div>
+    <div class="badge-item"><span>&#127942;</span>Fundador</div>
+    <div class="badge-item"><span>&#127911;</span>Panameño 1ro</div>
+  </div>
+  <div class="grid-2" style="max-width: 800px;">
+    <div class="artist-card">
+      <span style="font-size: 1.8rem;">&#127912;</span>
+      <h3 style="color: var(--blue);">Artistas panameños</h3>
+      <p style="font-size: 0.92rem;">2 artistas locales ya confirmados diseñando temas exclusivos para la app. Promovemos talento nacional y les generamos ingresos</p>
+    </div>
+    <div class="artist-card" style="background: linear-gradient(135deg, #fff 0%, var(--red-light) 100%);">
+      <span style="font-size: 1.8rem;">&#11088;</span>
+      <h3 style="color: var(--red);">Ediciones limitadas</h3>
+      <p style="font-size: 0.92rem;">Temas por temporada: Carnaval, Fiestas Patrias, Navidad. Cada versión única, coleccionable y con identidad panameña</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 11. PORTAL WEB EDUCATIVO ===== -->
+<div class="slide centered">
+  <span class="label lb">Educación</span>
+  <h2>Portal web <span class="blue">educativo</span></h2>
+  <p class="big-sub">Una página web complementaria que enseña todo sobre el Metro de Panamá</p>
+  <div class="grid-3">
+    <div class="card card-blue centered">
+      <span class="card-icon">&#128218;</span>
+      <h3>Cómo usar el metro</h3>
+      <p>Guía completa para turistas y nuevos usuarios: rutas, estaciones, horarios, normas</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#128179;</span>
+      <h3>Tarjetas y recargas</h3>
+      <p>Cómo sacar la tarjeta, dónde recargar, tipos de tarifa, descuentos disponibles</p>
+    </div>
+    <div class="card card-blue centered">
+      <span class="card-icon">&#127963;</span>
+      <h3>Historia y datos curiosos</h3>
+      <p>La historia detrás de cada logro de la app, datos curiosos del metro y de Panamá</p>
+    </div>
+  </div>
+  <div class="highlight-box" style="margin-top: 24px; max-width: 650px;">
+    <p>Ideal para turistas, extranjeros y panameños que quieran conocer más de su sistema de transporte</p>
+  </div>
+</div>
+
+<!-- ===== 12. MODELO DE NEGOCIO ===== -->
+<div class="slide centered">
+  <span class="label lg">Sostenibilidad</span>
+  <h2>Modelo de <span class="green">negocio</span></h2>
+  <p class="big-sub">MetroPTY es autosostenible. Cero costo para el Metro.</p>
+  <div class="grid-2" style="max-width: 850px;">
+    <div class="card centered" style="border: 2px solid var(--border);">
+      <span style="font-size: 2.2rem; display: block; margin-bottom: 10px;">&#128241;</span>
+      <h3>Gratis</h3>
+      <div class="metro-div" style="margin: 10px auto;"></div>
+      <ul class="flist" style="text-align: left;">
+        <li><span class="ck">&#10003;</span> Mapa y estado en tiempo real</li>
+        <li><span class="ck">&#10003;</span> Reportes y gamificación</li>
+        <li><span class="ck">&#10003;</span> Notificaciones básicas</li>
+        <li><span class="ck">&#10003;</span> Logros y rankings</li>
+        <li><span class="ck">&#10003;</span> Trivia básica</li>
+        <li style="color: var(--text3);">&#8226; Con anuncios</li>
+      </ul>
+    </div>
+    <div class="card centered" style="border: 2px solid var(--yellow); background: linear-gradient(180deg, #fffdf0 0%, #fff 100%);">
+      <span style="font-size: 2.2rem; display: block; margin-bottom: 10px;">&#128081;</span>
+      <h3>Premium</h3>
+      <div style="font-size: 2.2rem; font-weight: 900; color: var(--blue); margin: 8px 0;">$1.99<small style="font-size: 0.9rem; font-weight: 400; color: var(--text3);">/mes</small></div>
+      <div style="font-size: 0.85rem; color: var(--green); font-weight: 600; margin-bottom: 12px;">o $14.99/año (ahorra 37%)</div>
+      <ul class="flist" style="text-align: left;">
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Sin anuncios</li>
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Alertas personalizadas</li>
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Temas de artistas panameños</li>
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Badges y trivia exclusiva</li>
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Rutas favoritas y widgets</li>
+        <li><span class="ck" style="color: var(--yellow);">&#9733;</span> Recarga de tarjeta integrada</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 13. LO QUE NECESITAMOS ===== -->
+<div class="slide centered">
+  <span class="label ly">Colaboración</span>
+  <h2>Lo que <span class="yt">necesitamos</span> del Metro</h2>
+  <p class="big-sub">Para llevar MetroPTY al siguiente nivel, buscamos una alianza estratégica</p>
+  <div class="grid-2" style="max-width: 950px;">
+    <div class="card card-yellow">
+      <span class="card-icon">&#128225;</span>
+      <h3>Datos de ubicación de trenes</h3>
+      <p>Acceso a datos GPS reales de los trenes para mostrar posiciones exactas en el mapa en tiempo real</p>
+    </div>
+    <div class="card card-yellow">
+      <span class="card-icon">&#128203;</span>
+      <h3>Historial de incidencias</h3>
+      <p>Datos históricos de retrasos, fallas y mantenimientos para calibrar nuestro sistema de reportes y predicciones</p>
+    </div>
+    <div class="card card-yellow">
+      <span class="card-icon">&#128179;</span>
+      <h3>Acceso a API de recarga</h3>
+      <p>Integración con el sistema de tarjetas para permitir recargas directamente desde la app</p>
+    </div>
+    <div class="card card-yellow">
+      <span class="card-icon">&#129309;</span>
+      <h3>Asesoría de expertos</h3>
+      <p>Guía de profesionales del Metro en operaciones, seguridad y logística para asegurar precisión en la información</p>
+    </div>
+    <div class="card card-yellow">
+      <span class="card-icon">&#128242;</span>
+      <h3>Promoción en estaciones</h3>
+      <p>Códigos QR y espacio en pantallas dentro de las estaciones para que los pasajeros descarguen la app</p>
+    </div>
+    <div class="card card-yellow">
+      <span class="card-icon">&#128202;</span>
+      <h3>Datos de afluencia</h3>
+      <p>Cifras de torniquetes por estación y horario para calibrar los reportes de aglomeración de la comunidad</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 14. POR QUE METROPTY ===== -->
+<div class="slide centered">
+  <span class="label lb">Diferenciadores</span>
+  <h2>Por qué <span class="blue">MetroPTY</span></h2>
+  <div class="grid-2" style="max-width: 950px;">
+    <div class="card card-blue mb-16">
+      <h3>&#128200; Efecto de red</h3>
+      <p>Más usuarios = más reportes = mejor información. Cada nuevo pasajero hace la app más valiosa</p>
+    </div>
+    <div class="card card-blue mb-16">
+      <h3>&#127920; Engagement sostenido</h3>
+      <p>Gamificación + trivia + incentivos reales mantienen a los usuarios activos día tras día</p>
+    </div>
+    <div class="card card-blue mb-16">
+      <h3>&#127477;&#127462; Orgullo nacional</h3>
+      <p>Hecha por panameños, con artistas panameños, cultura panameña. Ningún otro país tiene algo así</p>
+    </div>
+    <div class="card card-blue mb-16">
+      <h3>&#128176; Sin costo para el Metro</h3>
+      <p>Datos, canal de comunicación y mejora de imagen. Todo sin inversión. MetroPTY se financia sola</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 14. HOJA DE RUTA ===== -->
+<div class="slide centered">
+  <span class="label lb">Hoja de ruta</span>
+  <h2>Crecimiento <span class="blue">por fases</span></h2>
+  <div class="grid-3" style="max-width: 900px; margin-bottom: 32px;">
+    <div class="phase-card phase-active">
+      <div class="phase-num">Fase 1 - Actual</div>
+      <span style="font-size: 2rem; display: block; margin-bottom: 8px;">&#128647;</span>
+      <h3>Línea 1 y Línea 2</h3>
+      <p>App completa con mapa, reportes, gamificación y comunidad para las líneas actuales</p>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Fase 2</div>
+      <span style="font-size: 2rem; display: block; margin-bottom: 8px;">&#128679;</span>
+      <h3>Línea 3 - Panamá Oeste</h3>
+      <p>La nueva línea monorriel con 69% de avance, conectará +650,000 personas de Panamá Oeste</p>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Fase 3</div>
+      <span style="font-size: 2rem; display: block; margin-bottom: 8px;">&#128653;</span>
+      <h3>MetroBus</h3>
+      <p>Expandir a la red de buses, cubriendo todo el transporte público de la ciudad</p>
+    </div>
+  </div>
+  <div class="highlight-box" style="max-width: 650px;">
+    <p>La Línea 3 está al 69% de avance con 26 trenes listos. MetroPTY estará lista para su inauguración.</p>
+  </div>
+</div>
+
+<!-- ===== 15. VISION ===== -->
+<div class="slide centered">
+  <span class="label lb">Visión</span>
+  <h2>El <span class="blue">futuro</span> del transporte en Panamá</h2>
+  <div class="quote mb-40">
+    MetroPTY no es solo una app. Es una comunidad de panameños trabajando juntos para mejorar su metro, un reporte a la vez.
+  </div>
+  <div class="grid-3" style="max-width: 800px;">
+    <div class="card centered" style="border-top: 3px solid var(--blue);">
+      <span class="card-icon">&#128202;</span>
+      <h3 class="blue">Datos</h3>
+      <p>Inteligencia que el Metro nunca ha tenido</p>
+    </div>
+    <div class="card centered" style="border-top: 3px solid var(--red);">
+      <span class="card-icon">&#127477;&#127462;</span>
+      <h3 class="red">Cultura</h3>
+      <p>Panamá como pionero mundial en transporte cultural</p>
+    </div>
+    <div class="card centered" style="border-top: 3px solid var(--green);">
+      <span class="card-icon">&#128101;</span>
+      <h3 class="green">Comunidad</h3>
+      <p>Pasajeros unidos mejorando su propio servicio</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 16. CIERRE ===== -->
+<div class="slide slide-dark centered">
+  <img src="assets/images/logo-ico.png" alt="MetroPTY" style="height: 250px; margin-bottom: -25px; filter: drop-shadow(0 6px 30px rgba(0,0,0,0.4));">
+  <img src="assets/images/logo-txt.png" alt="MetroPTY" style="height: 210px; margin-bottom: -8px; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.3));">
+  <div class="metro-div" style="margin-bottom: 4px;"></div>
+  <p class="subtitle" style="color: #ccc; max-width: 550px; text-align: center; margin-bottom: 10px; font-size: 1.4rem;">
+    Transformando la experiencia del Metro de Panamá, un reporte a la vez.
+  </p>
+  <h2 style="color: white; font-size: 1.8rem; margin-bottom: 8px;">Gracias</h2>
+  <p style="color: #888; font-size: 1.1rem;">¿Preguntas?</p>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('slideCounter');
+  const bar = document.getElementById('progressBar');
+  let cur = 0;
+
+  function go() {
+    slides.forEach((s,i) => s.classList.toggle('active', i===cur));
+    counter.textContent = (cur+1)+' / '+slides.length;
+    bar.style.width = ((cur+1)/slides.length*100)+'%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if(['ArrowRight',' ','Enter'].includes(e.key)){e.preventDefault(); if(cur<slides.length-1){cur++;go();}}
+    if(['ArrowLeft','Backspace'].includes(e.key)){e.preventDefault(); if(cur>0){cur--;go();}}
+    if(e.key==='Home'){cur=0;go();}
+    if(e.key==='End'){cur=slides.length-1;go();}
+  });
+
+  document.addEventListener('click', e => {
+    if(e.clientX/window.innerWidth>0.3){if(cur<slides.length-1){cur++;go();}}
+    else{if(cur>0){cur--;go();}}
+  });
+
+  go();
+</script>
+</body>
+</html>
