@@ -62,6 +62,10 @@
                 <i class="fas fa-chart-bar"></i>
                 <span>Análisis</span>
             </li>
+            <li class="menu-item" data-tab="modules">
+                <i class="fas fa-book"></i>
+                <span>Documentacion</span>
+            </li>
             <li class="menu-item" data-tab="testing">
                 <i class="fas fa-flask"></i>
                 <span>Testing</span>
@@ -580,6 +584,494 @@
             </div>
         
             <!-- Testing Tab -->
+            <!-- Modules Documentation Tab -->
+            <div id="modules" class="tab-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <i class="fas fa-book"></i>
+                        <div>
+                            <h2>Documentacion de Modulos</h2>
+                            <p>Guia completa de funcionalidades de MetroPTY</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="modules-search-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="modulesSearch" placeholder="Buscar modulo..." oninput="filterModules(this.value)">
+                    </div>
+                    <div class="modules-filter-tabs">
+                        <button class="module-filter-btn active" data-filter="all" onclick="filterModuleCategory('all', this)">Todos</button>
+                        <button class="module-filter-btn" data-filter="mobile" onclick="filterModuleCategory('mobile', this)">App Movil</button>
+                        <button class="module-filter-btn" data-filter="dashboard" onclick="filterModuleCategory('dashboard', this)">Dashboard</button>
+                        <button class="module-filter-btn" data-filter="services" onclick="filterModuleCategory('services', this)">Servicios</button>
+                    </div>
+                </div>
+
+                <div class="modules-grid" id="modulesContainer">
+
+                    <!-- ========== APP MOVIL ========== -->
+                    <div class="module-card" data-category="mobile" data-keywords="mapa estaciones home principal">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                                <i class="fas fa-map-marked-alt"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Mapa y Estaciones</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/home/</p>
+                            <p class="module-description">Pantalla principal de la app. Muestra el mapa interactivo del metro con todas las estaciones, estado en tiempo real de cada estacion (aglomeracion, estado operacional), y la ubicacion del usuario. Permite seleccionar estaciones para ver detalles y hacer reportes rapidos.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-map"></i> Mapa interactivo</span>
+                                <span class="feature-tag"><i class="fas fa-location-arrow"></i> Ubicacion GPS</span>
+                                <span class="feature-tag"><i class="fas fa-circle"></i> Estado en tiempo real</span>
+                                <span class="feature-tag"><i class="fas fa-hand-pointer"></i> Seleccion de estacion</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="reportes reportar estado">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Sistema de Reportes</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/reports/</p>
+                            <p class="module-description">Permite a los usuarios reportar el estado de las estaciones y tiempos de espera de trenes. Incluye reportes simplificados (rapidos), reportes de tiempo de tren (ETA), confirmacion de llegadas, y un historial completo de reportes realizados.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-bolt"></i> Reporte rapido</span>
+                                <span class="feature-tag"><i class="fas fa-clock"></i> ETAs de trenes</span>
+                                <span class="feature-tag"><i class="fas fa-check-circle"></i> Confirmacion de llegada</span>
+                                <span class="feature-tag"><i class="fas fa-history"></i> Historial</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="rutas planificador viaje">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Planificador de Rutas</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/routes/</p>
+                            <p class="module-description">Calcula la mejor ruta entre dos estaciones del metro. Muestra el tiempo estimado de viaje, las estaciones intermedias, y si se requiere transbordo entre lineas. Utiliza el servicio de calculo de rutas para encontrar caminos optimos.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-directions"></i> Ruta optima</span>
+                                <span class="feature-tag"><i class="fas fa-exchange-alt"></i> Transbordos</span>
+                                <span class="feature-tag"><i class="fas fa-stopwatch"></i> Tiempo estimado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="gamificacion puntos niveles badges logros">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Gamificacion</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/gamification/ + lib/screens/leaderboards/</p>
+                            <p class="module-description">Sistema de puntos, niveles, badges y leaderboards que incentiva la participacion. Los usuarios ganan puntos al hacer reportes, suben de nivel, desbloquean insignias, y compiten en rankings semanales y globales.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-star"></i> Puntos por reportes</span>
+                                <span class="feature-tag"><i class="fas fa-level-up-alt"></i> Sistema de niveles</span>
+                                <span class="feature-tag"><i class="fas fa-medal"></i> Badges/Insignias</span>
+                                <span class="feature-tag"><i class="fas fa-ranking-star"></i> Leaderboards</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="perfil usuario cuenta">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Perfil de Usuario</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/profile/</p>
+                            <p class="module-description">Pantalla de perfil del usuario con estadisticas personales, badges obtenidos, historial de puntos, nivel actual y progreso. Incluye configuracion de preferencias y acceso a ajustes de la cuenta.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-chart-line"></i> Estadisticas</span>
+                                <span class="feature-tag"><i class="fas fa-medal"></i> Badges</span>
+                                <span class="feature-tag"><i class="fas fa-cog"></i> Configuracion</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="autenticacion login registro google">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #64748b, #475569);">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Autenticacion</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/auth/</p>
+                            <p class="module-description">Sistema de login con soporte para Google Sign-In y modo invitado. Maneja la sesion del usuario, permisos, y el flujo de onboarding para nuevos usuarios. Incluye upgrade de cuenta invitado a cuenta completa.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fab fa-google"></i> Google Sign-In</span>
+                                <span class="feature-tag"><i class="fas fa-user-secret"></i> Modo invitado</span>
+                                <span class="feature-tag"><i class="fas fa-door-open"></i> Onboarding</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="premium suscripcion pago ads">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Premium y Monetizacion</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/premium/ + lib/services/ad_service.dart</p>
+                            <p class="module-description">Gestion de suscripciones premium y sistema de anuncios (AdMob). Los usuarios premium tienen experiencia sin anuncios y funcionalidades exclusivas. Incluye rewarded ads para ganar puntos extra.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-ad"></i> AdMob integrado</span>
+                                <span class="feature-tag"><i class="fas fa-gem"></i> Plan premium</span>
+                                <span class="feature-tag"><i class="fas fa-gift"></i> Rewarded ads</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="mobile" data-keywords="aprendizaje learning educacion tutorial">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div class="module-badge mobile">App Movil</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Aprendizaje</h3>
+                            <p class="module-path"><i class="fas fa-folder"></i> lib/screens/learning/</p>
+                            <p class="module-description">Modulo educativo que ayuda a los usuarios a conocer las estaciones del metro. Incluye datos curiosos, informacion de cada estacion, y un sistema de conocimiento que trackea lo que el usuario ha aprendido.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-info-circle"></i> Info de estaciones</span>
+                                <span class="feature-tag"><i class="fas fa-brain"></i> Knowledge tracking</span>
+                                <span class="feature-tag"><i class="fas fa-lightbulb"></i> Datos curiosos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== DASHBOARD WEB ========== -->
+                    <div class="module-card" data-category="dashboard" data-keywords="overview kpi metricas dashboard">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Overview (KPIs)</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/stats.js</p>
+                            <p class="module-description">Panel principal del dashboard con KPIs en tiempo real: total de usuarios, reportes del dia, estaciones activas, y trenes virtuales. Muestra graficas de tendencias y metricas clave para monitorear la salud del sistema.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-chart-pie"></i> KPIs en vivo</span>
+                                <span class="feature-tag"><i class="fas fa-chart-line"></i> Tendencias</span>
+                                <span class="feature-tag"><i class="fas fa-sync"></i> Tiempo real</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="dashboard" data-keywords="estaciones monitoreo estado">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Gestion de Estaciones</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/stations.js</p>
+                            <p class="module-description">Monitoreo completo de todas las estaciones del metro. Visualiza estado operacional, nivel de aglomeracion, numero de reportes por estacion, y alertas activas. Permite filtrar y buscar estaciones especificas.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-eye"></i> Monitoreo</span>
+                                <span class="feature-tag"><i class="fas fa-exclamation-triangle"></i> Alertas</span>
+                                <span class="feature-tag"><i class="fas fa-filter"></i> Filtros</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="dashboard" data-keywords="trenes virtuales simulacion">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-train"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Trenes Virtuales</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/trains.js</p>
+                            <p class="module-description">Sistema de trenes virtuales que agrega reportes de usuarios para estimar la posicion y tiempo de llegada de trenes. Muestra el estado de cada tren virtual, su direccion, y el consenso de multiples reportes.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-robot"></i> Trenes virtuales</span>
+                                <span class="feature-tag"><i class="fas fa-users"></i> Consenso</span>
+                                <span class="feature-tag"><i class="fas fa-clock"></i> ETAs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="dashboard" data-keywords="reportes gestion moderar">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Gestion de Reportes</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/reports.js</p>
+                            <p class="module-description">Vista administrativa de todos los reportes generados por usuarios. Permite filtrar por tipo, estacion, fecha, y estado. Incluye detalles completos de cada reporte con metadata como nivel de confianza y verificacion.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-filter"></i> Filtros avanzados</span>
+                                <span class="feature-tag"><i class="fas fa-info-circle"></i> Detalles</span>
+                                <span class="feature-tag"><i class="fas fa-shield-alt"></i> Confianza</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="dashboard" data-keywords="usuarios ranking admin">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Gestion de Usuarios</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/users.js</p>
+                            <p class="module-description">Administracion de usuarios registrados. Muestra rankings, estadisticas por usuario, nivel de actividad, puntos acumulados, y badges obtenidos. Permite ver el detalle de cada usuario y su historial de participacion.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-ranking-star"></i> Rankings</span>
+                                <span class="feature-tag"><i class="fas fa-user-edit"></i> Administracion</span>
+                                <span class="feature-tag"><i class="fas fa-chart-bar"></i> Actividad</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="dashboard" data-keywords="analitica graficas metricas estadisticas">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-chart-area"></i>
+                            </div>
+                            <div class="module-badge dashboard">Dashboard</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Analitica y Graficas</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> dashboard/js/analytics.js + time_analysis.js</p>
+                            <p class="module-description">Modulo de analitica avanzada con graficas interactivas (Chart.js). Analisis de tendencias de uso, patrones por hora y dia, distribucion de reportes por estacion, y metricas de precision de los ETAs.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-chart-line"></i> Graficas interactivas</span>
+                                <span class="feature-tag"><i class="fas fa-calendar-alt"></i> Analisis temporal</span>
+                                <span class="feature-tag"><i class="fas fa-bullseye"></i> Precision ETAs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== SERVICIOS BACKEND ========== -->
+                    <div class="module-card" data-category="services" data-keywords="firebase firestore base datos">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Firebase / Firestore</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/firebase_service.dart</p>
+                            <p class="module-description">Servicio central de conexion con Firebase. Gestiona la comunicacion con Firestore (base de datos en tiempo real), autenticacion de usuarios, y Cloud Messaging para notificaciones push.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-database"></i> Firestore</span>
+                                <span class="feature-tag"><i class="fas fa-key"></i> Auth</span>
+                                <span class="feature-tag"><i class="fas fa-bell"></i> Push notifications</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="services" data-keywords="ubicacion gps localizacion">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <i class="fas fa-crosshairs"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Servicio de Ubicacion</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/location_service.dart + background_location_service.dart</p>
+                            <p class="module-description">Gestiona la ubicacion GPS del usuario en primer y segundo plano. Determina la estacion mas cercana, calcula distancias, y permite el tracking de ubicacion en background para deteccion automatica de estaciones.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-satellite"></i> GPS</span>
+                                <span class="feature-tag"><i class="fas fa-mobile-alt"></i> Background</span>
+                                <span class="feature-tag"><i class="fas fa-map-pin"></i> Estacion cercana</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="services" data-keywords="simulacion trenes tiempo estimacion eta">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Motor de Simulacion</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/train_simulation_service.dart + metro_simulator_service.dart</p>
+                            <p class="module-description">Motor que simula el movimiento de trenes basado en reportes de usuarios. Agrega ETAs, calcula posiciones virtuales, y mantiene el estado de los trenes. Incluye un simulador para desarrollo y testing.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-play-circle"></i> Simulacion</span>
+                                <span class="feature-tag"><i class="fas fa-calculator"></i> Agregacion ETAs</span>
+                                <span class="feature-tag"><i class="fas fa-vial"></i> Modo dev</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="services" data-keywords="validacion confianza precision accuracy">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Validacion y Confianza</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/report_validation_service.dart + confidence_service.dart + accuracy_service.dart</p>
+                            <p class="module-description">Sistema multi-capa para validar reportes de usuarios. Calcula el nivel de confianza basado en la reputacion del usuario, consistencia con otros reportes, proximidad GPS, y frecuencia de envio.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-check-double"></i> Validacion</span>
+                                <span class="feature-tag"><i class="fas fa-percentage"></i> Score confianza</span>
+                                <span class="feature-tag"><i class="fas fa-crosshairs"></i> Precision GPS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="services" data-keywords="notificaciones push alertas mensajes">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Notificaciones</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/notification_service.dart + alert_service.dart</p>
+                            <p class="module-description">Sistema de notificaciones push via Firebase Cloud Messaging. Envia alertas sobre estado de estaciones, llegadas de trenes, logros desbloqueados, y recordatorios de reporte. Soporta navegacion directa desde la notificacion.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-paper-plane"></i> Push FCM</span>
+                                <span class="feature-tag"><i class="fas fa-exclamation-circle"></i> Alertas</span>
+                                <span class="feature-tag"><i class="fas fa-external-link-alt"></i> Deep linking</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-card" data-category="services" data-keywords="puntos rewards gamificacion nivel">
+                        <div class="module-card-header">
+                            <div class="module-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="module-badge services">Servicio</div>
+                        </div>
+                        <div class="module-card-body">
+                            <h3>Sistema de Puntos y Niveles</h3>
+                            <p class="module-path"><i class="fas fa-file-code"></i> lib/services/gamification_service.dart + level_service.dart + points_reward_service.dart</p>
+                            <p class="module-description">Motor de gamificacion que gestiona puntos, niveles, y recompensas. Calcula puntos por tipo de reporte, aplica bonificaciones, maneja el progreso de nivel, y otorga badges por logros especificos.</p>
+                            <div class="module-features">
+                                <span class="feature-tag"><i class="fas fa-plus-circle"></i> Puntos</span>
+                                <span class="feature-tag"><i class="fas fa-layer-group"></i> Niveles</span>
+                                <span class="feature-tag"><i class="fas fa-award"></i> Recompensas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Architecture Overview -->
+                <div class="module-architecture">
+                    <h3><i class="fas fa-project-diagram"></i> Arquitectura General</h3>
+                    <div class="architecture-diagram">
+                        <div class="arch-layer">
+                            <div class="arch-layer-title">Presentacion (Flutter)</div>
+                            <div class="arch-components">
+                                <span>Screens</span>
+                                <span>Widgets</span>
+                                <span>Providers</span>
+                            </div>
+                        </div>
+                        <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="arch-layer">
+                            <div class="arch-layer-title">Logica de Negocio</div>
+                            <div class="arch-components">
+                                <span>Services (43)</span>
+                                <span>Models (15)</span>
+                                <span>Providers (4)</span>
+                            </div>
+                        </div>
+                        <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="arch-layer">
+                            <div class="arch-layer-title">Backend (Firebase)</div>
+                            <div class="arch-components">
+                                <span>Firestore</span>
+                                <span>Auth</span>
+                                <span>Cloud Messaging</span>
+                                <span>AdMob</span>
+                            </div>
+                        </div>
+                        <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="arch-layer">
+                            <div class="arch-layer-title">Dashboard Admin (Web)</div>
+                            <div class="arch-components">
+                                <span>HTML/CSS/JS</span>
+                                <span>Chart.js</span>
+                                <span>Firebase SDK</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="modules-stats-grid">
+                    <div class="module-stat-card">
+                        <div class="stat-number">13</div>
+                        <div class="stat-label">Pantallas (Screens)</div>
+                    </div>
+                    <div class="module-stat-card">
+                        <div class="stat-number">43</div>
+                        <div class="stat-label">Servicios</div>
+                    </div>
+                    <div class="module-stat-card">
+                        <div class="stat-number">15</div>
+                        <div class="stat-label">Modelos de Datos</div>
+                    </div>
+                    <div class="module-stat-card">
+                        <div class="stat-number">35+</div>
+                        <div class="stat-label">Widgets</div>
+                    </div>
+                    <div class="module-stat-card">
+                        <div class="stat-number">4</div>
+                        <div class="stat-label">Providers</div>
+                    </div>
+                    <div class="module-stat-card">
+                        <div class="stat-number">7</div>
+                        <div class="stat-label">Modulos Dashboard</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="testing" class="tab-content">
                 <div class="page-header">
                     <div class="page-title">
@@ -1209,6 +1701,7 @@
     <script src="js/users.js"></script>
     <script src="js/analytics.js"></script>
     <script src="js/time_analysis.js"></script>
+    <script src="js/modules.js"></script>
     <script src="js/community.js"></script>
     <script src="js/logs.js"></script>
     <script src="js/test_reports.js"></script>
