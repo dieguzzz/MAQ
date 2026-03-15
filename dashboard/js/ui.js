@@ -189,6 +189,7 @@ function updatePageTitle(tabName) {
     'reports': { title: 'Reportes', subtitle: 'Gestión de reportes de usuarios' },
     'users': { title: 'Usuarios', subtitle: 'Gestión de usuarios y rankings' },
     'analytics': { title: 'Análisis', subtitle: 'Estadísticas y métricas detalladas' },
+    'modules': { title: 'Documentación de Módulos', subtitle: 'Guía completa de funcionalidades de MetroPTY' },
     'testing': { title: 'Testing', subtitle: 'Herramientas de desarrollo y testing' }
   };
 
@@ -281,6 +282,7 @@ function getTabDisplayName(tabName) {
     'reports': 'Reportes',
     'users': 'Usuarios',
     'analytics': 'Análisis',
+    'modules': 'Documentación',
     'testing': 'Testing'
   };
   return names[tabName] || tabName;
