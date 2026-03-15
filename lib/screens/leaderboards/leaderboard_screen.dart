@@ -151,7 +151,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.emoji_events,
+                          const Icon(Icons.emoji_events,
                               size: 64, color: MetroColors.grayMedium),
                           const SizedBox(height: 16),
                           Text(

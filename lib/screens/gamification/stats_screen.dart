@@ -100,7 +100,7 @@ class StatsScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           stats.getNivelDescripcion(),
-                          style: TextStyle(color: MetroColors.grayDark),
+                          style: const TextStyle(color: MetroColors.grayDark),
                         ),
                       ],
                     ),

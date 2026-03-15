@@ -589,14 +589,14 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
             math.atan2(-_dragOffset.dy, _dragOffset.dx); // negative dy = up
         if (angle > 0.3 && angle < 2.8) {
           // Upper-right quadrant → direction B
-          final newDir = 'B';
+          const newDir = 'B';
           if (_hoveredDirection != newDir) {
             HapticFeedback.selectionClick();
           }
           _hoveredDirection = newDir;
         } else if (angle < -0.3 || angle > 2.8) {
           // Upper-left / left quadrant → direction A
-          final newDir = 'A';
+          const newDir = 'A';
           if (_hoveredDirection != newDir) {
             HapticFeedback.selectionClick();
           }
@@ -976,7 +976,7 @@ class _TrainArrivalBoxState extends State<_TrainArrivalBox>
                               ),
                             )
                           else
-                            Text(
+                            const Text(
                               '¿Llegó? 🚇\nArrastra →',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -1085,7 +1085,7 @@ class _StatusSection extends StatelessWidget {
                             style: TextStyle(
                                 color: MetroColors.grayMedium, fontSize: 12))
                       else
-                        Text(
+                        const Text(
                           'Sin datos',
                           style: TextStyle(
                             color: MetroColors.grayMedium,
@@ -1103,10 +1103,10 @@ class _StatusSection extends StatelessWidget {
                 stream: reportService.getActiveReportsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Column(
+                    return const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '⚠️ Alertas',
                           style: TextStyle(
                             color: MetroColors.grayDark,
@@ -1114,17 +1114,17 @@ class _StatusSection extends StatelessWidget {
                             fontSize: 13,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text('...', style: TextStyle(fontSize: 12, color: MetroColors.grayMedium)),
                       ],
                     );
                   }
 
                   if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Column(
+                    return const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '⚠️ Alertas',
                           style: TextStyle(
                             color: MetroColors.grayDark,
@@ -1132,7 +1132,7 @@ class _StatusSection extends StatelessWidget {
                             fontSize: 13,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Todo bien ✓',
                           style: TextStyle(
@@ -1172,7 +1172,7 @@ class _StatusSection extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       if (allIssues.isEmpty)
-                        Text(
+                        const Text(
                           'Todo bien ✓',
                           style: TextStyle(
                             color: MetroColors.stateNormal,
@@ -1381,8 +1381,6 @@ class _EtaData {
     required this.label,
     required this.minutes,
     required this.confidence,
-    this.isUserReport = false,
-    this.rawText,
     this.baseTime,
     this.expiresAt,
     this.expectedAt,
@@ -1899,15 +1897,15 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
         const SizedBox(height: 4),
         // ETA data
         if (!hasData)
-          Padding(
-            padding: const EdgeInsets.only(left: 18),
+          const Padding(
+            padding: EdgeInsets.only(left: 18),
             child: Text(
               'Sin datos',
               style: TextStyle(fontSize: 11, color: MetroColors.grayMedium),
             ),
           )
         else
-          _buildEtaInfo(theme: theme, group: group!),
+          _buildEtaInfo(theme: theme, group: group),
       ],
     );
   }
@@ -1941,8 +1939,8 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
         : null;
 
     if (nextMidpointMin == null || nextMidpointMin <= 0) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 18),
+      return const Padding(
+        padding: EdgeInsets.only(left: 18),
         child: Text('Sin datos',
             style: TextStyle(fontSize: 11, color: MetroColors.grayMedium)),
       );
@@ -2081,4 +2079,4 @@ class _EtaDualDirectionBoxState extends State<_EtaDualDirectionBox> {
   }
 }
 
-  static const int staleWindowMin = 10; // Ventana de fallback
+  const int staleWindowMin = 10; // Ventana de fallback

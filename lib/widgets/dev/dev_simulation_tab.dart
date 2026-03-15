@@ -271,7 +271,7 @@ class _DevSimulationTabState extends State<DevSimulationTab> {
                     child: Text(
                       _isSimulating
                           ? 'Generando...'
-                          : 'Generar ${_simulationCount} reportes aleatorios',
+                          : 'Generar $_simulationCount reportes aleatorios',
                     ),
                   ),
                 ],

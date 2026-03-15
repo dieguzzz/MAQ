@@ -335,7 +335,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.report_outlined,
+                          const Icon(Icons.report_outlined,
                               size: 64, color: MetroColors.grayMedium),
                           const SizedBox(height: 16),
                           Text(
@@ -366,7 +366,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.filter_alt_off,
+                          const Icon(Icons.filter_alt_off,
                               size: 64, color: MetroColors.grayMedium),
                           const SizedBox(height: 16),
                           Text(
@@ -766,7 +766,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen>
                       // Footer con confirmaciones y fecha
                       Row(
                         children: [
-                          Icon(Icons.verified,
+                          const Icon(Icons.verified,
                               size: 16, color: MetroColors.grayMedium),
                           const SizedBox(width: 4),
                           Text(

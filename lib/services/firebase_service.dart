@@ -232,9 +232,11 @@ class FirebaseService {
         });
 
         // Actualizar contador de confirmaciones (usar ambos campos para compatibilidad)
+        // Y añadir el ID a la lista 'confirmedBy' para evitar duplicados en la UI sin hacer joins
         final updateData = <String, dynamic>{
           'confirmations': newConfirmations,
           'confirmation_count': newConfirmations, // Legacy
+          'confirmedBy': FieldValue.arrayUnion([userId]),
         };
 
         // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad

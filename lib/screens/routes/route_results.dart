@@ -410,7 +410,7 @@ class _RouteResultsState extends State<RouteResults> {
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            Icon(Icons.swap_horiz, color: MetroColors.red, size: 32),
+            const Icon(Icons.swap_horiz, color: MetroColors.red, size: 32),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -432,7 +432,7 @@ class _RouteResultsState extends State<RouteResults> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     'Cambia de línea aquí',
                     style: TextStyle(
                       fontSize: 12,

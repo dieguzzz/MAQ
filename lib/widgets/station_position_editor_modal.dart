@@ -116,7 +116,7 @@ class _StationPositionEditorModalState
                       color: MetroColors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Editada',
                       style: TextStyle(
                         color: MetroColors.red,
@@ -337,7 +337,7 @@ class _StationPositionEditorModalState
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.edit_location,
+                        const Icon(Icons.edit_location,
                             size: 16, color: MetroColors.blue),
                         const SizedBox(width: 8),
                         Text(
@@ -353,7 +353,7 @@ class _StationPositionEditorModalState
                     // Formato para copiar fácilmente
                     SelectableText(
                       "'${widget.station.id}': [${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}]",
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 13,
                         color: MetroColors.blue,
@@ -364,7 +364,7 @@ class _StationPositionEditorModalState
                     // Formato alternativo
                     SelectableText(
                       'GeoPoint(${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)})',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 11,
                         color: MetroColors.grayDark,
