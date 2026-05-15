@@ -1,15 +1,23 @@
 import type { MetroLine, LineKey } from "@/types/metro";
 
+// Real Panama Metro brand colors (from design-rules.md)
 export const LINE_COLORS: Record<MetroLine, string> = {
-  1: "#2ecc71",
-  2: "#3498db",
-  3: "#e74c3c",
+  1: "#0066CC", // Línea 1 — Azul
+  2: "#009933", // Línea 2 — Verde
+  3: "#e74c3c", // Línea 3 — Rojo (future)
 };
 
 export const LINE_KEY_COLORS: Record<LineKey, string> = {
-  linea1: "#2ecc71",
-  linea2: "#3498db",
+  linea1: "#0066CC",
+  linea2: "#009933",
   linea3: "#e74c3c",
+};
+
+// Soft gradient backgrounds per line
+export const LINE_KEY_GRADIENTS: Record<LineKey, string> = {
+  linea1: "from-white to-[#F0F7FF]",
+  linea2: "from-white to-[#F0FFF4]",
+  linea3: "from-white to-[#FFF0F0]",
 };
 
 export const LINE_NAMES: Record<MetroLine, string> = {
