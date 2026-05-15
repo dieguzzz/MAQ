@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { profile } = useAuthStore();
+  const { user } = useAuthStore();
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md">
@@ -44,12 +44,19 @@ export function Navbar() {
             </Link>
           ))}
 
-          {profile?.isPremium && (
+          {user && (
             <Link
               href="/admin"
-              className="ml-1 flex items-center gap-1.5 rounded-[var(--radius)] px-3 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              className={cn(
+                "ml-1 flex items-center gap-1.5 rounded-[var(--radius)] px-3 py-1.5 text-sm transition-colors",
+                pathname.startsWith("/admin")
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              )}
+              aria-label="Panel Admin"
             >
               <Shield className="h-4 w-4" />
+              <span className="hidden md:block">Admin</span>
             </Link>
           )}
 
