@@ -6,11 +6,11 @@ import { useMapStore } from "@/stores/map-store";
 import { StationMarker } from "./StationMarker";
 import { StationPanel } from "./StationPanel";
 import { LineFilter } from "./LineFilter";
-import type { MetroLine } from "@/types/metro";
+import { MapLoadingOverlay } from "./MapLoadingOverlay";
 
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
-
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+
 
 export function MapView() {
   const { stations, loading } = useStations();
@@ -18,7 +18,7 @@ export function MapView() {
     useMapStore();
 
   const visibleStations = stations.filter((s) =>
-    activeLines.includes(s.line as MetroLine)
+    activeLines.includes(s.linea)
   );
 
   return (
@@ -32,29 +32,38 @@ export function MapView() {
           disableDefaultUI={false}
           className="map-container"
         >
-          {!loading &&
-            visibleStations.map((station) => (
-              <StationMarker
-                key={station.id}
-                station={station}
-                isSelected={selectedStation?.id === station.id}
-                onClick={() =>
-                  selectStation(
-                    selectedStation?.id === station.id ? null : station
-                  )
-                }
-              />
-            ))}
+          {visibleStations.map((station) => (
+            <StationMarker
+              key={station.id}
+              station={station}
+              isSelected={selectedStation?.id === station.id}
+              onClick={() =>
+                selectStation(selectedStation?.id === station.id ? null : station)
+              }
+            />
+          ))}
         </Map>
       </APIProvider>
 
-      {/* Overlay controls */}
+      {/* Loading skeleton */}
+      {loading && <MapLoadingOverlay />}
+
+      {/* Overlay UI */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
-        <LineFilter className="pointer-events-auto self-start" />
+        <div className="flex items-start justify-between">
+          <LineFilter className="pointer-events-auto" />
+          <div className="pointer-events-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--background)]/90 px-3 py-1.5 text-xs text-[var(--muted-foreground)] shadow backdrop-blur-sm">
+            {visibleStations.length} estaciones
+          </div>
+        </div>
+
         {selectedStation && (
           <StationPanel
             station={selectedStation}
             onClose={() => selectStation(null)}
+            onReport={() => {
+              // TODO Fase 2: open report form
+            }}
             className="pointer-events-auto"
           />
         )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { stationsService } from "../services/stations.service";
+import { mergeWithLive } from "@/config/stations-static";
 import type { Station } from "@/types/metro";
 
 export function useStations() {
@@ -9,8 +10,8 @@ export function useStations() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = stationsService.subscribeAll((data) => {
-      setStations(data);
+    const unsub = stationsService.subscribeAll((live) => {
+      setStations(mergeWithLive(live));
       setLoading(false);
     });
     return unsub;

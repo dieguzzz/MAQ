@@ -1,73 +1,56 @@
-export type MetroLine = 1 | 2 | 3;
+// Firestore field names match the Flutter app exactly
 
-export type StationStatus = "normal" | "crowded" | "closed" | "unknown";
-export type TrainStatus = "on_time" | "delayed" | "out_of_service";
-export type ReportType =
-  | "crowded"
-  | "empty"
-  | "delay"
-  | "incident"
-  | "station_closed"
-  | "good_service";
+export type MetroLine = 1 | 2 | 3;
+export type LineKey = "linea1" | "linea2" | "linea3";
+
+export type StationStatus = "normal" | "moderado" | "lleno" | "cerrado";
+export type ReportScope = "station" | "train";
+export type ReportStatus = "active" | "resolved" | "expired";
 
 export interface Station {
   id: string;
-  name: string;
-  line: MetroLine;
+  nombre: string;
+  linea: LineKey;
   lat: number;
   lng: number;
-  status: StationStatus;
-  crowdLevel: number; // 0-100
-  isTerminal: boolean;
-  connectedLines?: MetroLine[];
-  updatedAt: Date;
-}
-
-export interface Train {
-  id: string;
-  line: MetroLine;
-  currentStationId: string;
-  nextStationId: string;
-  status: TrainStatus;
-  direction: "forward" | "backward";
-  lat: number;
-  lng: number;
-  updatedAt: Date;
+  // Dynamic fields from Firestore (may be missing on static-only stations)
+  estado_actual: StationStatus;
+  aglomeracion: number; // 1–5
+  ultima_actualizacion: Date;
+  confidence?: "high" | "medium" | "low";
+  is_estimated?: boolean;
 }
 
 export interface SimplifiedReport {
   id: string;
+  scope: ReportScope;
   stationId: string;
   userId: string;
-  type: ReportType;
-  confidence: number; // 0-1
+  // Station report fields
+  stationOperational?: "yes" | "partial" | "no";
+  stationCrowd?: number; // 1–5
+  stationIssues?: string[];
+  issueType?: string;
+  issueLocation?: string;
+  issueStatus?: string;
+  parentReportId?: string;
+  isSpecificIssue: boolean;
+  // Train report fields
+  trainCrowd?: number; // 1–5
+  trainLine?: string;
+  direction?: string;
+  etaBucket?: string;
+  trainStatus?: string;
+  isPanelTime?: boolean;
+  // Common
   createdAt: Date;
-  expiresAt: Date;
-}
-
-export interface EtaGroup {
-  id: string;
-  stationId: string;
-  line: MetroLine;
-  estimatedArrivalMin: number;
-  confidence: number;
-  reportCount: number;
-  updatedAt: Date;
-}
-
-export interface Route {
-  id: string;
-  segments: RouteSegment[];
-  totalTimeMin: number;
-  transfers: number;
-}
-
-export interface RouteSegment {
-  fromStationId: string;
-  toStationId: string;
-  line: MetroLine;
-  stopsCount: number;
-  estimatedTimeMin: number;
+  basePoints: number;
+  bonusPoints: number;
+  totalPoints: number;
+  status: ReportStatus;
+  confirmations: number;
+  confidence?: number; // 0–1
+  confirmedBy?: string[];
 }
 
 export interface UserProfile {
@@ -84,11 +67,25 @@ export interface UserProfile {
   createdAt: Date;
 }
 
-export interface Badge {
+export interface EtaGroup {
   id: string;
-  name: string;
-  description: string;
-  iconUrl: string;
-  category: "reports" | "accuracy" | "explorer" | "premium";
-  pointsRequired: number;
+  stationId: string;
+  linea: LineKey;
+  estimatedArrivalMin: number;
+  confidence: number;
+  reportCount: number;
+  updatedAt: Date;
 }
+
+// UI helper: map Firestore line key to number
+export const LINE_KEY_TO_NUMBER: Record<LineKey, MetroLine> = {
+  linea1: 1,
+  linea2: 2,
+  linea3: 3,
+};
+
+export const LINE_NUMBER_TO_KEY: Record<MetroLine, LineKey> = {
+  1: "linea1",
+  2: "linea2",
+  3: "linea3",
+};

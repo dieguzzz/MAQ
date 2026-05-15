@@ -1,11 +1,11 @@
 "use client";
 
 import { useMapStore } from "@/stores/map-store";
-import { LINE_COLORS, LINE_NAMES } from "@/config/metro-lines";
+import { LINE_KEY_COLORS, LINE_KEY_NAMES } from "@/config/metro-lines";
 import { cn } from "@/lib/utils/cn";
-import type { MetroLine } from "@/types/metro";
+import type { LineKey } from "@/types/metro";
 
-const LINES: MetroLine[] = [1, 2, 3];
+const LINES: LineKey[] = ["linea1", "linea2", "linea3"];
 
 interface Props {
   className?: string;
@@ -21,25 +21,28 @@ export function LineFilter({ className }: Props) {
         className
       )}
     >
-      {LINES.map((line) => {
-        const active = activeLines.includes(line);
+      {LINES.map((linea) => {
+        const active = activeLines.includes(linea);
+        const color = LINE_KEY_COLORS[linea];
+        const label = LINE_KEY_NAMES[linea];
+        const shortLabel = linea.replace("linea", "L");
+
         return (
           <button
-            key={line}
-            onClick={() => toggleLine(line)}
+            key={linea}
+            onClick={() => toggleLine(linea)}
             className={cn(
               "rounded-[var(--radius)] px-3 py-1 text-sm font-semibold transition-all",
               active ? "text-white shadow" : "opacity-40"
             )}
             style={{
-              backgroundColor: active ? LINE_COLORS[line] : "transparent",
-              borderColor: LINE_COLORS[line],
-              border: "2px solid",
+              backgroundColor: active ? color : "transparent",
+              border: `2px solid ${color}`,
             }}
             aria-pressed={active}
-            aria-label={`${active ? "Ocultar" : "Mostrar"} ${LINE_NAMES[line]}`}
+            aria-label={`${active ? "Ocultar" : "Mostrar"} ${label}`}
           >
-            L{line}
+            {shortLabel}
           </button>
         );
       })}

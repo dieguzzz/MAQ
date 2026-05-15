@@ -1,23 +1,23 @@
 import { create } from "zustand";
-import type { Station, MetroLine } from "@/types/metro";
+import type { Station, LineKey } from "@/types/metro";
 import { MAP_CENTER, MAP_DEFAULT_ZOOM } from "@/config/metro-lines";
 
 interface MapState {
   center: { lat: number; lng: number };
   zoom: number;
   selectedStation: Station | null;
-  activeLines: MetroLine[];
+  activeLines: LineKey[];
   setCenter: (center: { lat: number; lng: number }) => void;
   setZoom: (zoom: number) => void;
   selectStation: (station: Station | null) => void;
-  toggleLine: (line: MetroLine) => void;
+  toggleLine: (line: LineKey) => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
   center: MAP_CENTER,
   zoom: MAP_DEFAULT_ZOOM,
   selectedStation: null,
-  activeLines: [1, 2, 3],
+  activeLines: ["linea1", "linea2", "linea3"],
   setCenter: (center) => set({ center }),
   setZoom: (zoom) => set({ zoom }),
   selectStation: (station) => set({ selectedStation: station }),

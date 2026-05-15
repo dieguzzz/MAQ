@@ -1,14 +1,14 @@
 "use client";
 
 import { AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
-import { LINE_COLORS } from "@/config/metro-lines";
-import type { Station } from "@/types/metro";
+import { LINE_KEY_COLORS } from "@/config/metro-lines";
+import type { Station, StationStatus } from "@/types/metro";
 
-const STATUS_BG: Record<Station["status"], string> = {
+const STATUS_BG: Record<StationStatus, string> = {
   normal: "#22c55e",
-  crowded: "#f59e0b",
-  closed: "#ef4444",
-  unknown: "#94a3b8",
+  moderado: "#f59e0b",
+  lleno: "#ef4444",
+  cerrado: "#6b7280",
 };
 
 interface Props {
@@ -18,14 +18,14 @@ interface Props {
 }
 
 export function StationMarker({ station, isSelected, onClick }: Props) {
-  const lineColor = LINE_COLORS[station.line];
-  const bgColor = isSelected ? lineColor : STATUS_BG[station.status];
+  const lineColor = LINE_KEY_COLORS[station.linea];
+  const bgColor = isSelected ? lineColor : STATUS_BG[station.estado_actual];
 
   return (
     <AdvancedMarker
       position={{ lat: station.lat, lng: station.lng }}
       onClick={onClick}
-      title={station.name}
+      title={station.nombre}
     >
       <Pin
         background={bgColor}
