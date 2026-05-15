@@ -38,12 +38,12 @@
 | Estado servidor | **TanStack Query** | Cache, sync, optimistic updates con Firestore |
 | Estado cliente | **Zustand** | Ligero, sin boilerplate (reemplaza Provider) |
 | Backend SDK | **Firebase Web SDK v10** (modular) | Mismo proyecto Firebase actual |
-| Mapas | **MapLibre GL JS** (+ tiles MapTiler/OSM) o Google Maps JS | MapLibre evita costos crecientes; GMaps si se requiere paridad exacta |
+| Mapas | **Google Maps JS API** (`@vis.gl/react-google-maps`) | Paridad con app Flutter, misma API key/proyecto |
 | Formularios | **react-hook-form + zod** | Validación tipada |
 | Tests | **Vitest + Testing Library + Playwright** | Unit + e2e |
 | Lint/format | **ESLint + Prettier + TypeScript strict** | Calidad |
 | Hooks pre-commit | **Husky + lint-staged** | Evitar commits rotos |
-| CI/CD | **GitHub Actions → Vercel** (o Firebase Hosting) | Preview por PR |
+| CI/CD | **GitHub Actions → Railway** | Mismo proveedor que el dashboard actual; `railway.json`/`nixpacks.toml` ya en el repo |
 | Analítica | Firebase Analytics + Sentry | Errores y métricas |
 | i18n | **next-intl** | ES base, EN opcional |
 | Pagos web | **Stripe** vía Cloud Function | Sustituye IAP en web |
@@ -125,8 +125,8 @@ web/
 | Auth | Firebase Auth (Google + email). Custom claims para admin/premium. |
 | Reglas | Reutilizar `firestore.rules` actuales; auditar para web (CORS, App Check). |
 | App Check | **reCAPTCHA v3** para web — bloquea clientes no autorizados a Firestore/Functions. |
-| Secrets | `.env.local` para dev; variables en Vercel. **Nunca** claves privadas en cliente. |
-| API keys públicas | Restricción por dominio en Google Cloud Console. |
+| Secrets | `.env.local` para dev; **Railway Variables** en producción. **Nunca** claves privadas en cliente. |
+| API keys públicas | Restricción por **dominio HTTP referrer** y por API (Maps JS, Places) en Google Cloud Console. |
 | CSP | Header estricto vía `next.config.js` (script-src, connect-src Firebase/Maps). |
 | Headers | HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy. |
 | Validación | zod en cliente **y** en Cloud Functions (defensa en profundidad). |
@@ -145,7 +145,7 @@ web/
 - Crear carpeta `web/` con Next.js 15 + TS strict + Tailwind + shadcn.
 - Configurar Firebase Web SDK reusando proyecto actual.
 - Layout base, theming light/dark, design tokens.
-- CI: lint + typecheck + tests en PR. Deploy preview en Vercel.
+- CI: lint + typecheck + tests en PR. Deploy en **Railway** (servicio nuevo `web/`, build con Nixpacks, `next start` en `$PORT`). Preview environments por rama si el plan lo permite.
 - App Check + reglas de seguridad básicas (CSP, headers).
 
 ### Fase 1 — Auth + Mapa lectura (semanas 2-3)
@@ -203,7 +203,7 @@ web/
 | Riesgo | Mitigación |
 |--------|-----------|
 | Divergencia lógica web vs Flutter | Extraer reglas (confianza, agregación) a especificación versionada en `docs/spec/` |
-| Costos de Google Maps | Evaluar MapLibre + tiles propios desde el inicio |
+| Costos de Google Maps | Restringir API key por dominio, cachear tiles donde se pueda, monitorear cuota en GCP Billing alerts |
 | Reglas Firestore no compatibles con web | Auditar y añadir tests con emulator suite |
 | IAP vs Stripe (precios distintos) | Tabla de equivalencias y claim unificado `premium=true` |
 | SEO / SSR con Firebase | Datos públicos vía Admin SDK en server components |
@@ -213,8 +213,8 @@ web/
 ## 10. Próximos pasos inmediatos
 
 1. ✅ Aprobar este plan.
-2. Decidir: **Vercel vs Firebase Hosting** y **MapLibre vs Google Maps**.
-3. Crear `web/` con scaffold Next.js (Fase 0).
+2. Decisiones tomadas: **deploy en Railway**, **Google Maps JS** para mapas.
+3. Crear `web/` con scaffold Next.js + `railway.json`/`nixpacks.toml` para el nuevo servicio (Fase 0).
 4. Migrar `lib/data/` (estaciones, líneas) a TS y publicar como paquete local compartible si en el futuro se quiere monorepo.
 5. Definir mockups de mapa + flujo de reporte (Figma).
 
