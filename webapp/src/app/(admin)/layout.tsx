@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { AdminGuard } from "@/features/admin/components/AdminGuard";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
 
+export const dynamic = "force-dynamic";
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <AdminGuard>
