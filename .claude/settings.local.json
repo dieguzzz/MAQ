@@ -4,7 +4,8 @@
       "Bash(flutter analyze:*)",
       "WebSearch",
       "Bash(dart analyze:*)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__railway-agent"
     ]
   }
 }
