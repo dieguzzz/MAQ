@@ -11,7 +11,9 @@
       "mcp__plugin_playwright_playwright__browser_press_key",
       "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__whoami",
       "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__list-projects",
-      "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__railway-agent"
+      "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__railway-agent",
+      "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__get-status",
+      "mcp__ad597f71-1b77-467b-8eeb-d7d6d10dab0d__get-logs"
     ]
   }
 }
