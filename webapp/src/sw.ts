@@ -17,7 +17,7 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      urlPattern: /^https:\/\/(apis\.google\.com|maps\.googleapis\.com|maps\.gstatic\.com|www\.googleapis\.com|firestore\.googleapis\.com|identitytoolkit\.googleapis\.com|www\.google-analytics\.com|www\.googletagmanager\.com|.*\.firebaseio\.com|.*\.firebaseapp\.com)/,
+      matcher: /^https:\/\/(apis\.google\.com|maps\.googleapis\.com|maps\.gstatic\.com|www\.googleapis\.com|firestore\.googleapis\.com|identitytoolkit\.googleapis\.com|www\.google-analytics\.com|www\.googletagmanager\.com|.*\.firebaseio\.com|.*\.firebaseapp\.com)/,
       handler: new NetworkOnly(),
     },
     ...defaultCache,
