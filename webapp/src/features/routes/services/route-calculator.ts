@@ -17,14 +17,9 @@ export interface CalculatedRoute {
   status: "optima" | "congestionada" | "interrumpida";
 }
 
-// Average travel time between consecutive stations
+// Fixed estimated travel times — no dynamic crowd factor.
 const TIME_BETWEEN_STATIONS_MIN = 2.5;
 const TRANSFER_TIME_MIN = 5;
-
-// Crowd factor: 1 (vacía) → 1.0x, 5 (muy alta) → 1.6x
-function crowdFactor(aglomeracion: number): number {
-  return 1 + (Math.max(1, aglomeracion) - 1) * 0.15;
-}
 
 // Build a station fallback from static list when not in live data
 function asStation(id: string, live: Station[]): Station | null {
@@ -70,11 +65,8 @@ function directSegment(
   const range = oIdx <= dIdx ? order.slice(oIdx, dIdx + 1) : order.slice(dIdx, oIdx + 1).reverse();
   const stations = range.map((id) => asStation(id, all)).filter((s): s is Station => s !== null);
 
-  // Time considering crowd at each station
   const hops = Math.max(1, stations.length - 1);
-  const avgCrowd =
-    stations.reduce((sum, s) => sum + s.aglomeracion, 0) / Math.max(1, stations.length);
-  const timeMin = Math.round(hops * TIME_BETWEEN_STATIONS_MIN * crowdFactor(avgCrowd));
+  const timeMin = Math.round(hops * TIME_BETWEEN_STATIONS_MIN);
 
   return { linea: origin.linea, stations, timeMin };
 }

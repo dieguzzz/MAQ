@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map, FileText, Navigation, Trophy, User, Shield } from "lucide-react";
+import { Map, FileText, Navigation, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ThemeToggle } from "./ThemeToggle";
-import { useAuthStore } from "@/stores/auth-store";
 
 const NAV_ITEMS = [
   { href: "/map", label: "Mapa", icon: Map },
@@ -17,7 +16,6 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user } = useAuthStore();
   const isMap = pathname.startsWith("/map");
 
   return (
@@ -54,22 +52,6 @@ export function Navbar() {
                 </Link>
               );
             })}
-
-            {user && (
-              <Link
-                href="/admin"
-                className={cn(
-                  "ml-1 flex items-center gap-1.5 rounded-[var(--radius)] px-3 py-1.5 text-sm transition-colors",
-                  pathname.startsWith("/admin")
-                    ? "bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-semibold"
-                    : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
-                )}
-                aria-label="Panel Admin"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Admin</span>
-              </Link>
-            )}
 
             <ThemeToggle />
           </nav>

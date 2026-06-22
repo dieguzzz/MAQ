@@ -116,7 +116,7 @@ export function RouteResult({ route }: { route: CalculatedRoute }) {
 
         <div className="mt-3 flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
           <Clock className="h-3.5 w-3.5" />
-          <span>Basado en afluencia actual reportada por la comunidad</span>
+          <span>Estimación general basada en tiempo promedio entre estaciones</span>
         </div>
       </div>
 
