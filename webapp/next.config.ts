@@ -11,7 +11,7 @@ const withSerwist = withSerwistInit({
 const cspHeader = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://apis.google.com https://www.googletagmanager.com",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com",
+  "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://www.google-analytics.com https://www.googletagmanager.com",
   "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://maps.gstatic.com https://lh3.googleusercontent.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
