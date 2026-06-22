@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "../services/auth.service";
+import { setSessionCookie } from "../utils/session-cookie";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
@@ -15,7 +16,9 @@ export function LoginForm() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      await authService.signInWithGoogle();
+      const cred = await authService.signInWithGoogle();
+      const token = await cred.user.getIdToken();
+      setSessionCookie(token);
       router.replace("/map");
     } catch {
       setErrorMsg("Error al iniciar sesión. Intenta de nuevo.");
