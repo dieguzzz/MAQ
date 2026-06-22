@@ -1,9 +1,9 @@
 "use client";
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
@@ -16,44 +16,19 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-let _app: FirebaseApp | null = null;
-let _auth: Auth | null = null;
-let _db: Firestore | null = null;
-let _storage: FirebaseStorage | null = null;
-
-function getApp(): FirebaseApp {
-  if (_app) return _app;
-  if (!firebaseConfig.apiKey) {
-    throw new Error(
-      "Firebase no configurado. Define NEXT_PUBLIC_FIREBASE_* en el entorno."
-    );
-  }
-  _app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
-  return _app;
+if (!firebaseConfig.apiKey) {
+  throw new Error(
+    "Firebase no configurado. Define NEXT_PUBLIC_FIREBASE_* en el entorno."
+  );
 }
 
-export const auth = new Proxy({} as Auth, {
-  get(_t, prop) {
-    if (!_auth) _auth = getAuth(getApp());
-    return Reflect.get(_auth, prop, _auth);
-  },
-});
+const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
 
-export const db = new Proxy({} as Firestore, {
-  get(_t, prop) {
-    if (!_db) _db = getFirestore(getApp());
-    return Reflect.get(_db, prop, _db);
-  },
-});
-
-export const storage = new Proxy({} as FirebaseStorage, {
-  get(_t, prop) {
-    if (!_storage) _storage = getStorage(getApp());
-    return Reflect.get(_storage, prop, _storage);
-  },
-});
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 export const analyticsPromise =
   typeof window !== "undefined"
-    ? isSupported().then((yes) => (yes ? getAnalytics(getApp()) : null))
+    ? isSupported().then((yes) => (yes ? getAnalytics(app) : null))
     : Promise.resolve(null);
