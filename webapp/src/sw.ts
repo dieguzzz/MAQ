@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, NetworkOnly } from "serwist";
+import { Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -10,18 +10,21 @@ declare global {
 
 declare const self: WorkerGlobalScope & typeof globalThis;
 
+// Skip cross-origin requests entirely — let the browser handle them natively
+// without Serwist wrapping them in respondWith (which breaks on fetch failures).
+self.addEventListener("fetch", (event) => {
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    event.stopImmediatePropagation();
+    return;
+  }
+});
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
-  runtimeCaching: [
-    {
-      matcher: /^https:\/\/(apis\.google\.com|maps\.googleapis\.com|maps\.gstatic\.com|www\.googleapis\.com|firestore\.googleapis\.com|identitytoolkit\.googleapis\.com|www\.google-analytics\.com|www\.googletagmanager\.com|.*\.firebaseio\.com|.*\.firebaseapp\.com)/,
-      handler: new NetworkOnly(),
-    },
-    ...defaultCache,
-  ],
+  navigationPreload: false,
+  runtimeCaching: defaultCache,
 });
 
 serwist.addEventListeners();
