@@ -12,12 +12,12 @@ declare const self: WorkerGlobalScope & typeof globalThis;
 
 // Skip cross-origin requests entirely — let the browser handle them natively
 // without Serwist wrapping them in respondWith (which breaks on fetch failures).
-self.addEventListener("fetch", (event) => {
+self.addEventListener("fetch", ((event: FetchEvent) => {
   if (new URL(event.request.url).origin !== self.location.origin) {
     event.stopImmediatePropagation();
     return;
   }
-});
+}) as EventListener);
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
