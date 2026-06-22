@@ -11,7 +11,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icons") ||
-    pathname.startsWith("/manifest")
+    pathname.startsWith("/manifest") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".js.map")
   ) {
     return NextResponse.next();
   }
