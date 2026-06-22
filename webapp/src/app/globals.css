@@ -3,43 +3,54 @@
 /* ─── Design Tokens ─────────────────────────────────────────────── */
 :root {
   /* Metro Line Colors (real Panama Metro branding) */
-  --metro-line-1: #0066cc; /* Línea 1 — Azul */
-  --metro-line-2: #009933; /* Línea 2 — Verde */
-  --metro-line-3: #e74c3c; /* Línea 3 — Rojo */
+  --metro-line-1: #0C5BA2;
+  --metro-line-2: #4CAF50;
+  --metro-line-3: #e74c3c;
 
   /* Brand */
   --brand-primary: var(--metro-line-1);
-  --brand-accent: #f39c12;
+  --brand-primary-hover: #094a87;
+  --brand-accent: #F8D133;
+  --brand-accent-hover: #e6c12e;
 
-  /* Surface */
-  --background: #f8fafc;
+  /* Surface — blue-tinted neutrals for personality */
+  --background: #F4F7FB;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
+  --muted: #E8EEF5;
+  --muted-foreground: #5b6b82;
+  --border: #d4dce8;
+  --input: #d4dce8;
   --ring: var(--brand-primary);
 
   /* Feedback */
-  --success: #009933;
-  --warning: #f59e0b;
-  --destructive: #ef4444;
-  --info: #0066cc;
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --destructive: #dc2626;
+  --destructive-bg: #fee2e2;
+  --info: var(--brand-primary);
+  --info-bg: #dbeafe;
 
   /* Station states */
-  --status-normal: #009933;
-  --status-moderado: #f59e0b;
-  --status-lleno: #ef4444;
+  --status-normal: #16a34a;
+  --status-normal-bg: #dcfce7;
+  --status-moderado: #d97706;
+  --status-moderado-bg: #fef3c7;
+  --status-lleno: #dc2626;
+  --status-lleno-bg: #fee2e2;
   --status-cerrado: #6b7280;
+  --status-cerrado-bg: #f3f4f6;
 
-  /* Motion — Duolingo-style, <300ms */
+  /* Motion */
   --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Radii — friendly, rounded */
+  /* Radii */
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
   --radius-md: 1rem;
@@ -47,10 +58,16 @@
   --radius-xl: 1.5rem;
   --radius-full: 9999px;
 
-  /* Shadows — Duolingo-style soft */
-  --shadow-card: 0 8px 20px -4px rgb(0 0 0 / 0.08);
-  --shadow-panel: 0 12px 32px -8px rgb(0 0 0 / 0.12);
-  --shadow-float: 0 20px 40px -12px rgb(0 0 0 / 0.15);
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgb(12 91 162 / 0.04), 0 1px 2px -1px rgb(12 91 162 / 0.06);
+  --shadow-card: 0 4px 12px -2px rgb(12 91 162 / 0.06), 0 2px 6px -2px rgb(12 91 162 / 0.04);
+  --shadow-panel: 0 8px 24px -4px rgb(12 91 162 / 0.08), 0 4px 8px -4px rgb(12 91 162 / 0.04);
+  --shadow-float: 0 16px 40px -8px rgb(12 91 162 / 0.12);
+  --shadow-brand: 0 4px 14px -3px rgb(12 91 162 / 0.3);
+
+  /* Bottom nav height */
+  --nav-height: 3.5rem;
+  --bottom-nav-height: 4rem;
 }
 
 @theme inline {
@@ -62,13 +79,26 @@
   --color-border: var(--border);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
   --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
   --color-destructive: var(--destructive);
+  --color-destructive-bg: var(--destructive-bg);
   --color-metro-1: var(--metro-line-1);
   --color-metro-2: var(--metro-line-2);
   --color-metro-3: var(--metro-line-3);
   --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-hover: var(--brand-accent-hover);
+  --color-status-normal: var(--status-normal);
+  --color-status-normal-bg: var(--status-normal-bg);
+  --color-status-moderado: var(--status-moderado);
+  --color-status-moderado-bg: var(--status-moderado-bg);
+  --color-status-lleno: var(--status-lleno);
+  --color-status-lleno-bg: var(--status-lleno-bg);
+  --color-status-cerrado: var(--status-cerrado);
+  --color-status-cerrado-bg: var(--status-cerrado-bg);
   --radius-sm: var(--radius-sm);
   --radius: var(--radius);
   --radius-md: var(--radius-md);
@@ -78,16 +108,29 @@
 
 /* ─── Dark Mode ──────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --border: #334155;
-  --input: #334155;
-  --shadow-card: 0 8px 20px -4px rgb(0 0 0 / 0.3);
-  --shadow-panel: 0 12px 32px -8px rgb(0 0 0 / 0.4);
+  --background: #0A1628;
+  --foreground: #f0f4f8;
+  --card: #12203A;
+  --card-foreground: #f0f4f8;
+  --muted: #1a2d4a;
+  --muted-foreground: #8ba3c4;
+  --border: #243b5e;
+  --input: #243b5e;
+
+  --success-bg: #052e16;
+  --warning-bg: #422006;
+  --destructive-bg: #450a0a;
+  --info-bg: #0c2d5a;
+  --status-normal-bg: #052e16;
+  --status-moderado-bg: #422006;
+  --status-lleno-bg: #450a0a;
+  --status-cerrado-bg: #1f2937;
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --shadow-card: 0 4px 12px -2px rgb(0 0 0 / 0.3);
+  --shadow-panel: 0 8px 24px -4px rgb(0 0 0 / 0.4);
+  --shadow-float: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+  --shadow-brand: 0 4px 14px -3px rgb(12 91 162 / 0.4);
 }
 
 /* ─── High Contrast ──────────────────────────────────────────────── */
@@ -122,7 +165,7 @@ body {
   outline-offset: 2px;
 }
 
-/* ─── Duolingo-style card ────────────────────────────────────────── */
+/* ─── Metro card utility ────────────────────────────────────────── */
 .metro-card {
   background: var(--card);
   border-radius: var(--radius-xl);
@@ -154,6 +197,32 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes press {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+@keyframes slide-line {
+  0%, 100% { opacity: 0.1; transform: scaleX(0.3); }
+  50%      { opacity: 0.4; transform: scaleX(1); }
+}
+
 .animate-slide-up  { animation: slide-up  var(--transition-base) both; }
 .animate-fade-in   { animation: fade-in   var(--transition-fast) both; }
 .animate-bounce-in { animation: bounce-in var(--transition-slow) both; }
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+
+/* ─── Reduced Motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

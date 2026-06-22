@@ -1,9 +1,8 @@
 "use client";
 
-import { X, Users, Clock, Zap, MessageSquare } from "lucide-react";
+import { X, Users, Clock, Zap, MessageSquare, CheckCircle, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LINE_KEY_COLORS, LINE_KEY_NAMES } from "@/config/metro-lines";
 import { cn } from "@/lib/utils/cn";
 import { useStationReports } from "@/features/reports/hooks/useStationReports";
@@ -16,11 +15,18 @@ const STATUS_LABELS: Record<StationStatus, string> = {
   cerrado: "Cerrado",
 };
 
-const STATUS_VARIANT: Record<StationStatus, "success" | "warning" | "destructive" | "secondary"> = {
-  normal: "success",
-  moderado: "warning",
-  lleno: "destructive",
-  cerrado: "secondary",
+const STATUS_BADGE_VARIANT: Record<StationStatus, "status-normal" | "status-moderado" | "status-lleno" | "status-cerrado"> = {
+  normal: "status-normal",
+  moderado: "status-moderado",
+  lleno: "status-lleno",
+  cerrado: "status-cerrado",
+};
+
+const STATUS_ICONS: Record<StationStatus, React.ReactNode> = {
+  normal: <CheckCircle className="h-3 w-3" />,
+  moderado: <AlertTriangle className="h-3 w-3" />,
+  lleno: <XCircle className="h-3 w-3" />,
+  cerrado: <MinusCircle className="h-3 w-3" />,
 };
 
 const CROWD_LABELS: Record<number, string> = { 1: "Vacía", 2: "Baja", 3: "Media", 4: "Alta", 5: "Muy Alta" };
@@ -28,6 +34,23 @@ const CROWD_LABELS: Record<number, string> = { 1: "Vacía", 2: "Baja", 3: "Media
 function reportTimeAgo(createdAt: Date) {
   const mins = Math.round((Date.now() - createdAt.getTime()) / 60000);
   return mins < 1 ? "ahora" : `${mins}m`;
+}
+
+function CrowdDots({ level }: { level: number }) {
+  return (
+    <div className="flex gap-1.5">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          className={cn(
+            "h-2.5 w-2.5 rounded-full transition-colors",
+            i < level ? "" : "bg-[var(--muted)]"
+          )}
+          style={i < level ? { backgroundColor: i < 2 ? "var(--status-normal)" : i < 4 ? "var(--status-moderado)" : "var(--status-lleno)" } : undefined}
+        />
+      ))}
+    </div>
+  );
 }
 
 function ReportPill({ report }: { report: SimplifiedReport }) {
@@ -59,49 +82,47 @@ export function StationPanel({ station, onClose, onReport, className }: Props) {
   const recentReports = reports.slice(0, 3);
 
   return (
-    <Card className={cn("mx-auto w-full max-w-sm shadow-[var(--shadow-panel)] animate-slide-up", className)}>
-      <CardHeader className="pb-3">
+    <div
+      className={cn(
+        "mx-auto w-full max-w-sm rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-panel)] animate-slide-up overflow-hidden",
+        className
+      )}
+    >
+      {/* Line color accent strip */}
+      <div className="h-1" style={{ backgroundColor: lineColor }} />
+
+      <div className="p-4 space-y-3">
+        {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="mb-1 flex items-center gap-1.5">
-              <span className="text-lg">🚇</span>
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: lineColor }}>
-                {LINE_KEY_NAMES[station.linea]}
-              </span>
-            </div>
-            <CardTitle className="text-lg font-black tracking-tight">{station.nombre}</CardTitle>
+            <span className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: lineColor }}>
+              {LINE_KEY_NAMES[station.linea]}
+            </span>
+            <h3 className="text-lg font-black tracking-tight leading-tight">{station.nombre}</h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 rounded-full">
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 rounded-full -mt-1 -mr-1 h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
 
+        {/* Status + badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={STATUS_VARIANT[station.estado_actual]}>
+          <Badge variant={STATUS_BADGE_VARIANT[station.estado_actual]} icon={STATUS_ICONS[station.estado_actual]}>
             {STATUS_LABELS[station.estado_actual]}
           </Badge>
-          {station.is_estimated && <Badge variant="outline" className="text-xs">Estimado</Badge>}
-          {station.confidence && <Badge variant="outline" className="text-xs capitalize">{station.confidence}</Badge>}
+          {station.is_estimated && <Badge variant="outline" className="text-[0.65rem]">Estimado</Badge>}
+          {station.confidence && <Badge variant="outline" className="text-[0.65rem] capitalize">{station.confidence}</Badge>}
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-3">
-        {/* Crowd bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-1.5 text-[var(--muted-foreground)]">
-              <Users className="h-4 w-4" />
-              <span>Afluencia</span>
-            </div>
-            <span className="font-bold" style={{ color: lineColor }}>
-              {CROWD_LABELS[station.aglomeracion] ?? station.aglomeracion}
-            </span>
+        {/* Crowd dots */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
+            <Users className="h-4 w-4" />
+            <span>Afluencia</span>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${(station.aglomeracion / 5) * 100}%`, backgroundColor: lineColor }}
-            />
+          <div className="flex items-center gap-2">
+            <CrowdDots level={station.aglomeracion} />
+            <span className="text-xs font-semibold">{CROWD_LABELS[station.aglomeracion] ?? station.aglomeracion}</span>
           </div>
         </div>
 
@@ -130,16 +151,16 @@ export function StationPanel({ station, onClose, onReport, className }: Props) {
           </div>
         )}
 
+        {/* Report CTA */}
         <Button
-          className="mt-1 w-full font-bold"
-          size="sm"
+          variant="accent"
+          className="w-full font-bold"
           onClick={onReport}
-          style={{ backgroundColor: lineColor }}
         >
           <Zap className="mr-1.5 h-4 w-4" />
-          Reportar estado ⚡
+          Reportar estado
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Mapa en Tiempo Real" };
 
 export default function MapPage() {
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex h-[calc(100dvh-3rem)] md:h-[calc(100dvh-3.5rem)]">
       <MapClient />
     </div>
   );
