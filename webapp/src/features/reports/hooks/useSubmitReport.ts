@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 interface SubmitParams {
   stationId: string;
+  linea: string;
   stationOperational: "yes" | "partial" | "no";
   stationCrowd: number;
   stationIssues?: string[];

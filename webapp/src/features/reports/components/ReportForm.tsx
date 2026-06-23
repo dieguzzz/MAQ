@@ -37,6 +37,7 @@ export function ReportForm({ station, onClose }: Props) {
   const onSubmit = async (data: StationReportFormValues) => {
     await submit({
       stationId: data.stationId,
+      linea: station.linea,
       stationOperational: data.stationOperational,
       stationCrowd: data.stationCrowd,
       stationIssues: data.stationIssues,

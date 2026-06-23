@@ -12,6 +12,9 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { SimplifiedReport, ReportStatus } from "@/types/metro";
+import { userProfileService } from "@/features/gamification/services/user-profile.service";
+
+const POINTS_PER_REPORT = 10;
 
 // Firestore collection name as used by the Flutter app
 const COLLECTION = "reports";
@@ -50,10 +53,11 @@ function docToReport(id: string, data: DocumentData): SimplifiedReport {
 }
 
 export const reportsService = {
-  /** Submit a station report */
+  /** Submit a station report and award points to the user. */
   submitStationReport: async (params: {
     userId: string;
     stationId: string;
+    linea: string;
     stationOperational: "yes" | "partial" | "no";
     stationCrowd: number;
     stationIssues?: string[];
@@ -68,11 +72,17 @@ export const reportsService = {
       isSpecificIssue: false,
       status: "active",
       confirmations: 0,
-      basePoints: 10,
+      basePoints: POINTS_PER_REPORT,
       bonusPoints: 0,
-      totalPoints: 10,
+      totalPoints: POINTS_PER_REPORT,
       createdAt: serverTimestamp(),
     });
+
+    await userProfileService.addReportPoints(
+      params.userId,
+      params.linea,
+      POINTS_PER_REPORT
+    );
   },
 
   /** Subscribe to active reports for a station */

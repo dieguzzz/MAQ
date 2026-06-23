@@ -1,6 +1,8 @@
 import {
   doc,
   setDoc,
+  updateDoc,
+  increment,
   onSnapshot,
   collection,
   query,
@@ -110,6 +112,20 @@ export const userProfileService = {
       },
       { merge: true }
     );
+  },
+
+  /** Atomically increment points after a report submission. */
+  addReportPoints: async (
+    uid: string,
+    linea: string,
+    points: number
+  ): Promise<void> => {
+    const ref = doc(db, "users", uid);
+    await updateDoc(ref, {
+      [`gamification.puntos`]: increment(points),
+      [`gamification.puntos_por_linea.${linea}`]: increment(points),
+      reportes_count: increment(1),
+    });
   },
 
   subscribeLeaderboard: (
