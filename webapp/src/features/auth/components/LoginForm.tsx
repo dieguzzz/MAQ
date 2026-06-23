@@ -58,7 +58,7 @@ export function LoginForm() {
       </Button>
 
       {/* Terms */}
-      <p className="text-center text-xs text-[#5b6b82]">
+      <p className="text-center text-xs text-[#8ba3c4]">
         Al continuar aceptas los términos de uso y política de privacidad.
       </p>
     </div>

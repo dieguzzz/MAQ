@@ -51,4 +51,3 @@ public/swe-worker-*.js
 test-results/
 playwright-report/
 playwright/.cache/
-tests/e2e/**/*-snapshots/
