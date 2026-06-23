@@ -5,11 +5,15 @@ import 'dart:math' as math;
 /// Animación llamativa de tren llegando - función destacada de la app
 class TrainArrivalAnimation extends StatefulWidget {
   final int points;
+  final String? directionLabel;
+  final Color? lineColor;
   final VoidCallback? onComplete;
 
   const TrainArrivalAnimation({
     super.key,
     required this.points,
+    this.directionLabel,
+    this.lineColor,
     this.onComplete,
   });
 
@@ -17,6 +21,8 @@ class TrainArrivalAnimation extends StatefulWidget {
   static void show(
     BuildContext context, {
     required int points,
+    String? directionLabel,
+    Color? lineColor,
     VoidCallback? onComplete,
   }) {
     showDialog(
@@ -25,6 +31,8 @@ class TrainArrivalAnimation extends StatefulWidget {
       barrierDismissible: false,
       builder: (dialogContext) => TrainArrivalAnimation(
         points: points,
+        directionLabel: directionLabel,
+        lineColor: lineColor,
         onComplete: () {
           Navigator.of(dialogContext).pop();
           onComplete?.call();
@@ -188,7 +196,10 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
             animation: _particlesAnimation,
             builder: (context, child) {
               return CustomPaint(
-                painter: ParticlesPainter(_particlesAnimation.value),
+                painter: ParticlesPainter(
+                  _particlesAnimation.value,
+                  baseColor: widget.lineColor ?? Colors.white,
+                ),
                 size: Size.infinite,
               );
             },
@@ -234,15 +245,19 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
   }
 
   Widget _buildTrain() {
+    final Color primary = widget.lineColor ?? Colors.blue[700]!;
+    final Color lighter = HSLColor.fromColor(primary).withLightness((HSLColor.fromColor(primary).lightness + 0.1).clamp(0.0, 1.0)).toColor();
+    final Color darker = HSLColor.fromColor(primary).withLightness((HSLColor.fromColor(primary).lightness - 0.1).clamp(0.0, 1.0)).toColor();
+
     return Container(
       width: 120,
       height: 60,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.blue[700]!,
-            Colors.blue[500]!,
-            Colors.blue[300]!,
+            darker,
+            primary,
+            lighter,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -250,7 +265,7 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.5),
+            color: primary.withValues(alpha: 0.5),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -309,19 +324,41 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
   }
 
   Widget _buildPointsDisplay() {
+    String tierTitle;
+    String tierEmoji;
+    
+    if (widget.points >= 10) {
+      tierTitle = '¡PRIMER REPORTE!';
+      tierEmoji = '🥇';
+    } else if (widget.points >= 7) {
+      tierTitle = '¡REPORTE RÁPIDO!';
+      tierEmoji = '🥈';
+    } else if (widget.points >= 5) {
+      tierTitle = '¡CONFIRMADO!';
+      tierEmoji = '✅';
+    } else {
+      tierTitle = '¡GRACIAS!';
+      tierEmoji = '👍';
+    }
+
+    final Color primary = widget.lineColor ?? Colors.green[600]!;
+    final Color lighter = HSLColor.fromColor(primary).withLightness((HSLColor.fromColor(primary).lightness + 0.15).clamp(0.0, 1.0)).toColor();
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: [
-            Colors.green[600]!,
-            Colors.green[400]!,
+            primary,
+            lighter,
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withValues(alpha: 0.5),
+            color: primary.withValues(alpha: 0.5),
             blurRadius: 30,
             spreadRadius: 10,
           ),
@@ -330,36 +367,67 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.stars,
-            color: Colors.white,
-            size: 48,
+          Text(
+            tierEmoji,
+            style: const TextStyle(fontSize: 56),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            tierTitle,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: 1.5,
+              shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             '+${widget.points}',
             style: const TextStyle(
-              fontSize: 48,
+              fontSize: 64,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              shadows: [
-                Shadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                ),
-              ],
+              height: 1.0,
+              shadows: [Shadow(color: Colors.black26, blurRadius: 12)],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
-            'PUNTOS',
+            'PTOS',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Colors.white70,
               letterSpacing: 2,
             ),
           ),
+          if (widget.directionLabel != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.directions_train, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Dirección: ${widget.directionLabel}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -369,14 +437,15 @@ class _TrainArrivalAnimationState extends State<TrainArrivalAnimation>
 /// Pintor para partículas de fondo
 class ParticlesPainter extends CustomPainter {
   final double progress;
+  final Color baseColor;
 
-  ParticlesPainter(this.progress);
+  ParticlesPainter(this.progress, {required this.baseColor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withValues(alpha: 0.3 * (1 - progress));
+      ..color = baseColor.withValues(alpha: 0.5 * (1 - progress));
 
     final random = math.Random(42);
     for (int i = 0; i < 30; i++) {

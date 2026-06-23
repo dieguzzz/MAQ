@@ -232,9 +232,11 @@ class FirebaseService {
         });
 
         // Actualizar contador de confirmaciones (usar ambos campos para compatibilidad)
+        // Y añadir el ID a la lista 'confirmedBy' para evitar duplicados en la UI sin hacer joins
         final updateData = <String, dynamic>{
           'confirmations': newConfirmations,
           'confirmation_count': newConfirmations, // Legacy
+          'confirmedBy': FieldValue.arrayUnion([userId]),
         };
 
         // Si alcanza 3 confirmaciones, marcar como verificado por la comunidad
@@ -499,6 +501,43 @@ class FirebaseService {
       throw Exception(ErrorHandlerService.getErrorMessage(e));
     } catch (e) {
       throw Exception('Error al iniciar sesión con Google: ${ErrorHandlerService.getErrorMessage(e)}');
+    }
+  }
+
+  Future<UserCredential?> linkWithGoogle() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('No hay usuario autenticado');
+      }
+
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        return await currentUser.linkWithProvider(googleProvider);
+      } else {
+        await _googleSignIn.initialize();
+        final GoogleSignInAccount account = await _googleSignIn.authenticate(scopeHint: ['email']);
+        final GoogleSignInAuthentication auth = account.authentication;
+        final String? idToken = auth.idToken;
+        final GoogleSignInClientAuthorization? clientAuth =
+            await account.authorizationClient.authorizationForScopes(['email']);
+        final String? accessToken = clientAuth?.accessToken;
+
+        if (idToken == null || accessToken == null) {
+          throw Exception('No se pudieron obtener los tokens de autenticación');
+        }
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: accessToken,
+          idToken: idToken,
+        );
+        return await currentUser.linkWithCredential(credential);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw Exception(ErrorHandlerService.getErrorMessage(e));
+    } catch (e) {
+      throw Exception('Error al vincular con Google: ${ErrorHandlerService.getErrorMessage(e)}');
     }
   }
 

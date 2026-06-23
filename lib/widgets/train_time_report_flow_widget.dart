@@ -6,7 +6,10 @@ import '../services/train_time_report_service.dart';
 import '../services/location_service.dart';
 import '../utils/train_direction_helper.dart';
 import '../widgets/points_reward_animation.dart';
+import '../widgets/guest_upgrade_dialog.dart';
+import '../providers/auth_provider.dart';
 import '../theme/metro_theme.dart';
+import 'package:provider/provider.dart';
 
 /// Widget de flujo para reportar tiempos de tren desde la pantalla de la estación
 class TrainTimeReportFlowWidget extends StatefulWidget {
@@ -754,16 +757,27 @@ class _TrainTimeReportFlowWidgetState extends State<TrainTimeReportFlowWidget> {
       if (mounted) {
         setState(() => _isSubmitting = false);
 
-        // Mostrar animación de puntos
-        const basePoints = 10;
-        final followingBonus = _followingTrainMinutes != null ? 5 : 0;
-        final totalPoints = basePoints + followingBonus;
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        if (authProvider.isGuest) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('¡Gracias por reportar! Vincula tu cuenta para ganar puntos'),
+            action: SnackBarAction(
+              label: 'Vincular',
+              onPressed: () => GuestUpgradeDialog.show(context, feature: 'reportes'),
+            ),
+            duration: const Duration(seconds: 4),
+          ));
+        } else {
+          const basePoints = 10;
+          final followingBonus = _followingTrainMinutes != null ? 5 : 0;
+          final totalPoints = basePoints + followingBonus;
 
-        PointsRewardAnimation.show(
-          context,
-          points: totalPoints,
-          message: '¡Gracias por reportar!',
-        );
+          PointsRewardAnimation.show(
+            context,
+            points: totalPoints,
+            message: '¡Gracias por reportar!',
+          );
+        }
 
         // Regresar después de un breve delay
         Future.delayed(const Duration(milliseconds: 500), () {

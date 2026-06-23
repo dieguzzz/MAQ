@@ -29,7 +29,7 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     final now = DateTime.now();
-    final basePoints = 15;
+    const basePoints = 15;
     final bonusPoints = (issues?.length ?? 0) * 5;
 
     final report = SimplifiedReportModel(
@@ -206,8 +206,8 @@ class SimplifiedReportService {
     }
 
     // No se encontró reporte similar o falló la confirmación - crear nuevo
-    final basePoints = 15;
-    final bonusPoints =
+    const basePoints = 15;
+    const bonusPoints =
         0; // En el nuevo sistema, los puntos bonus vienen de cada problema específico
 
     final generalReport = SimplifiedReportModel(
@@ -283,7 +283,7 @@ class SimplifiedReportService {
     required String userId,
     required DateTime now,
   }) async {
-    final basePoints = 10; // 10 puntos por reportar un problema específico
+    const basePoints = 10; // 10 puntos por reportar un problema específico
 
     final issueReport = SimplifiedReportModel(
       id: '',
@@ -353,7 +353,7 @@ class SimplifiedReportService {
     }
 
     // Sistema de puntos: 10 base por copiar panel + 5 por cada problema
-    final basePoints = 10;
+    const basePoints = 10;
     final bonusPoints = (issues?.length ?? 0) * 5;
     // Nota: +20 puntos adicionales se otorgan cuando el usuario valida la llegada
 
@@ -464,7 +464,7 @@ class SimplifiedReportService {
       }
 
       // Actualizar puntos: +20 base por validar + bonus por precisión
-      final validationPoints = 20;
+      const validationPoints = 20;
       final newBonusPoints = (report.bonusPoints) + precisionBonus;
       final newTotalPoints =
           report.basePoints + validationPoints + newBonusPoints;
@@ -563,8 +563,8 @@ class SimplifiedReportService {
     if (userId == null) throw Exception('Usuario no autenticado');
 
     final now = DateTime.now();
-    final basePoints = 15; // Reporte directo de llegada
-    final bonusPoints = 0;
+    const basePoints = 15; // Reporte directo de llegada
+    const bonusPoints = 0;
 
     final report = SimplifiedReportModel(
       id: '',

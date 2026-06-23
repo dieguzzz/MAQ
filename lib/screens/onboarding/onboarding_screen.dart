@@ -40,7 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         'Badges épicos',
       ],
       icon: Icons.emoji_events,
-      accentColor: MetroColors.energyOrange,
+      accentColor: MetroColors.red,
     ),
     _OnboardingPageData(
       title: 'Ayuda a la comunidad',
@@ -234,8 +234,8 @@ class _PageIndicator extends StatelessWidget {
           width: isActive ? 32 : 12,
           decoration: BoxDecoration(
             color: isActive
-                ? MetroColors.energyOrange
-                : MetroColors.energyOrange.withValues(alpha: 0.3),
+                ? MetroColors.red
+                : MetroColors.red.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
           ),
         );
@@ -270,10 +270,9 @@ class _OnboardingIllustration extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
       ),
       child: Center(
-        child: Icon(
-          icon,
-          size: 96,
-          color: accentColor,
+        child: Image.asset(
+          'assets/images/logo-cabeza.png',
+          height: 120,
         ),
       ),
     );

@@ -129,7 +129,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               const Icon(
                 Icons.verified,
                 size: 80,
-                color: MetroColors.energyOrange,
+                color: MetroColors.red,
               ),
               const SizedBox(height: 24),
               const Text(
@@ -171,7 +171,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   const Icon(
                     Icons.star,
                     size: 80,
-                    color: MetroColors.energyOrange,
+                    color: MetroColors.red,
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -241,7 +241,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                             product.price,
                             style: const TextStyle(
                               fontSize: 18,
-                              color: MetroColors.energyOrange,
+                              color: MetroColors.red,
                             ),
                           ),
                           trailing: ElevatedButton(

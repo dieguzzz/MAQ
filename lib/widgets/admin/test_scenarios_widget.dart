@@ -140,7 +140,7 @@ class _TestScenariosWidgetState extends State<TestScenariosWidget> {
                   onPressed:
                       _isRunning ? null : () => _runScenario(context, scenario),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: MetroColors.energyOrange,
+                    backgroundColor: MetroColors.red,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(100, 36),
                   ),

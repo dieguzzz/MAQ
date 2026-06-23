@@ -238,7 +238,7 @@ class _NearestStationWidgetState extends State<NearestStationWidget>
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'ESTACIÓN CERCANA',
                                 style: TextStyle(
                                   fontSize: 10,

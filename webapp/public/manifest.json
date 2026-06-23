@@ -1,0 +1,45 @@
+{
+  "name": "MetroPTY — Metro de Panamá",
+  "short_name": "MetroPTY",
+  "description": "Estado del Metro de Panamá en tiempo real. Reportes colaborativos, rutas y ETA.",
+  "start_url": "/map",
+  "display": "standalone",
+  "background_color": "#0C5BA2",
+  "theme_color": "#0C5BA2",
+  "orientation": "portrait-primary",
+  "lang": "es-PA",
+  "categories": ["travel", "navigation", "utilities"],
+  "icons": [
+    { "src": "/icons/icon-72.png",   "sizes": "72x72",   "type": "image/png" },
+    { "src": "/icons/icon-96.png",   "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-128.png",  "sizes": "128x128", "type": "image/png" },
+    { "src": "/icons/icon-144.png",  "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-152.png",  "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-192.png",  "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-384.png",  "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mapa en vivo",
+      "short_name": "Mapa",
+      "description": "Ver mapa de estaciones",
+      "url": "/map",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Reportar",
+      "short_name": "Reportar",
+      "description": "Enviar un reporte de estación",
+      "url": "/reports",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Planificar ruta",
+      "short_name": "Rutas",
+      "description": "Calcular ruta con ETA",
+      "url": "/routes",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ]
+}

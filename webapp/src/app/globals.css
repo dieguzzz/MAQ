@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Metro Line Colors (real Panama Metro branding) */
+  --metro-line-1: #0C5BA2;
+  --metro-line-2: #4CAF50;
+  --metro-line-3: #e74c3c;
+
+  /* Brand */
+  --brand-primary: var(--metro-line-1);
+  --brand-primary-hover: #094a87;
+  --brand-accent: #F8D133;
+  --brand-accent-hover: #e6c12e;
+
+  /* Surface — blue-tinted neutrals for personality */
+  --background: #F4F7FB;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #E8EEF5;
+  --muted-foreground: #5b6b82;
+  --border: #d4dce8;
+  --input: #d4dce8;
+  --ring: var(--brand-primary);
+
+  /* Feedback */
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --destructive: #dc2626;
+  --destructive-bg: #fee2e2;
+  --info: var(--brand-primary);
+  --info-bg: #dbeafe;
+
+  /* Station states */
+  --status-normal: #16a34a;
+  --status-normal-bg: #dcfce7;
+  --status-moderado: #d97706;
+  --status-moderado-bg: #fef3c7;
+  --status-lleno: #dc2626;
+  --status-lleno-bg: #fee2e2;
+  --status-cerrado: #6b7280;
+  --status-cerrado-bg: #f3f4f6;
+
+  /* Motion */
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgb(12 91 162 / 0.04), 0 1px 2px -1px rgb(12 91 162 / 0.06);
+  --shadow-card: 0 4px 12px -2px rgb(12 91 162 / 0.06), 0 2px 6px -2px rgb(12 91 162 / 0.04);
+  --shadow-panel: 0 8px 24px -4px rgb(12 91 162 / 0.08), 0 4px 8px -4px rgb(12 91 162 / 0.04);
+  --shadow-float: 0 16px 40px -8px rgb(12 91 162 / 0.12);
+  --shadow-brand: 0 4px 14px -3px rgb(12 91 162 / 0.3);
+
+  /* Bottom nav height */
+  --nav-height: 3.5rem;
+  --bottom-nav-height: 4rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-destructive: var(--destructive);
+  --color-destructive-bg: var(--destructive-bg);
+  --color-metro-1: var(--metro-line-1);
+  --color-metro-2: var(--metro-line-2);
+  --color-metro-3: var(--metro-line-3);
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-hover: var(--brand-accent-hover);
+  --color-status-normal: var(--status-normal);
+  --color-status-normal-bg: var(--status-normal-bg);
+  --color-status-moderado: var(--status-moderado);
+  --color-status-moderado-bg: var(--status-moderado-bg);
+  --color-status-lleno: var(--status-lleno);
+  --color-status-lleno-bg: var(--status-lleno-bg);
+  --color-status-cerrado: var(--status-cerrado);
+  --color-status-cerrado-bg: var(--status-cerrado-bg);
+  --radius-sm: var(--radius-sm);
+  --radius: var(--radius);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
+
+/* ─── Dark Mode ──────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --background: #0A1628;
+  --foreground: #f0f4f8;
+  --card: #12203A;
+  --card-foreground: #f0f4f8;
+  --muted: #1a2d4a;
+  --muted-foreground: #8ba3c4;
+  --border: #243b5e;
+  --input: #243b5e;
+
+  --success-bg: #052e16;
+  --warning-bg: #422006;
+  --destructive-bg: #450a0a;
+  --info-bg: #0c2d5a;
+  --status-normal-bg: #052e16;
+  --status-moderado-bg: #422006;
+  --status-lleno-bg: #450a0a;
+  --status-cerrado-bg: #1f2937;
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --shadow-card: 0 4px 12px -2px rgb(0 0 0 / 0.3);
+  --shadow-panel: 0 8px 24px -4px rgb(0 0 0 / 0.4);
+  --shadow-float: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+  --shadow-brand: 0 4px 14px -3px rgb(12 91 162 / 0.4);
+}
+
+/* ─── High Contrast ──────────────────────────────────────────────── */
+[data-theme="high-contrast"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #111111;
+  --card-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #dddddd;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffff00;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ─── Metro card utility ────────────────────────────────────────── */
+.metro-card {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+}
+
+/* ─── Map ────────────────────────────────────────────────────────── */
+.map-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────── */
+@keyframes slide-up {
+  from { transform: translateY(1rem); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes bounce-in {
+  0%   { transform: scale(0.9); opacity: 0; }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes press {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+@keyframes slide-line {
+  0%, 100% { opacity: 0.1; transform: scaleX(0.3); }
+  50%      { opacity: 0.4; transform: scaleX(1); }
+}
+
+.animate-slide-up  { animation: slide-up  var(--transition-base) both; }
+.animate-fade-in   { animation: fade-in   var(--transition-fast) both; }
+.animate-bounce-in { animation: bounce-in var(--transition-slow) both; }
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+
+/* ─── Reduced Motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

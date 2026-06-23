@@ -257,7 +257,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
                 _buildStatusChip(
                   'Acceso Parcial',
                   state.stationStatus == SimulatorStationStatus.accesoParcial,
-                  MetroColors.energyOrange,
+                  MetroColors.red,
                   () => _simulator.setStationStatus(
                     SimulatorStationStatus.accesoParcial,
                   ),
@@ -333,7 +333,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
                 _buildBigButton(
                   '🚇 Tren Saliendo',
                   state.trainStatus == SimulatorTrainStatus.saliendo,
-                  MetroColors.energyOrange,
+                  MetroColors.red,
                   () => _simulator.setTrainStatus(
                     SimulatorTrainStatus.saliendo,
                   ),
@@ -418,7 +418,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
                 _buildLoadChip(
                   'Media',
                   state.passengerLoad == SimulatorPassengerLoad.media,
-                  MetroColors.energyOrange,
+                  MetroColors.red,
                   () => _simulator.setPassengerLoad(
                     SimulatorPassengerLoad.media,
                   ),
@@ -516,7 +516,7 @@ class _LearningAdminPanelState extends State<LearningAdminPanel> {
                 _buildLocationButton(
                   '🚶 Acercándose',
                   state.simulatedLocation == SimulatorLocationType.acercandose,
-                  MetroColors.energyOrange,
+                  MetroColors.red,
                   () => _simulator.setSimulatedLocation(
                     SimulatorLocationType.acercandose,
                   ),

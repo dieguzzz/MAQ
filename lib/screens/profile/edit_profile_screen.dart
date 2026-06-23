@@ -406,7 +406,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Icons.star,
                             'Reputación',
                             '${user.reputacion}',
-                            MetroColors.energyOrange,
+                            MetroColors.red,
                           ),
                           const Divider(),
                           _buildStatRow(

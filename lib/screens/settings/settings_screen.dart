@@ -8,6 +8,7 @@ import '../legal/terms_screen.dart';
 import '../premium/premium_screen.dart';
 import '../profile/edit_profile_screen.dart';
 import 'notification_settings_screen.dart';
+import '../../widgets/guest_upgrade_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -20,8 +21,56 @@ class SettingsScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Configuración'),
         ),
-        body: ListView(
+        body: Consumer<AuthProvider>(
+          builder: (context, authProvider, _) => ListView(
           children: [
+            if (authProvider.isGuest)
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 32),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tu progreso no está respaldado',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Si desinstalas la app, perderás tus datos.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => GuestUpgradeDialog.show(context, feature: 'todas las funciones'),
+                              icon: const Icon(Icons.link, size: 18),
+                              label: const Text('Vincular con Google'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
@@ -81,7 +130,7 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.star, color: MetroColors.energyOrange),
+              leading: const Icon(Icons.star, color: MetroColors.red),
               title: const Text('Premium'),
               subtitle: const Text('Desbloquea funciones exclusivas'),
               trailing: const Icon(Icons.chevron_right),
@@ -183,14 +232,14 @@ class SettingsScreen extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: MetroColors.energyOrange.withValues(alpha: 0.08),
+                color: MetroColors.red.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: MetroColors.energyOrange.withValues(alpha: 0.3)),
+                    color: MetroColors.red.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: MetroColors.energyOrange),
+                  Icon(Icons.info_outline, color: MetroColors.red),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -202,7 +251,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

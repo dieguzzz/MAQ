@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/metro_theme.dart';
+import '../../widgets/google_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,22 +65,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: MetroColors.energyOrange.withValues(alpha: 0.2),
+                  color: MetroColors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: MetroColors.energyOrange.withValues(alpha: 0.5)),
+                      color: MetroColors.red.withValues(alpha: 0.5)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.info_outline,
-                        size: 16, color: MetroColors.energyOrange),
+                        size: 16, color: MetroColors.red),
                     SizedBox(width: 8),
                     Text(
                       'Aplicación NO oficial',
                       style: TextStyle(
                         fontSize: 12,
-                        color: MetroColors.energyOrange,
+                        color: MetroColors.red,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -87,6 +88,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const Spacer(),
+              Image.asset(
+                'assets/images/logo-imago.png',
+                height: 120,
+              ),
+              const SizedBox(height: 12),
               Text(
                 'MetroPTY',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -182,10 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       onPressed: auth.isLoading ? null : _handleGoogleSignIn,
-                      icon: const Icon(
-                        Icons.g_mobiledata,
-                        size: 28,
-                      ),
+                      icon: const GoogleLogo(size: 24),
                       label: auth.isLoading
                           ? const SizedBox(
                               height: 22,

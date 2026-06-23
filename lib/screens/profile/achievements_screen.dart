@@ -208,7 +208,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                         _buildRarityStat(
                           'Legendarios',
                           badgesByRarity[BadgeRarity.legendary] ?? 0,
-                          MetroColors.energyOrange,
+                          MetroColors.red,
                         ),
                         _buildRarityStat(
                           'Épicos',

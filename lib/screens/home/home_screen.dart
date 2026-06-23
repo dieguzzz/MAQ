@@ -324,14 +324,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'MetroPTY',
-              style: TextStyle(
-                color: MetroColors.blue,
-                fontWeight: FontWeight.w900,
-                fontSize: 24,
-                letterSpacing: -0.5,
-              ),
+            Row(
+              children: [
+                Image.asset('assets/images/logo-cabeza.png', height: 32),
+                const SizedBox(width: 8),
+                const Text(
+                  'MetroPTY',
+                  style: TextStyle(
+                    color: MetroColors.blue,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 24,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
             Consumer<AuthProvider>(
               builder: (context, authProvider, child) {

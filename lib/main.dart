@@ -242,10 +242,17 @@ class _SplashScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: MetroColors.grayLight,
       body: Center(
-        child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo-ico.png', height: 120),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(),
+          ],
+        ),
       ),
     );
   }

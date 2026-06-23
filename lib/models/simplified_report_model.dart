@@ -63,6 +63,7 @@ class SimplifiedReportModel {
   final int confirmations; // Número de confirmaciones
   final double? confidence; // 0.0-1.0 (nivel de confianza numérico)
   final List<String>? confidenceReasons; // Razones de confianza
+  final List<String>? confirmedBy; // Usuarios que han confirmado el reporte
 
   SimplifiedReportModel({
     required this.id,
@@ -96,6 +97,7 @@ class SimplifiedReportModel {
     this.confirmations = 0,
     this.confidence,
     this.confidenceReasons,
+    this.confirmedBy,
   });
 
   factory SimplifiedReportModel.fromFirestore(DocumentSnapshot doc) {
@@ -147,6 +149,9 @@ class SimplifiedReportModel {
       confidenceReasons: data['confidenceReasons'] != null
           ? List<String>.from(data['confidenceReasons'])
           : null,
+      confirmedBy: data['confirmedBy'] != null
+          ? List<String>.from(data['confirmedBy'])
+          : null,
     );
   }
 
@@ -185,6 +190,7 @@ class SimplifiedReportModel {
       'confirmations': confirmations,
       if (confidence != null) 'confidence': confidence,
       if (confidenceReasons != null) 'confidenceReasons': confidenceReasons,
+      if (confirmedBy != null) 'confirmedBy': confirmedBy,
     };
   }
 }
